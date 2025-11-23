@@ -1,0 +1,76 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<title>Quick Start - Leaflet</title>
+
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	
+	<link rel="shortcut icon" type="image/x-icon" href="docs/images/favicon.ico" />
+
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
+
+	<script src="https://code.jquery.com/jquery-3.6.0.min.js" integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.14.3/umd/popper.min.js" integrity="sha384-ZMP7rVo3mIykV+2+9J3UJ46jBk0WLaUAdn689aCwoqbBJiSnjAK/l8WvCWPIPm49" crossorigin="anonymous"></script>
+
+
+	
+</head>
+<body style="width: 100%; padding: 0; margin: 0;">
+
+
+<div id="mapko">
+	<div id="navig" style="position: absolute; z-index: 1000; background: rgba(255, 255, 255, .7); right: 0; margin: 0px; padding: 5px;">trt</div>
+	<div id="map" style="width: 100%;"></div>
+</div>
+
+<script>
+
+$('#map').height(window.innerHeight)
+
+	var lmap = L.map('map').setView([44.508, 21.11], 5);
+
+	L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v9/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
+	attribution: 'attribution:"© OpenStreetMap Contributors. Tiles courtesy of Humanitarian OpenStreetMap Team"',
+	subdomains: 'abcd',
+	minZoom: 1,
+	maxZoom: 16,
+	ext: 'jpg'
+}).addTo(lmap);
+
+	L.marker([44, 21]).addTo(lmap)
+		.bindPopup("<b>Hello world!</b><br />I am a popup.").openPopup();
+
+	L.circle([44.508, 21.11], 500, {
+		color: 'red',
+		fillColor: '#f03',
+		fillOpacity: 0.5
+	}).addTo(lmap).bindPopup("I am a circle.");
+
+	L.polygon([
+		[44.508, 21.11],
+		[45.508, 21.11],
+		[44.508, 22.11]
+	]).addTo(lmap).bindPopup("I am a polygon.");
+
+
+	var popup = L.popup();
+
+	function onMapClick(e) {
+		popup
+			.setLatLng(e.latlng)
+			.setContent("You clicked the map at " + e.latlng.toString())
+			.openOn(map);
+	}
+
+	lmap.on('click', onMapClick);
+
+</script>
+
+
+
+</body>
+</html>

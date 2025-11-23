@@ -1,0 +1,64 @@
+https://malovan.net/
+https://www.makroekonomija.org/0-miroslav-zdravkovic/ustaski-pir-u-slunju/
+Milan KOljanin
+Milan Radanoviæ
+dr životije ðorðeviæ
+Mile Bosniæ - Predsednik Udruženja Krajišnika Srbije
+
+Foto: Dr Nebojša Kuzmanoviæ, direktor Arhiva Vojvodine / Foto V. Muèibabiæ ....sin èoveka koji je objavio knjigu o pokolju u drakulicu kod Banja Luke
+
+https://www.makroekonomija.org/nezavisna-drzava-hrvatska/blinjski-kut-sisak/
+
+srpskimemorijal.rs
+
+leafletjs.com
+
+
+ostrogon grad u madzarskoj
+
+nisam uneo crkvu u Višnjiku u zvornicko tuzlanskoj eparhiji
+ni Vrela (Gornja) u istoj eparhiji
+ni Gornji Svilaj u istoj eparhiji
+ni jezera u istoj eparhiji
+ni kozile u istoj
+ni Porebice u istoj
+
+spomen kosturnica u Livnu u bihackopetrovackoj eparhiji
+ni oštru luku u istoj
+ni sedrenik
+
+
+ni gornji grad u gornjokarlovackoj eparhiji
+ni radovica u istoj
+
+dalmatinska eparhija:
+dabar kod splita
+
+osjeèko baranjska: .
+vukovar:crkva Svetoga Prokopija
+osijek kapela vaskrsenja Hristovog
+
+slavonska eparhija
+samo dve stavke za Pakrac od njih oko 5
+laðevac nije unet
+lužani nije unet
+Malino nije uneto
+miokoviæevo
+
+
+opština: Aranðelovac
+Ivan Petroviæ
+tel: 034/711 558, 064/2626 711,
+065/2711 558
+Knjaza Miloša br.218a/1
+notar.arandjelovac@gmail.com
+
+
+DECLARE @g geometry 
+SET @g = geometry::STGeomFromText('POINT (100 180)', 0) 
+SELECT @g.ToString() 
+
+
+http://sqlfiddle.com/#!18/9eecb/105175
+https://docs.microsoft.com/en-us/sql/t-sql/spatial-geometry/stgeomfromtext-geometry-data-type?view=sql-server-ver15
+https://ip-api.com/

@@ -1,0 +1,57 @@
+kod tema razlikujemo dve stvari ... npr granice imaju od vremena do vremena a rusenje nečega samo jedno vreme ali za pretragu opet mora imati dva polja
+
+filtering-marker-clusters ... kod izbore teme da se biraju podteme za prikaz možda po boji ili tipu, možda bolje po tipu jer je boja jedan podatak, 
+veličina ikonice drugi a vrsta ikonice treci, znači za sve ostale
+Leaflet Markercluster ....sakupljanje pokazivaca!
+Centering markers ...kada se izabere pokazivac da se usredsredi i da se u tabeli podeblja ili u komentarima da se izabere za njega
+Fit map to markers  --- da se uveca na kartu od zanimanja
+
+
+https://stackoverflow.com/questions/43856481/transforming-data-from-geojson-to-sql-geography
+https://techcommunity.microsoft.com/t5/sql-server/parsing-geojson-format-in-sql-server-2016/ba-p/384459
+https://docs.microsoft.com/en-us/sql/relational-databases/spatial/linestring?view=sql-server-ver15 ...samo za liniju
+https://bertwagner.com/posts/importing-geojson-earthquake-data-into-sql-server/ ----ali ovo je geography
+https://h-savran.blogspot.com/2017/09/how-to-create-geojson-in-sql-server.html
+https://techcommunity.microsoft.com/t5/sql-server/returning-spatial-data-in-geojson-format-part-2/ba-p/384610
+https://stackoverflow.com/questions/36141323/spatial-datatype-geometry-to-geojson -----VAZNO
+https://handsontable.com/docs/api/options/#description ...ovo je za pravljenej dinamicke tabele
+https://docs.mapbox.com/mapbox.js/example/v1.0.0/editable-table-of-markers/
+https://handsondataviz.org/copy-leaflet.html  .....prvo knjiga/uputstvo za liflet
+https://geojson.io/#map=11/43.6736/27.6361
+https://jeremylindsayni.wordpress.com/2019/01/14/use-sql-server-to-import-geojson-files-and-convert-geo-data-back-into-geojson/
+https://stackoverflow.com/questions/56371128/issue-on-trying-to-query-geojson-multipolygons-in-sql-server-2016
+https://dev.to/itsmestevieg/leafletjs-capture-geojson-wkt-sql-spatial-format-12lb   -- kako ubaciti podatke pomocu WKT-a --- OVO KADA SE BUDE KODOVALO PREUZIMANJ IZ TABELE
+https://gist.github.com/bmcbride/4248238 ....vrv bajato kako pokazati WKT
+https://community.esri.com/t5/arcgis-runtime-sdk-for-net-questions/convert-json-to-wkt-or-sql-geometry/td-p/130108 --- za poligone i multipoligone iz geojson u sql
+https://www.sqlservertutorial.net/sql-server-basics/sql-server-insert-multiple-rows/ ---- visestruki INSERT
+https://www.lexilogos.com/keyboard/serbian_conversion.htm --- funkcija za prebacivanje u ćirilicu
+https://gis.stackexchange.com/questions/340087/speed-up-geojson-clustering-and-rendering ----da se prikazuju samo oni koji se mogu videti
+
+https://stackoverflow.com/questions/6366885/simple-query-with-ado-and-classic-asp ...parametarski select ASP uz command object
+https://lostinthecyberabyss.com/index.php/2019/09/27/classic-asp-how-to-do-parameterized-queries-to-help-prevent-sql-injection/
+https://www.experts-exchange.com/articles/3626/ASP-Classic-Using-Parameterized-Queries.html
+https://stackoverflow.com/questions/7654446/parameterized-query-in-classic-asp ..parametarski sa datumom
+https://docs.microsoft.com/en-us/archive/msdn-magazine/2004/september/data-security-stop-sql-injection-attacks-before-they-stop-you ----za hakere
+
+ubaciti sve kao WKT uz ciscenje ulaznih podataka!
+ubaciti sve CSS-ove i JS na strane da se ne učitavaju spolja!
+
+http://localhost:8080/karta.html
+https://leaflet.github.io/Leaflet.draw/docs/leaflet-draw-latest.html
+https://web-mapping.surge.sh/collaborative-mapping.html
+https://github.com/dwilhelm89/LeafletSlider
+http://dwilhelm89.github.io/LeafletSlider/
+http://turbo87.github.io/leaflet-sidebar/examples/
+https://balkanskageopolitika.com/2021/12/03/sv-jovan-zlatousti-o-predstojateljima-crkve-poslednjih-vremena-2/
+
+
+	oblast	Romania	Valahia	Vlaška	Влашка
+isturena zemlja	oblast	Croatia	Istra	Ister	Истер
+	planina	Serbia	Prokletije	Trojanske planine	Тројанске планине
+tal. Zante, Zakintos	ostrvo	Greece	Ζακύνθου	Zaton	Затон
+balaton blatno 
+
+
+kada se promeni tema da se ukine sastrane deo za primedbe kako bi se promenila globalna promenljjiva koja je potrebna za unos u odgovarajuću tabelu; pored promene zapisa na koji se odnosi
+za promenu identita da stoji čak i tamo gde je došlo samo do promene pisma ali nije prihvaćeno da je reč o srbskoj zemlji ...ili da dodamo dodatnu kolonu ...srbski toponim/turski
+
