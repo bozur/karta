@@ -5,7 +5,7 @@
 		
 		if Request.ServerVariables("SERVER_NAME")="digitalniupravnik.com" or Request.ServerVariables("SERVER_NAME")="www.digitalniupravnik.com" then
 		Set conn = Server.CreateObject("ADODB.Connection")
-		conn.open "Provider=SQLOLEDB;Data source=mssql7.websitelive.net;Initial catalog=pocetnik_manager;User Id=pocetnik_manager;Password=Digitalac-1"
+		conn.open ""
 		end if
 		
 		if Request.ServerVariables("SERVER_NAME")="localhost" then
