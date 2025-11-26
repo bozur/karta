@@ -4,16 +4,15 @@
 <head>
   <title>Карта</title>
 
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
-  <meta name="keywords" content="">
-  <meta name="description" content="">
-  integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
-  crossorigin="" />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+    integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+    crossorigin="" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
-  <!--leaflet draw-->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.0/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="css/custom.css" /> <!---->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="css/custom.css">
+  <link rel="stylesheet" href="leaflet-sidebar-master/src/L.Control.Sidebar.css" />
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
@@ -25,11 +24,7 @@
     crossorigin=""></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script> <!--leaflet draw-->
 
-
-
   <!--<script src="js/index.js"></script> izmijeniti po potrebi ...-->
-
-
 
   <!-- ово испод је za brze provere stilova?-->
   <style>
@@ -137,6 +132,12 @@
 <script>
   var tabela;
   var addedGeoJSON;
+  var karta;
+  var tilelayer1;
+  var tilelayer2;
+  var drawnItems;
+  var drawnControl;
+
   var table = [
     [
       [''],
@@ -171,15 +172,136 @@
   ];
 
   //da se karta i sloj prilagode promenama
-  $('#kartaid').height(window.innerHeight)
-  $('.sloj_vidi').height(window.innerHeight - 78)
-  $(window).resize(function () {
+  $(document).ready(function () {
     $('#kartaid').height(window.innerHeight)
     $('.sloj_vidi').height(window.innerHeight - 78)
-  });
-  //za gornji desni ugao tumačenja
-  $('[data-toggle="tooltip"]').tooltip();
+    $(window).resize(function () {
+      $('#kartaid').height(window.innerHeight)
+      $('.sloj_vidi').height(window.innerHeight - 78)
+    });
+    //za gornji desni ugao tumačenja
+    $('[data-toggle="tooltip"]').tooltip();
 
+    // Initialize map after height is set
+    karta = L.map('kartaid').setView([44, 21], 6);
+    tilelayer1 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
+      maxZoom: 18,
+      attribution: '<a target="_blank" href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+        'Imagery © <a target="_blank" href="https://www.mapbox.com/">Mapbox</a>',
+      id: 'mapbox/streets-v11',
+      tileSize: 512,
+      zoomOffset: -1
+    });
+    tilelayer2 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
+      maxZoom: 18,
+      attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+        'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+      id: 'mapbox/streets-v11',
+      tileSize: 512,
+      zoomOffset: -1
+    });
+
+    tilelayer1.addTo(karta);
+
+    var idpointinfo = 0;
+    var sidebar = L.control.sidebar('sidebar', {
+      position: 'left'
+    });
+    karta.addControl(sidebar);
+
+    $(document).on('click', '.detalji', function () {
+      var idpoint = $(this).attr("pointinfo");
+      if (idpointinfo === idpoint) {
+        sidebar.toggle();
+      } else {
+        if (idpointinfo === 0) { sidebar.toggle(); }
+        if (idpointinfo != idpoint && !sidebar.isVisible()) { sidebar.show(); }
+
+
+        $.getJSON('api/points/' + idpoint + '?table=' + tabela, function (data) {
+          console.log(data);
+          var vrem, pros;
+          if (data.vremenski == '1') { vrem = "тачно"; } else { vrem = "оквирно"; }
+          if (data.prostorno == '1') { pros = "тачно"; } else { pros = "оквирно"; }
+
+          function formatDate(dateStr) {
+            if (!dateStr) return '';
+            var datePart = dateStr.split('T')[0];
+            var parts = datePart.split('-');
+            return parts[2] + '.' + parts[1] + '.' + parts[0] + '.';
+          }
+
+          var htmlContent = '<h1>' + table[tabela][1][data.vrs] + '</h1>' +
+            '<p><b>Подврста:</b> ' + table[tabela][2][data.pod] + '</p>' +
+            '<p><b>Разред:</b> ' + table[tabela][0][data.raz] + '</p>' +
+            '<p><b>Вријеме:</b> ' + formatDate(data.vri0) + ' - ' + formatDate(data.vri1) + ' (' + vrem + ')</p>' +
+            '<p><b>Опис:</b> ' + data.opi + '</p>' +
+            '<p><b>Извор:</b> ' + data.izv + '</p>' +
+            '<p><b>Просторно:</b> ' + pros + '</p>';
+
+          $('#sidebar').html(htmlContent);
+          if (!sidebar.isVisible()) { sidebar.show(); }
+          idpointinfo = idpoint;
+        });
+      }
+    });
+
+    // Create feature group for drawn items
+    drawnItems = L.featureGroup(); //.addTo(karta);
+
+    // Add draw control
+    drawnControl = new L.Control.Draw({
+      draw: {
+        circle: false,
+        rectangle: false,
+        circlemarker: false,
+        polygon: {
+          allowIntersection: false,
+          drawError: {
+            message: 'није дозвољено преклапање површина' // Message that will show when intersect 
+          }
+        },
+        polyline: {
+          allowIntersection: false,
+          drawError: {
+            message: 'није дозвољено пресијецање линија' // Message that will show when intersect 
+          }
+        },
+      },
+      edit: {
+        featureGroup: drawnItems,
+        poly: {
+          allowIntersection: false
+        }
+      }
+    }); // .addTo(karta);
+
+    // On draw - add drawing to 'drawnItems'
+    karta.on("draw:created", function (e) {
+      e.layer.addTo(drawnItems);
+
+      var type = e.layerType,
+        layer = e.layer;
+      if (type === 'marker') {
+        layer.bindPopup('LatLng: ' + parseFloat(layer.getLatLng().lat).toFixed(5) + ',' + parseFloat(layer.getLatLng().lng.toFixed(5)).openPopup());
+      }
+
+    });
+
+    var scale = L.control.scale(); // Creating scale control
+    scale.addTo(karta); // Adding scale control to the map
+
+    var iconcrkva = L.icon({
+      iconUrl: '/ikone/crkva.png',
+      iconSize: [32, 37], // size of the icon
+      iconAnchor: [16, 37], // point of the icon which will correspond to marker's location
+      popupAnchor: [0, -30] // point from which the popup should open relative to the iconAnchor
+    });
+
+    L.marker([44, 21], { icon: iconcrkva }).addTo(karta).bindPopup('trtrt')
+    L.marker([44.5, 21.5], { icon: iconcrkva }).addTo(karta).bindPopup('trtrt2')
+
+  });
 
   //za uvlacenje slojeva
   $(document).on('click', '.izbor', function () {
@@ -191,6 +313,15 @@
     }
   });
 
+  $(document).on('click', '#promjena_karte', function () {
+    if (karta.hasLayer(tilelayer1)) {
+      karta.addLayer(tilelayer2);
+      karta.removeLayer(tilelayer1);
+    } else {
+      karta.addLayer(tilelayer1);
+      karta.removeLayer(tilelayer2);
+    }
+  });
 
   $('#teme_izbor').on('change', function () {
     //LoadWithoutCache("teme.html", "teme_trazi");
@@ -247,119 +378,6 @@
     });
   }
 
-  var karta = L.map('kartaid').setView([44, 21], 6);
-  var tilelayer1 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
-    maxZoom: 18,
-    attribution: '<a target="_blank" href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-      'Imagery © <a target="_blank" href="https://www.mapbox.com/">Mapbox</a>',
-    id: 'mapbox/streets-v11',
-    tileSize: 512,
-    zoomOffset: -1
-  })
-  var tilelayer2 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
-    maxZoom: 18,
-    attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-      'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-    id: 'mapbox/streets-v11',
-    tileSize: 512,
-    zoomOffset: -1
-  })
-
-  tilelayer1.addTo(karta);
-
-  $(document).on('click', '#promjena_karte', function () {
-    if (karta.hasLayer(tilelayer1)) {
-      karta.addLayer(tilelayer2);
-      karta.removeLayer(tilelayer1);
-    } else {
-      karta.addLayer(tilelayer1);
-      karta.removeLayer(tilelayer2);
-    }
-  });
-
-  var idpointinfo = 0;
-  var sidebar = L.control.sidebar('sidebar', {
-    position: 'left'
-  });
-  karta.addControl(sidebar);
-
-  $(document).on('click', '.detalji', function () {
-    var idpoint = $(this).attr("pointinfo");
-    if (idpointinfo === idpoint) {
-      sidebar.toggle();
-    } else {
-      if (idpointinfo === 0) { sidebar.toggle(); }
-      if (idpointinfo != idpoint && !sidebar.isVisible()) { sidebar.show(); }
-
-
-      $.getJSON('api/points/' + idpoint + '?table=' + tabela, function (data) {
-        console.log(data)
-        var vrem, pros
-
-      });
-    }
-  });
-
-
-  // Create feature group for drawn items
-  var drawnItems = L.featureGroup() //.addTo(karta);
-
-  // Add draw control
-  var drawnControl = new L.Control.Draw({
-    draw: {
-      circle: false,
-      rectangle: false,
-      circlemarker: false,
-      polygon: {
-        allowIntersection: false,
-        drawError: {
-          message: 'није дозвољено преклапање површина' // Message that will show when intersect 
-        }
-      },
-      polyline: {
-        allowIntersection: false,
-        drawError: {
-          message: 'није дозвољено пресијецање линија' // Message that will show when intersect 
-        }
-      },
-    },
-    edit: {
-      featureGroup: drawnItems,
-      poly: {
-        allowIntersection: false
-      }
-    }
-  }) // .addTo(karta);
-
-
-  // On draw - add drawing to 'drawnItems'
-  karta.on("draw:created", function (e) {
-    e.layer.addTo(drawnItems);
-
-    var type = e.layerType,
-      layer = e.layer;
-    if (type === 'marker') {
-      layer.bindPopup('LatLng: ' + parseFloat(layer.getLatLng().lat).toFixed(5) + ',' + parseFloat(layer.getLatLng().lng.toFixed(5)).openPopup());
-    }
-
-  });
-
-  var scale = L.control.scale(); // Creating scale control
-  scale.addTo(karta); // Adding scale control to the map
-
-  var iconcrkva = L.icon({
-    iconUrl: '/ikone/crkva.png',
-    iconSize: [32, 37], // size of the icon
-    iconAnchor: [16, 37], // point of the icon which will correspond to marker's location
-    popupAnchor: [0, -30] // point from which the popup should open relative to the iconAnchor
-  });
-
-  L.marker([44, 21], { icon: iconcrkva }).addTo(karta).bindPopup('trtrt')
-  L.marker([44.5, 21.5], { icon: iconcrkva }).addTo(karta).bindPopup('trtrt2')
-
-
-
-
   function onEachFeature(feature, layer) {
 
 
@@ -371,6 +389,19 @@
     }
   }
 
+  var LeafIcon = L.Icon.extend({
+    options: {
+      iconSize: [32, 37], // size of the icon
+      iconAnchor: [16, 37], // point of the icon which will correspond to marker's location
+      popupAnchor: [0, -30] // point from which the popup should open relative to the iconAnchor
+    }
+  });
+
+  function createIcon(r, tabela) {
+    return new LeafIcon({
+      iconUrl: 'ikone/' + tabela + '/' + r + '.png'
+    });
+  }
 
   function pretrazi() {
     $("#form_trazi").submit(function (e) {
@@ -411,3 +442,5 @@
       });
     });
   }
+
+</script>
