@@ -1,13 +1,103 @@
+/* Common styles - NO font-size set to use browser default (16px) */
 body,
 html {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-size: 0.9rem;
   font-family: Lato, sans-serif;
   color: rgb(0, 0, 0);
 }
 
+/* Index page specific styles */
+#naslovna {
+  background-image: url("../slike/naslovna.jpg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  width: 100%;
+  height: 100%;
+}
+
+/* Override body/html for index page - restore original white text */
+#naslovna body,
+#naslovna html {
+  color: #fff;
+  font-family: Lato, sans-serif;
+}
+
+/* White color for text elements in naslovna (but allow inline styles to override) */
+#naslovna h1,
+#naslovna h3,
+#naslovna small,
+#naslovna label {
+  color: #fff;
+}
+
+/* Don't force color on spans - let inline styles work */
+#naslovna span:not([style*="color"]) {
+  color: #fff;
+}
+
+/* Don't force color on divs - let text flow naturally */
+#naslovna div:not([style*="color"]) {
+  color: #fff;
+}
+
+#naslovna .col {
+  text-align: center;
+}
+
+#naslovna .form-control {
+  border-width: 1px;
+  border-color: #fff;
+  background-color: transparent;
+  color: #fff;
+}
+
+#naslovna .form-control:focus {
+  border-width: 1px;
+  border-color: #f5a615;
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #fff;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.veza {
+  color: #ffffff;
+}
+
+.veza:hover {
+  color: #f5a615;
+  text-decoration: none;
+}
+
+.veza2 {
+  color: #dddddd;
+}
+
+#logform {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Karta page specific styles */
+#kartaid {
+  height: 100%;
+  width: 100%;
+}
+
+#radna {
+  height: 100vh;
+  width: 100%;
+}
+
+/* Karta page - set smaller font size only for karta page */
+#radna body,
+#radna html {
+  font-size: 0.9rem;
+}
+
+/* Shared styles for both pages */
 .tooltip-inner {
   max-width: 200px;
   padding: 3px 8px;
@@ -25,7 +115,6 @@ html {
   border-bottom-color: #444;
 }
 
-
 .navodi {
   position: absolute;
   z-index: 1000;
@@ -36,7 +125,13 @@ html {
   padding: 3px 5px;
   border-bottom: 2px solid #bbb;
   border-left: 2px solid #bbb;
-  border-bottom-left-radius: 4px
+  border-bottom-left-radius: 4px;
+  color: #000;
+  font-size: 0.9rem;
+}
+
+.navodi i {
+  font-size: 0.9rem;
 }
 
 .izbor_karte {
@@ -51,16 +146,21 @@ html {
   border-left: 2px solid #bbb;
   border-bottom-left-radius: 4px;
   border-right: 2px solid #bbb;
-  border-bottom-right-radius: 4px
+  border-bottom-right-radius: 4px;
+  color: #000;
+  font-size: 0.9rem;
 }
 
+.izbor_karte i {
+  font-size: 0.9rem;
+}
 
 i:hover {
   color: darkorange;
 }
 
 .naslov {
-  font-size: x-large
+  font-size: x-large;
 }
 
 .sloj_vidi {
@@ -78,10 +178,34 @@ i:hover {
   padding: 10px;
   overflow-y: auto;
   border-left: 1px solid #ccc;
+  color: #000;
+  font-size: 0.9rem;
 }
 
 .sloj_vidi.in {
   margin-right: 0px;
+}
+
+.sloj_vidi .form-control {
+  color: #000;
+  background-color: #fff;
+  border-color: #ced4da;
+  font-size: 0.9rem;
+}
+
+.sloj_vidi .form-control:focus {
+  color: #495057;
+  background-color: #fff;
+  border-color: #80bdff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.sloj_vidi label,
+.sloj_vidi p,
+.sloj_vidi span,
+.sloj_vidi option {
+  color: #000;
 }
 
 div {
