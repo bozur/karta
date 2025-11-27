@@ -3,6 +3,9 @@ const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
 const { poolPromise, sql } = require('./db');
+const session = require('express-session');
+const bcrypt = require('bcrypt');
+
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -13,6 +16,19 @@ app.use(morgan('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Session configuration
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'secret_key_change_this',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // Set to true if using HTTPS
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    }
+}));
+
+
+
 // Serve static files
 app.use(express.static(path.join(__dirname, '.')));
 
@@ -20,6 +36,7 @@ app.use(express.static(path.join(__dirname, '.')));
 
 // GET /api/comments (Replaces back/comments-get.asp)
 app.get('/api/comments', async (req, res) => {
+
     try {
         const pool = await poolPromise;
         const result = await pool.request().query('select * from CTable_1 where ID=1');
@@ -250,8 +267,8 @@ app.post('/api/comments/:id/upvote', async (req, res) => {
                 UPDATE comments
                 SET upvote_count = upvote_count + @increment, user_has_upvoted = @user_has_upvoted
                 OUTPUT INSERTED.*
-                WHERE id = @id
-            `);
+            WHERE id = @id
+                `);
 
         if (result.recordset.length === 0) {
             return res.status(404).json({ error: "Comment not found" });
@@ -264,7 +281,122 @@ app.post('/api/comments/:id/upvote', async (req, res) => {
     }
 });
 
-// Start server
+// Authentication Routes
+
+// POST /api/login
+app.get('/api/check-auth', (req, res) => {
+    if (req.session.user) {
+        res.json({ user: req.session.user });
+    } else {
+        res.status(401).json({ error: 'Not authenticated' });
+    }
+});
+
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        const pool = await poolPromise;
+        // Check if username matches email or username column
+        const result = await pool.request()
+            .input('username', sql.NVarChar, username)
+            .query('SELECT * FROM korisnik WHERE (korisnik = @username OR eposta = @username)');
+
+        if (result.recordset.length === 0) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const user = result.recordset[0];
+
+        // Verify password
+        const match = await bcrypt.compare(password, user.lozinka);
+        if (!match) {
+            return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        // Update access stats
+        await pool.request()
+            .input('id', sql.Int, user.id)
+            .query(`
+                UPDATE korisnik 
+                SET pristup1 = GETDATE(),
+            brojac_pristupa = ISNULL(brojac_pristupa, 0) + 1 
+                WHERE id = @id
+            `);
+
+        // Set session
+        req.session.user = {
+            id: user.id,
+            username: user.korisnik,
+            email: user.eposta
+        };
+
+        res.json({ success: true, redirect: '/karta.html' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/register', async (req, res) => {
+    const { email } = req.body;
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    try {
+        const pool = await poolPromise;
+
+        // Check if email exists
+        const checkResult = await pool.request()
+            .input('email', sql.NVarChar, email)
+            .query('SELECT id FROM korisnik WHERE eposta = @email');
+
+        if (checkResult.recordset.length > 0) {
+            return res.status(409).json({ error: 'Email already exists' });
+        }
+
+        // Generate random password
+        const password = Math.random().toString(36).slice(-8);
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Insert new user
+        // Note: 'korisnik' (username) is set to email initially or part of email
+        const username = email.split('@')[0].substring(0, 20);
+
+        await pool.request()
+            .input('email', sql.NVarChar, email)
+            .input('username', sql.NVarChar, username)
+            .input('password', sql.NVarChar, hashedPassword)
+            .query(`
+                INSERT INTO korisnik (eposta, korisnik, lozinka, pristup0, brojac_pristupa)
+                VALUES (@email, @username, @password, GETDATE(), 0)
+            `);
+
+        // Mock sending email
+        console.log(`[MOCK EMAIL]To: ${email}, Password: ${password} `);
+
+        res.json({ success: true, message: 'Password sent to email' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+app.post('/api/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) {
+            return res.status(500).json({ error: 'Could not log out' });
+        }
+        res.json({ success: true });
+    });
+});
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
