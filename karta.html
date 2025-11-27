@@ -37,101 +37,22 @@
         style="cursor: context-menu; font-style: normal;">терен/сателит</i>
     </div>
     <div id="navodi" class="navodi">
-      <i class="bi-layers mx-2 izbor" title="теме" data-toggle="tooltip" data-placement="bottom" title2="#teme"></i>
+      <i class="bi-layers mx-2 izbor" title="теме" data-toggle="tooltip" data-placement="bottom" title2="teme"></i>
       <i class="bi-calendar3 mx-2 izbor" title="догађаји" data-toggle="tooltip" data-placement="bottom"
-        title2="#dogadjaji"></i>
+        title2="dogadjaji"></i>
       <i class="bi-lightbulb mx-2 izbor" title="приједлози" data-toggle="tooltip" data-placement="bottom"
-        title2="#predlozi"></i>
-      <i class="bi-folder mx-2 izbor" title="записи" data-toggle="tooltip" data-placement="bottom" title2="#zapisi"></i>
+        title2="predlozi"></i>
+      <i class="bi-folder mx-2 izbor" title="записи" data-toggle="tooltip" data-placement="bottom" title2="zapisi"></i>
       <i class="bi-person mx-2 izbor" title="корисник" data-toggle="tooltip" data-placement="bottom"
-        title2="#korisnik"></i>
+        title2="korisnik"></i>
       <i class="bi-envelope mx-2 izbor" title="контакт" data-toggle="tooltip" data-placement="bottom"
-        title2="#kontakt"></i>
+        title2="kontakt"></i>
       <i class="bi-question-circle mx-2 izbor" title="упутство" data-toggle="tooltip" data-placement="bottom"
-        title2="#uputstvo"></i>
+        title2="uputstvo"></i>
     </div>
     <div id="kartaid" style="width: 100%;"></div>
-    <div id="teme" class="sloj_vidi">
-      <span style="display: block">
-        <span class="naslov">Теме</span>
-      </span>
-      <div class="form-group">
-        <select class="form-control" id="teme_izbor">
-          <option value="0">изабери:</option>
-          <option value="1">напади на објекте СПЦ</option>
-          <option value="2">промјена назива</option>
-          <option value="3">распрострањеност топонима</option>
-          <option value="4">логори за Србе</option>
-          <option value="5">страдања људи</option>
-          <option value="6">границе</option>
-        </select>
-
-      </div>
-      <div class="form-group mt-2" id="teme_trazi">
-        <p>промјена теме брише приједлог за унос и сакрива податке о изабраној ставци!</p>
-      </div>
-
-    </div>
-    <div id="dogadjaji" class="sloj_vidi">
-      <span style="display: block">
-        <span class="naslov">Догађаји</span>
-      </span>претрага, избор, примједбе, унос ..тагови, вријеме обавезно ...координате по могућности
-    </div>
-    <div id="predlozi" class="sloj_vidi">
-      <span style="display: block">
-        <span class="naslov">Приједлози за нове теме</span>
-      </span>приједлози и прихваћене теме са описима, прегледима примједбама на ставке и сл.
-      Ово треба преименовати у обште или томе слично... можда "корисници" са два човечуљка на слици. где би било
-      приказано број корисника, послиједњих 10 прилога са износима,
-      број ставки, тема, примхједби, догађаја ... унето од послиједње посјете, догађаја, ставки, тема, записа,
-      .....можда још једна страна где би се видело шта се чека на одобрење???
-    </div>
-    <div id="zapisi" class="sloj_vidi">
-      <span style="display: block">
-        <span class="naslov">Записи</span>
-      </span>zapisi тј документи...образац за унос ... само пдф, ворд, јпг, пнг ... додати део за унос и
-      претрагу.
-      Унос да укључи период на који запис указује, теме на које се односи и тагова(ознаке). Записи да имају примједбе!
-    </div>
-    <div id="korisnik" class="sloj_vidi">
-      <span style="display: block">
-        <span class="naslov">Корисник</span>
-        <span style="margin-left: 10px;">username</span>
-        <span style="margin-left: 10px;">измени</span>
-        <span style="margin-left: 10px;">излаз</span>
-      </span>
-      <span>промјена лозинке ко допринесе са 1000 нових ставки, добија
-        100е. апел да се
-        допринесе! обавештења корисницима тренд раста, у међувремену шта се десило, укидање реклама, помоћ, Преузимање
-        ваших записа. Прва
-        посјета, послиједња посјета, унето ставки, повољно оцијењено, лоше оцијењено, примједбе,</span>
-    </div>
-    <div id="kontakt" class="sloj_vidi">
-      <span style="display: block">
-        <span class="naslov">Контакт</span>
-      </span>
-      <form>
-        <div class="form-group">
-          <label for="kontakt_izbor">наслов:</label>
-          <select class="form-control" id="kontakt_izbor">
-            <option value="0">изабери наслов</option>
-            <option value="1">грешка на странама</option>
-            <option value="2">приједлог за нову тему</option>
-            <option value="3">приједлог за побољшање</option>
-            <option value="4">помоћ на странама</option>
-            <option value="5">остало</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="exampleFormControlTextarea1">напис</label>
-          <textarea class="form-control" id="exampleFormControlTextarea1" rows="5"></textarea>
-        </div>
-        <button type="submit" class="btn btn-white border border-dark">пошаљи</button>
-      </form>
-      <div class="form-group mt-2" id="kontakt_opis">
-      </div>
-    </div>
-    <div id="uputstvo" class="sloj_vidi"></div>
+    <!-- Dynamic content container for navigation sections -->
+    <div id="section-content" class="sloj_vidi"></div>
   </div>
 
   <script src="karta.js"></script>

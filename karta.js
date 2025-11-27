@@ -171,13 +171,51 @@ $(document).ready(function () {
 
 });
 
-//za uvlacenje slojeva
+//za uvlacenje slojeva - dynamic section loading
+var currentSection = null;
+var loadedScripts = {};
+
 $(document).on('click', '.izbor', function () {
-    if ($($(this).attr('title2')).hasClass('in')) {
-        $('.sloj_vidi').removeClass('in');
+    var sectionName = $(this).attr('title2');
+
+    if (currentSection === sectionName && $('#section-content').hasClass('in')) {
+        // Toggle off if clicking the same section
+        $('#section-content').removeClass('in');
+        currentSection = null;
     } else {
-        $('.sloj_vidi').removeClass('in');
-        $($(this).attr('title2')).addClass('in')
+        // Load new section
+        currentSection = sectionName;
+
+        // Load HTML content
+        $.ajax({
+            url: 'sections/' + sectionName + '.html',
+            cache: false,
+            dataType: 'html',
+            success: function (html) {
+                $('#section-content').html(html);
+                $('#section-content').addClass('in');
+
+                // Load and execute section-specific JavaScript
+                if (!loadedScripts[sectionName]) {
+                    $.getScript('sections/' + sectionName + '.js')
+                        .done(function () {
+                            loadedScripts[sectionName] = true;
+                            console.log(sectionName + '.js loaded successfully');
+                        })
+                        .fail(function () {
+                            console.error('Failed to load ' + sectionName + '.js');
+                        });
+                } else {
+                    // Re-trigger initialization for already loaded scripts
+                    $(document).ready();
+                }
+            },
+            error: function () {
+                console.error('Failed to load section: ' + sectionName);
+                $('#section-content').html('<p>Грешка при учитавању садржаја.</p>');
+                $('#section-content').addClass('in');
+            }
+        });
     }
 });
 
@@ -191,47 +229,8 @@ $(document).on('click', '#promjena_karte', function () {
     }
 });
 
-$('#teme_izbor').on('change', function () {
-    //LoadWithoutCache("teme.html", "teme_trazi");
-
-    var valueSelected = $(this).find("option:selected").val();
-    if (valueSelected == "0") {
-        karta.removeLayer(drawnItems);
-        karta.removeControl(drawnControl);
-        $("#teme_trazi").html("<p>промјена теме брише приједлог за унос!</p>");
-
-    } else {
-        karta.addLayer(drawnItems);
-        karta.addControl(drawnControl)
-
-        $.ajax({
-            url: "teme.html",
-            cache: false,
-            dataType: "html",
-            success: function (data) {
-                $("#teme_trazi").html(data);
-                //dodati promene za padajuće liste
-                for (var i = 0; i < table[valueSelected][0].length; i++) {
-                    $('#razred').append('<option value="' + i + '">' + table[valueSelected][0][i] + '</option>');
-                }
-                for (var i = 0; i < table[valueSelected][1].length; i++) {
-                    $('#vrsta').append('<option value="' + i + '">' + table[valueSelected][1][i] + '</option>');
-                }
-                for (var i = 0; i < table[valueSelected][2].length; i++) {
-                    $('#podvrsta').append('<option value="' + i + '">' + table[valueSelected][2][i] + '</option>');
-                }
-
-                pretrazi();
-            }
-        });
-    }
-});
-$('#kontakt_izbor').on('change', function () {
-    //ovo je sa keširanjem!
-    $("#kontakt_opis").load("kontakt.txt #kontakt_p" + this.value);
-});
-//ovo je sa keširanjem!
-$("#uputstvo").load("uputstvo.txt");
+// Section-specific event handlers are now in individual section JS files
+// (teme.js, kontakt.js, uputstvo.js, etc.)
 
 
 function LoadWithoutCache(url, dest) {
