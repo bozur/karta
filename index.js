@@ -1,5 +1,9 @@
 $(document).ready(function () {
 
+    // Set current year in copyright
+    const currentYear = new Date().getFullYear();
+    $('#current-year').text(currentYear);
+
     // Cookie Consent
     if (!localStorage.getItem('cookieConsent')) {
         let consentHtml = `
