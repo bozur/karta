@@ -207,7 +207,11 @@ $(document).on('click', '.izbor', function () {
                         });
                 } else {
                     // Re-trigger initialization for already loaded scripts
-                    $(document).ready();
+                    // Call section-specific init function if it exists
+                    var initFunctionName = 'init' + sectionName.charAt(0).toUpperCase() + sectionName.slice(1) + 'Section';
+                    if (typeof window[initFunctionName] === 'function') {
+                        window[initFunctionName]();
+                    }
                 }
             },
             error: function () {
