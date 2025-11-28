@@ -23,7 +23,7 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         secure: false, // Set to true if using HTTPS
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours
+        maxAge: 24 * 60 * 60 * 1000 // 24 hours (can be extended with remember me)
     }
 }));
 
@@ -292,8 +292,44 @@ app.get('/api/check-auth', (req, res) => {
     }
 });
 
+// GET /api/user-info - Get detailed user information
+app.get('/api/user-info', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    try {
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id', sql.Int, req.session.user.id)
+            .query('SELECT id, ime, prezime, korisnik, eposta, pristup0, pristup1, brojac_pristupa FROM korisnik WHERE id = @id');
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const user = result.recordset[0];
+        res.json({
+            user: {
+                id: user.id,
+                ime: user.ime,
+                prezime: user.prezime,
+                username: user.korisnik,
+                email: user.eposta,
+                pristup0: user.pristup0,
+                pristup1: user.pristup1,
+                brojac_pristupa: user.brojac_pristupa
+            }
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+
 app.post('/api/login', async (req, res) => {
-    const { username, password } = req.body;
+    const { username, password, remember } = req.body;
 
     try {
         const pool = await poolPromise;
@@ -315,16 +351,23 @@ app.post('/api/login', async (req, res) => {
         }
 
         // Update access stats
+        // Set pristup0 only if it's NULL (first login)
+        // Always update pristup1 and increment brojac_pristupa
         await pool.request()
             .input('id', sql.Int, user.id)
             .query(`
                 UPDATE korisnik 
-                SET pristup1 = GETDATE(),
-            brojac_pristupa = ISNULL(brojac_pristupa, 0) + 1 
+                SET pristup0 = CASE WHEN pristup0 IS NULL THEN GETDATE() ELSE pristup0 END,
+                    pristup1 = GETDATE(),
+                    brojac_pristupa = ISNULL(brojac_pristupa, 0) + 1 
                 WHERE id = @id
             `);
 
-        // Set session
+        // Set session with extended timeout if remember me is checked
+        if (remember) {
+            req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000; // 30 days
+        }
+
         req.session.user = {
             id: user.id,
             username: user.korisnik,
@@ -379,6 +422,49 @@ app.post('/api/register', async (req, res) => {
 
         // Mock sending email
         console.log(`[MOCK EMAIL]To: ${email}, Password: ${password} `);
+
+        res.json({ success: true, message: 'Password sent to email' });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// POST /api/forgot-password
+app.post('/api/forgot-password', async (req, res) => {
+    const { email } = req.body;
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    try {
+        const pool = await poolPromise;
+
+        // Check if email exists
+        const result = await pool.request()
+            .input('email', sql.NVarChar, email)
+            .query('SELECT id FROM korisnik WHERE eposta = @email');
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Generate new random password
+        const newPassword = Math.random().toString(36).slice(-8);
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+        // Update password
+        await pool.request()
+            .input('email', sql.NVarChar, email)
+            .input('password', sql.NVarChar, hashedPassword)
+            .query('UPDATE korisnik SET lozinka = @password WHERE eposta = @email');
+
+        // Mock sending email
+        console.log(`[MOCK EMAIL] To: ${email}, New Password: ${newPassword}`);
 
         res.json({ success: true, message: 'Password sent to email' });
 

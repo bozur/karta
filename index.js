@@ -92,7 +92,7 @@ $(document).ready(function () {
 
         if (!email || !emailRegex.test(email)) {
             $('#asign').css('border-color', 'red');
-            $('#newuserenter0').text('неисправна адреса е-поште');
+            $('#newuserenter0').text('неисправна адреса е-поште').css('color', '#f5a615');
             return;
         } else {
             $('#asign').css('border-color', '');
@@ -105,9 +105,10 @@ $(document).ready(function () {
             }
         }).fail(function (xhr) {
             if (xhr.status === 409) {
-                $('#newuserenter0').text('предложена адреса већ постоји');
+                $('#newuserenter0').text('предложена адреса већ постоји').css('color', '#f5a615');
+                $('#asign').css('border-color', 'red');
             } else {
-                $('#newuserenter0').text('Грешка на серверу');
+                $('#newuserenter0').text('Грешка на серверу').css('color', '#f5a615');
             }
         });
     });
@@ -120,16 +121,20 @@ $(document).ready(function () {
 
         if (!email || !emailRegex.test(email)) {
             $('#email2').css('border-color', 'red');
-            $('#passwordforgottenenter0').text('неисправна адреса е-поште');
+            $('#passwordforgottenenter0').text('неисправна адреса е-поште').css('color', '#f5a615');
             return;
         }
 
         $.post('/api/forgot-password', { email }, function (response) {
+            console.log('Forgot password response:', response);
             if (response.success) {
-                $('#passwordforgottenenter0').text('лозинка је послата на е-пошту').css('color', '#f5a615');
+                $('#passwordforgottenenter0').text('нова лозинка је прослијеђена на е-пошту').css('color', '#f5a615');
+                $('#email2').css('border-color', '');
             }
         }).fail(function (xhr) {
-            $('#passwordforgottenenter0').text('корисник није пронађен');
+            console.log('Forgot password error:', xhr.status, xhr.responseJSON);
+            $('#passwordforgottenenter0').text('корисник није пронађен').css('color', '#f5a615');
+            $('#email2').css('border-color', 'red');
         });
     });
 

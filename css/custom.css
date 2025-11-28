@@ -1,4 +1,4 @@
-/* Common styles - NO font-size set to use browser default (16px) */
+﻿/* Common styles - NO font-size set to use browser default (16px) */
 body,
 html {
   height: 100%;
@@ -140,7 +140,7 @@ html {
   background: rgba(255, 255, 255, 0.9);
   right: 0;
   top: 0;
-  margin-right: 250px;
+  margin-right: 280px;
   padding: 3px 5px;
   border-bottom: 2px solid #bbb;
   border-left: 2px solid #bbb;

@@ -1,3 +1,10 @@
+// Check authentication on page load
+$.get('/api/check-auth')
+    .fail(function () {
+        // Not authenticated, redirect to login page
+        window.location.href = '/index.html';
+    });
+
 var tabela;
 var addedGeoJSON;
 var karta;
@@ -168,6 +175,20 @@ $(document).ready(function () {
 
     L.marker([44, 21], { icon: iconcrkva }).addTo(karta).bindPopup('trtrt')
     L.marker([44.5, 21.5], { icon: iconcrkva }).addTo(karta).bindPopup('trtrt2')
+
+    // Logout functionality
+    $('#logout-link').click(function (e) {
+        e.preventDefault();
+        if (confirm('Да ли сте сигурни да желите да се одјавите?')) {
+            $.post('/api/logout', function (response) {
+                if (response.success) {
+                    window.location.href = '/index.html';
+                }
+            }).fail(function () {
+                alert('Грешка при одјављивању');
+            });
+        }
+    });
 
 });
 
