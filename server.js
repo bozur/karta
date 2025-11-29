@@ -302,7 +302,7 @@ app.get('/api/user-info', async (req, res) => {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('id', sql.Int, req.session.user.id)
-            .query('SELECT id, ime, prezime, korisnik, eposta, pristup0, pristup1, brojac_pristupa FROM korisnik WHERE id = @id');
+            .query('SELECT id, ime, prezime, korisnik, eposta, slika_url, pristup0, pristup1, brojac_pristupa FROM korisnik WHERE id = @id');
 
         if (result.recordset.length === 0) {
             return res.status(404).json({ error: 'User not found' });
@@ -316,6 +316,7 @@ app.get('/api/user-info', async (req, res) => {
                 prezime: user.prezime,
                 username: user.korisnik,
                 email: user.eposta,
+                slika_url: user.slika_url,
                 pristup0: user.pristup0,
                 pristup1: user.pristup1,
                 brojac_pristupa: user.brojac_pristupa
@@ -324,6 +325,117 @@ app.get('/api/user-info', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// PUT /api/user/update - Update user profile
+app.put('/api/user/update', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { ime, prezime, korisnik, eposta, slika_url, lozinka, nova_lozinka } = req.body;
+
+    // Validate mandatory fields
+    if (!eposta || !lozinka) {
+        return res.status(400).json({ error: 'лозинка/е-пошта су обавезни' });
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(eposta)) {
+        return res.status(400).json({ error: 'неисправна е-пошта' });
+    }
+
+    try {
+        const pool = await poolPromise;
+
+        // Get current user data and verify password
+        const userResult = await pool.request()
+            .input('id', sql.Int, req.session.user.id)
+            .query('SELECT * FROM korisnik WHERE id = @id');
+
+        if (userResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const currentUser = userResult.recordset[0];
+
+        // Verify current password
+        const passwordMatch = await bcrypt.compare(lozinka, currentUser.lozinka);
+        if (!passwordMatch) {
+            return res.status(401).json({ error: 'Неисправна лозинка' });
+        }
+
+        // Prepare update query
+        let updateFields = [];
+        const request = pool.request();
+        request.input('id', sql.Int, req.session.user.id);
+
+        if (ime !== null && ime !== undefined) {
+            updateFields.push('ime = @ime');
+            request.input('ime', sql.NVarChar, ime || null);
+        }
+
+        if (prezime !== null && prezime !== undefined) {
+            updateFields.push('prezime = @prezime');
+            request.input('prezime', sql.NVarChar, prezime || null);
+        }
+
+        if (korisnik !== null && korisnik !== undefined) {
+            updateFields.push('korisnik = @korisnik');
+            request.input('korisnik', sql.NVarChar, korisnik || null);
+        }
+
+        if (eposta) {
+            // Check if email is already taken by another user
+            const emailCheck = await pool.request()
+                .input('eposta', sql.NVarChar, eposta)
+                .input('id', sql.Int, req.session.user.id)
+                .query('SELECT id FROM korisnik WHERE eposta = @eposta AND id != @id');
+
+            if (emailCheck.recordset.length > 0) {
+                return res.status(409).json({ error: 'Е-пошта је већ у употреби' });
+            }
+
+            updateFields.push('eposta = @eposta');
+            request.input('eposta', sql.NVarChar, eposta);
+        }
+
+        if (slika_url !== null && slika_url !== undefined) {
+            updateFields.push('slika_url = @slika_url');
+            request.input('slika_url', sql.NVarChar, slika_url || null);
+        }
+
+        // Handle new password if provided
+        if (nova_lozinka) {
+            const hashedPassword = await bcrypt.hash(nova_lozinka, 10);
+            updateFields.push('lozinka = @nova_lozinka');
+            request.input('nova_lozinka', sql.NVarChar, hashedPassword);
+        }
+
+        // Execute update if there are fields to update
+        if (updateFields.length > 0) {
+            const updateQuery = `UPDATE korisnik SET ${updateFields.join(', ')} WHERE id = @id`;
+            await request.query(updateQuery);
+        }
+
+        // Update session if email or username changed
+        if (eposta) {
+            req.session.user.email = eposta;
+        }
+        if (korisnik) {
+            req.session.user.username = korisnik;
+        }
+
+        res.json({ success: true, message: 'Подаци су успјешно ажурирани' });
+
+    } catch (err) {
+        console.error('Error updating user profile:');
+        console.error('Error message:', err.message);
+        console.error('Error stack:', err.stack);
+        console.error('Request body:', req.body);
+        res.status(500).json({ error: 'Internal server error: ' + err.message });
     }
 });
 

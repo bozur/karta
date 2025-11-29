@@ -1,8 +1,74 @@
 <span style="display: block;">
     <span class="naslov">Корисник</span>
     <span style="margin-left: 10px;" id="user-display">...</span>
-    <span style="margin-left: 10px;">измјени</span>
 </span>
+<div id="korisnik_izmjeni" class="mt-2">измјени <span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+        data-target="#korisnik_izmjeni_podaci"></span>
+</div>
+<div id="korisnik_izmjeni_podaci" class="collapse hidden">
+    <form id="form_izmjeni_korisnik">
+        <div class="form-row">
+            <div class="col">
+                <input type="text" class="form-control" id="edit_ime" name="ime" placeholder="име" minlength="4"
+                    maxlength="20">
+            </div>
+            <div class="col">
+                <input type="text" class="form-control" id="edit_prezime" name="prezime" placeholder="презиме"
+                    minlength="4" maxlength="20">
+            </div>
+            <div class="col">
+                <input type="text" class="form-control" id="edit_korisnik" name="korisnik" placeholder="корисник"
+                    minlength="4" maxlength="20">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="col">
+                <input type="email" class="form-control" id="edit_eposta" name="eposta" placeholder="е-пошта *"
+                    minlength="7" maxlength="50">
+            </div>
+            <div class="col">
+                <input type="text" class="form-control" id="edit_slika_url" name="slika_url"
+                    placeholder="слика УРЛ (мин 5)" minlength="5" maxlength="255">
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="col">
+                <div style="position: relative;">
+                    <input type="password" class="form-control" id="edit_lozinka" name="lozinka"
+                        placeholder="лозинка *">
+                    <span class="bi bi-eye" id="toggle_lozinka"
+                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer;"></span>
+                </div>
+            </div>
+            <div class="col">
+                <div style="position: relative;">
+                    <input type="password" class="form-control" id="edit_nova_lozinka" name="nova_lozinka"
+                        placeholder="нова лозинка" minlength="7" maxlength="50">
+                    <span class="bi bi-eye" id="toggle_nova_lozinka"
+                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer;"></span>
+                </div>
+            </div>
+            <div class="col">
+                <div style="position: relative;">
+                    <input type="password" class="form-control" id="edit_potvrdi_lozinka" name="potvrdi_lozinka"
+                        placeholder="поново нова лозинка" minlength="7" maxlength="50">
+                    <span class="bi bi-eye" id="toggle_potvrdi_lozinka"
+                        style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); cursor: pointer;"></span>
+                </div>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="col">
+                <div id="form_error" style="color: orange; display: none;"></div>
+            </div>
+            <button type="submit" class="btn btn-white border border-dark" id="submit_izmjeni">измјени</button>
+            <div class="spinner-border text-secondary spinner-border-sm m-2" id="form_izmjeni_cekanje" role="status"
+                style="visibility: hidden;">
+                <span class="sr-only">Loading...</span>
+            </div>
+        </div>
+    </form>
+</div>
 <div style="margin-top: 15px; padding: 10px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
     <div style="margin-bottom: 8px;">
         <strong>Статистика:</strong>
