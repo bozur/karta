@@ -110,9 +110,9 @@ $(document).ready(function () {
                     return parts[2] + '.' + parts[1] + '.' + parts[0] + '.';
                 }
 
-                var htmlContent = '<h1>' + table[tabela][1][data.vrs] + '</h1>' +
+                var htmlContent = '<span style="display: block"><span class="naslov">' + table[tabela][0][data.raz] + '</span></span>' +
+                    '<p><b>Врста:</b> ' + table[tabela][1][data.vrs] + '</p>' +
                     '<p><b>Подврста:</b> ' + table[tabela][2][data.pod] + '</p>' +
-                    '<p><b>Разред:</b> ' + table[tabela][0][data.raz] + '</p>' +
                     '<p><b>Вријеме:</b> ' + formatDate(data.vri0) + ' - ' + formatDate(data.vri1) + ' (' + vrem + ')</p>' +
                     '<p><b>Опис:</b> ' + data.opi + '</p>' +
                     '<p><b>Извор:</b> ' + data.izv + '</p>' +
