@@ -1,3 +1,4 @@
+console.log('--- SERVER RESTARTING: V2 LOADED ---');
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -87,9 +88,6 @@ app.use(session({
 }));
 
 
-
-// Serve static files
-app.use(express.static(path.join(__dirname, '.')));
 
 // API Routes
 
@@ -343,11 +341,12 @@ app.post('/api/comments/:id/upvote', async (req, res) => {
 // ============================================
 // Zapisi (File Records) API Routes
 // ============================================
-// GET /api/themes
-app.get('/api/themes', async (req, res) => {
+// GET /api/v2/themes
+app.get('/api/v2/themes', async (req, res) => {
     try {
         const pool = await poolPromise;
         const result = await pool.request().query('SELECT id, naziv FROM teme ORDER BY id');
+        console.log('Themes fetched:', result.recordset);
         res.json({ themes: result.recordset });
     } catch (err) {
         console.error(err);
@@ -845,6 +844,9 @@ app.post('/api/logout', (req, res) => {
         res.json({ success: true });
     });
 });
+
+// Serve static files (MUST be after API routes to avoid conflicts)
+app.use(express.static(path.join(__dirname, '.')));
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);

@@ -54,7 +54,7 @@ function loadTemeContent(valueSelected) {
 
 // Function to load themes from database into dropdown
 function loadThemesDropdown() {
-    fetch('/api/themes')
+    fetch('/api/v2/themes')
         .then(response => response.json())
         .then(data => {
             const themes = data.themes;
@@ -65,7 +65,11 @@ function loadThemesDropdown() {
 
             // Add themes from database
             themes.forEach(theme => {
-                select.append(`<option value="${theme.id}">${theme.naziv}</option>`);
+                const id = theme.id || theme.ID;
+                const naziv = theme.naziv || theme.NAZIV;
+                if (id && naziv) {
+                    select.append(`<option value="${id}">${naziv}</option>`);
+                }
             });
 
             // Restore previously selected theme if it exists

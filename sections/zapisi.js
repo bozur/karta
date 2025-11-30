@@ -32,7 +32,7 @@ function initializeZapisi() {
 window.initZapisiSection = initializeZapisi;
 
 function loadThemes() {
-    fetch('/api/themes')
+    fetch('/api/v2/themes')
         .then(response => response.json())
         .then(data => {
             const themes = data.themes;
@@ -43,8 +43,14 @@ function loadThemes() {
             traziSelect.find('option:not(:first)').remove();
 
             themes.forEach(theme => {
-                unosSelect.append(`<option value="${theme.id}">${theme.naziv}</option>`);
-                traziSelect.append(`<option value="${theme.id}">${theme.naziv}</option>`);
+                const id = theme.id || theme.ID;
+                const naziv = theme.naziv || theme.NAZIV;
+                if (id && naziv) {
+                    unosSelect.append(`<option value="${id}">${naziv}</option>`);
+                    traziSelect.append(`<option value="${id}">${naziv}</option>`);
+                } else {
+                    console.warn('Invalid theme object:', theme);
+                }
             });
         })
         .catch(error => {
