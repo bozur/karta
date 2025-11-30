@@ -57,8 +57,8 @@ $(document).ready(function () {
     //za gornji desni ugao tumačenja
     $('[data-toggle="tooltip"]').tooltip();
 
-    // Initialize map after height is set
-    karta = L.map('kartaid').setView([44, 21], 6);
+    // Initialize map after height is set - centered on Skadar
+    karta = L.map('kartaid').setView([42.046475, 19.494058], 6);
     tilelayer1 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
         maxZoom: 18,
         attribution: '<a target="_blank" href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
@@ -166,15 +166,15 @@ $(document).ready(function () {
     var scale = L.control.scale(); // Creating scale control
     scale.addTo(karta); // Adding scale control to the map
 
-    var iconcrkva = L.icon({
-        iconUrl: '/ikone/crkva.png',
+    // Skadar marker with custom icon
+    var iconSkadar = L.icon({
+        iconUrl: '/ikone/skadar.png',
         iconSize: [32, 37], // size of the icon
         iconAnchor: [16, 37], // point of the icon which will correspond to marker's location
         popupAnchor: [0, -30] // point from which the popup should open relative to the iconAnchor
     });
 
-    L.marker([44, 21], { icon: iconcrkva }).addTo(karta).bindPopup('trtrt')
-    L.marker([44.5, 21.5], { icon: iconcrkva }).addTo(karta).bindPopup('trtrt2')
+    L.marker([42.046475, 19.494058], { icon: iconSkadar }).addTo(karta).bindPopup('Скадар - престони град!')
 
     // Logout functionality
     $('#logout-link').click(function (e) {
