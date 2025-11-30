@@ -43,8 +43,8 @@ function loadThemes() {
             traziSelect.find('option:not(:first)').remove();
 
             themes.forEach(theme => {
-                unosSelect.append(`<option value="${theme}">${theme}</option>`);
-                traziSelect.append(`<option value="${theme}">${theme}</option>`);
+                unosSelect.append(`<option value="${theme.id}">${theme.naziv}</option>`);
+                traziSelect.append(`<option value="${theme.id}">${theme.naziv}</option>`);
             });
         })
         .catch(error => {
@@ -144,7 +144,7 @@ function handleFileUpload() {
 function handleSearch() {
     const searchData = {
         naziv: $('#trazi_naziv').val(),
-        tema: $('#trazi_tema').val(),
+        tema_id: $('#trazi_tema').val(),
         korisnik: $('#trazi_korisnik').val(),
         opis: $('#trazi_opis').val(),
         tagovi: $('#trazi_tagovi').val()

@@ -346,12 +346,9 @@ app.post('/api/comments/:id/upvote', async (req, res) => {
 // GET /api/themes
 app.get('/api/themes', async (req, res) => {
     try {
-        const themes = [
-            'напади на објекте СПЦ',
-            'промјена назива',
-            'распрострањеност топонима'
-        ];
-        res.json({ themes });
+        const pool = await poolPromise;
+        const result = await pool.request().query('SELECT id, naziv FROM teme ORDER BY id');
+        res.json({ themes: result.recordset });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
@@ -380,12 +377,20 @@ app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req,
         if (!req.file) {
             return res.status(400).json({ error: 'Фајл није изабран' });
         }
-        const { naziv, opis, tema, tagovi } = req.body;
-        const korisnik = req.session.user.username;
+        const { naziv, opis, tema_id, tagovi } = req.body;
+        const korisnik_id = req.session.user.id;
         // 4. Required fields validation
-        if (!naziv || !tema || !tagovi) {
+        if (!naziv || !tema_id || !tagovi) {
             fs.unlinkSync(req.file.path);
             return res.status(400).json({ error: 'Сва поља морају бити попуњена' });
+        }
+        // 4a. Validate tema_id exists
+        const temaCheck = await pool.request()
+            .input('tema_id', sql.Int, tema_id)
+            .query('SELECT id FROM teme WHERE id = @tema_id');
+        if (temaCheck.recordset.length === 0) {
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ error: 'Неисправна тема' });
         }
         // 5. File content validation - verify actual file type
         const { fileTypeFromFile } = FileType;
@@ -404,7 +409,7 @@ app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req,
                 const { isInfected, viruses } = await virusScanner.isInfected(req.file.path);
                 if (isInfected) {
                     fs.unlinkSync(req.file.path);
-                    console.warn(`⚠ Virus detected in upload by ${korisnik}: ${viruses.join(', ')}`);
+                    console.warn(`⚠ Virus detected in upload by user ${korisnik_id}: ${viruses.join(', ')}`);
                     return res.status(400).json({
                         error: 'Фајл садржи вирус и није могао бити учитан'
                     });
@@ -417,18 +422,18 @@ app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req,
         const result = await pool.request()
             .input('naziv', sql.NVarChar, naziv)
             .input('opis', sql.NVarChar, opis || null)
-            .input('tema', sql.NVarChar, tema)
-            .input('korisnik', sql.NVarChar, korisnik)
+            .input('tema_id', sql.Int, tema_id)
+            .input('korisnik_id', sql.Int, korisnik_id)
             .input('tagovi', sql.NVarChar, tagovi)
             .input('file_path', sql.NVarChar, req.file.path)
             .input('file_type', sql.NVarChar, path.extname(req.file.originalname).substring(1))
             .input('file_size', sql.Int, req.file.size)
             .query(`
-                INSERT INTO zapisi (naziv, opis, tema, korisnik, tagovi, file_path, file_type, file_size)
+                INSERT INTO zapisi (naziv, opis, tema_id, korisnik_id, tagovi, file_path, file_type, file_size)
                 OUTPUT INSERTED.id
-                VALUES (@naziv, @opis, @tema, @korisnik, @tagovi, @file_path, @file_type, @file_size)
+                VALUES (@naziv, @opis, @tema_id, @korisnik_id, @tagovi, @file_path, @file_type, @file_size)
             `);
-        console.log(`✓ File uploaded by ${korisnik}: ${naziv} (${fileTypeResult.mime}, ${req.file.size} bytes)`);
+        console.log(`✓ File uploaded by user ${korisnik_id}: ${naziv} (${fileTypeResult.mime}, ${req.file.size} bytes)`);
         res.json({
             success: true,
             message: 'Фајл је успјешно додат',
@@ -451,38 +456,40 @@ app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req,
 // POST /api/zapisi/search
 app.post('/api/zapisi/search', async (req, res) => {
     try {
-        const { naziv, tema, korisnik, opis, tagovi } = req.body;
+        const { naziv, tema_id, korisnik, opis, tagovi } = req.body;
         const pool = await poolPromise;
         const request = pool.request();
         let query = `
-            SELECT id, naziv, opis, tema, korisnik, tagovi, file_type, file_size, created_at
-            FROM zapisi
+            SELECT z.id, z.naziv, z.opis, t.naziv AS tema, k.korisnik, z.tagovi, z.file_type, z.file_size, z.created_at
+            FROM zapisi z
+            INNER JOIN teme t ON z.tema_id = t.id
+            INNER JOIN korisnik k ON z.korisnik_id = k.id
         `;
         let conditions = [];
         if (naziv) {
-            conditions.push("naziv LIKE @naziv");
+            conditions.push("z.naziv LIKE @naziv");
             request.input('naziv', sql.NVarChar, `%${naziv}%`);
         }
-        if (tema) {
-            conditions.push("tema = @tema");
-            request.input('tema', sql.NVarChar, tema);
+        if (tema_id) {
+            conditions.push("z.tema_id = @tema_id");
+            request.input('tema_id', sql.Int, tema_id);
         }
         if (korisnik) {
-            conditions.push("korisnik LIKE @korisnik");
+            conditions.push("k.korisnik LIKE @korisnik");
             request.input('korisnik', sql.NVarChar, `%${korisnik}%`);
         }
         if (opis) {
-            conditions.push("opis LIKE @opis");
+            conditions.push("z.opis LIKE @opis");
             request.input('opis', sql.NVarChar, `%${opis}%`);
         }
         if (tagovi) {
-            conditions.push("tagovi LIKE @tagovi");
+            conditions.push("z.tagovi LIKE @tagovi");
             request.input('tagovi', sql.NVarChar, `%${tagovi}%`);
         }
         if (conditions.length > 0) {
             query += " WHERE " + conditions.join(" AND ");
         }
-        query += " ORDER BY created_at DESC";
+        query += " ORDER BY z.created_at DESC";
         const result = await request.query(query);
         res.json({
             success: true,

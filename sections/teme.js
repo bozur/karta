@@ -52,12 +52,44 @@ function loadTemeContent(valueSelected) {
     }
 }
 
+// Function to load themes from database into dropdown
+function loadThemesDropdown() {
+    fetch('/api/themes')
+        .then(response => response.json())
+        .then(data => {
+            const themes = data.themes;
+            const select = $('#teme_izbor');
+
+            // Remove all options except the first one (изабери:)
+            select.find('option:not(:first)').remove();
+
+            // Add themes from database
+            themes.forEach(theme => {
+                select.append(`<option value="${theme.id}">${theme.naziv}</option>`);
+            });
+
+            // Restore previously selected theme if it exists
+            if (window.lastSelectedTeme && window.lastSelectedTeme != "0") {
+                select.val(window.lastSelectedTeme);
+            }
+        })
+        .catch(error => {
+            console.error('Error loading themes:', error);
+        });
+}
+
 // Initialization function that can be called each time the section is loaded
 function initTemeSection() {
+    // Load themes from database
+    loadThemesDropdown();
+
     // Restore the previously selected theme when section reloads
     if (window.lastSelectedTeme && window.lastSelectedTeme != "0") {
-        $('#teme_izbor').val(window.lastSelectedTeme);
-        loadTemeContent(window.lastSelectedTeme);
+        // Wait a bit for themes to load, then trigger the change
+        setTimeout(() => {
+            $('#teme_izbor').val(window.lastSelectedTeme);
+            loadTemeContent(window.lastSelectedTeme);
+        }, 300);
     }
 
     // Event handler for theme selection
