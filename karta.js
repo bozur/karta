@@ -13,6 +13,10 @@ var tilelayer2;
 var drawnItems;
 var drawnControl;
 
+// LEGACY: Hardcoded dropdown options for themes
+// This array is kept for backward compatibility and as a fallback if the API fails
+// New implementation fetches options dynamically from /api/v2/theme-options/:tema_id
+// Structure: table[tema_id][type][index] where type: 0=razred, 1=vrsta, 2=podvrsta
 var table = [
     [
         [''],

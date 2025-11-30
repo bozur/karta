@@ -353,6 +353,55 @@ app.get('/api/v2/themes', async (req, res) => {
         res.status(500).json({ error: 'Internal server error' });
     }
 });
+
+// GET /api/v2/theme-options/:tema_id
+app.get('/api/v2/theme-options/:tema_id', async (req, res) => {
+    try {
+        const { tema_id } = req.params;
+
+        // Validate tema_id is a number
+        if (!/^\d+$/.test(tema_id)) {
+            return res.status(400).json({ error: 'Invalid tema_id parameter' });
+        }
+
+        const pool = await poolPromise;
+
+        // Verify tema exists
+        const temaCheck = await pool.request()
+            .input('tema_id', sql.Int, tema_id)
+            .query('SELECT id FROM teme WHERE id = @tema_id');
+
+        if (temaCheck.recordset.length === 0) {
+            return res.status(404).json({ error: 'Theme not found' });
+        }
+
+        // Fetch all options for this theme
+        const result = await pool.request()
+            .input('tema_id', sql.Int, tema_id)
+            .query('SELECT tip, redosled, vrednost FROM teme_opcije WHERE tema_id = @tema_id ORDER BY tip, redosled');
+
+        // Group options by type
+        const options = {
+            razred: [],
+            vrsta: [],
+            podvrsta: []
+        };
+
+        result.recordset.forEach(row => {
+            if (options[row.tip]) {
+                options[row.tip].push(row.vrednost);
+            }
+        });
+
+        console.log(`Theme options fetched for tema_id ${tema_id}:`, options);
+        res.json({ options });
+
+    } catch (err) {
+        console.error('Error fetching theme options:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // POST /api/zapisi/upload - WITH ALL SECURITY FEATURES
 app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req, res) => {
     try {

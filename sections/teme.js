@@ -30,18 +30,63 @@ function loadTemeContent(valueSelected) {
             success: function (data) {
                 $("#teme_trazi").html(data);
 
-                // Add options to dropdowns based on selected theme
-                if (typeof table !== 'undefined') {
-                    for (var i = 0; i < table[valueSelected][0].length; i++) {
-                        $('#razred').append('<option value="' + i + '">' + table[valueSelected][0][i] + '</option>');
-                    }
-                    for (var i = 0; i < table[valueSelected][1].length; i++) {
-                        $('#vrsta').append('<option value="' + i + '">' + table[valueSelected][1][i] + '</option>');
-                    }
-                    for (var i = 0; i < table[valueSelected][2].length; i++) {
-                        $('#podvrsta').append('<option value="' + i + '">' + table[valueSelected][2][i] + '</option>');
-                    }
-                }
+                // Fetch options from API
+                fetch(`/api/v2/theme-options/${valueSelected}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Failed to fetch theme options');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        const options = data.options;
+
+                        // Populate razred dropdown
+                        options.razred.forEach((value, index) => {
+                            if (value) { // Only add non-empty values
+                                $('#razred').append(`<option value="${index}">${value}</option>`);
+                            }
+                        });
+
+                        // Populate vrsta dropdown
+                        options.vrsta.forEach((value, index) => {
+                            if (value) {
+                                $('#vrsta').append(`<option value="${index}">${value}</option>`);
+                            }
+                        });
+
+                        // Populate podvrsta dropdown
+                        options.podvrsta.forEach((value, index) => {
+                            if (value) {
+                                $('#podvrsta').append(`<option value="${index}">${value}</option>`);
+                            }
+                        });
+
+                        console.log('Theme options loaded from API:', options);
+                    })
+                    .catch(error => {
+                        console.error('Error loading theme options from API, using fallback:', error);
+
+                        // FALLBACK: Use hardcoded table array if API fails
+                        if (typeof table !== 'undefined' && table[valueSelected]) {
+                            for (var i = 0; i < table[valueSelected][0].length; i++) {
+                                if (table[valueSelected][0][i]) {
+                                    $('#razred').append('<option value="' + i + '">' + table[valueSelected][0][i] + '</option>');
+                                }
+                            }
+                            for (var i = 0; i < table[valueSelected][1].length; i++) {
+                                if (table[valueSelected][1][i]) {
+                                    $('#vrsta').append('<option value="' + i + '">' + table[valueSelected][1][i] + '</option>');
+                                }
+                            }
+                            for (var i = 0; i < table[valueSelected][2].length; i++) {
+                                if (table[valueSelected][2][i]) {
+                                    $('#podvrsta').append('<option value="' + i + '">' + table[valueSelected][2][i] + '</option>');
+                                }
+                            }
+                            console.log('Using fallback table array for theme', valueSelected);
+                        }
+                    });
 
                 // Initialize search functionality if available
                 if (typeof pretrazi === 'function') {
