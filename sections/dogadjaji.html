@@ -1,3 +1,118 @@
 <span style="display: block">
     <span class="naslov">Догађаји</span>
-</span>претрага, избор, примједбе, унос ..тагови, вријеме обавезно ...координате по могућности
+</span>
+
+<style>
+    #dogadjaji_results table tr:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    #dogadjaji_results {
+        margin-top: 15px;
+    }
+</style>
+
+<div id="dogadjaji_accordion">
+    <!-- Унос Section -->
+    <div id="dogadjaji_unos" class="mt-2">унос <span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+            data-target="#dogadjaji_unos_sadrzaj"></span>
+    </div>
+    <div id="dogadjaji_unos_sadrzaj" class="collapse">
+        <div style="margin-top: 10px;">
+            <form id="dogadjaji_unos_form" novalidate>
+                <!-- Hidden field for username -->
+                <input type="hidden" id="dogadjaji_unos_korisnik" name="korisnik">
+
+                <div class="form-row">
+                    <div class="col">
+                        <textarea class="form-control" id="dogadjaji_unos_opis" name="opis" placeholder="опис *"
+                            rows="3" style="resize: both;"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="col">
+                        <input type="text" class="form-control" id="dogadjaji_unos_pocetak" name="pocetak"
+                            placeholder="почетак *">
+                    </div>
+                    <div class="col">
+                        <input type="text" class="form-control" id="dogadjaji_unos_kraj" name="kraj" placeholder="крај">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="col">
+                        <input type="text" class="form-control" id="dogadjaji_unos_izvor" name="izvor"
+                            placeholder="извор *">
+                    </div>
+                </div>
+
+                <div class="form-row mt-2">
+                    <div class="col">
+                        <div id="dogadjaji_unos_error" style="color: orange; display: none;"></div>
+                    </div>
+                    <button type="submit" class="btn btn-white border border-dark">додај</button>
+                    <div class="spinner-border text-secondary spinner-border-sm m-2" id="dogadjaji_unos_cekanje"
+                        role="status" style="visibility: hidden;">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Тражи Section -->
+    <div id="dogadjaji_trazi" class="mt-2">тражи <span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+            data-target="#dogadjaji_trazi_sadrzaj"></span>
+    </div>
+    <div id="dogadjaji_trazi_sadrzaj" class="collapse show">
+        <div style="margin-top: 10px;">
+            <form id="dogadjaji_trazi_form">
+                <div class="form-row">
+                    <div class="col">
+                        <input type="text" class="form-control" id="dogadjaji_trazi_opis" name="opis"
+                            placeholder="опис">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="col">
+                        <input type="text" class="form-control" id="dogadjaji_trazi_pocetak" name="pocetak"
+                            placeholder="почетак">
+                    </div>
+                    <div class="col">
+                        <input type="text" class="form-control" id="dogadjaji_trazi_kraj" name="kraj"
+                            placeholder="крај">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="col">
+                        <input type="text" class="form-control" id="dogadjaji_trazi_izvor" name="izvor"
+                            placeholder="извор">
+                    </div>
+                </div>
+
+                <div class="form-row mt-2">
+                    <div class="col">
+                        <div id="dogadjaji_trazi_error" style="color: orange; display: none;"></div>
+                    </div>
+                    <button type="submit" class="btn btn-white border border-dark">тражи</button>
+                    <div class="spinner-border text-secondary spinner-border-sm m-2" id="dogadjaji_trazi_cekanje"
+                        role="status" style="visibility: hidden;">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Results Table -->
+        <div id="dogadjaji_results" style="display: none;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody id="dogadjaji_results_body">
+                    <!-- Results will be populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
