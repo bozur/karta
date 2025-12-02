@@ -10,49 +10,55 @@ var addedGeoJSON;
 var karta;
 var tilelayer1;
 var tilelayer2;
+var tilelayer1_noroads; // Streets style without roads
+var tilelayer1_noborders; // Streets style without borders
+var tilelayer1_noplaces; // Streets style without places
+var tilelayer1_noall; // Streets style with everything removed
 var drawnItems;
-var drawnControl;
-var tilelayer1_clean;
-var tilelayer2_clean;
 
-window.layersVisible = true;
+// Check if we're currently on satellite view
+var isSatellite = karta.hasLayer(tilelayer2);
 
-// LEGACY: Hardcoded dropdown options for themes
-// This array is kept for backward compatibility and as a fallback if the API fails
-// New implementation fetches options dynamically from /api/v2/theme-options/:tema_id
-// Structure: table[tema_id][type][index] where type: 0=razred, 1=vrsta, 2=podvrsta
-var table = [
-    [
-        [''],
-        [''],
-        ['']
-    ],
-    [
-        ['црква', 'конак', 'манастир', 'дом', 'капела', 'споменик', 'гробље'],
-        ['оштећено', 'уништено'],
-        ['спаљено', 'опљачкано', 'поломљено', 'минирано']
-    ], [
-        ['задржано сопство', 'промјена сопства'],
-        ['Серби', 'Славени', 'Грци', 'Турци', 'Нијемци', 'Маџари'],
-        ['бријег', 'језеро', 'мјесто', 'море', 'област', 'планина', 'ријека']
-    ], [
-        ['с(е)рб', 'влах', 'венет/венд', 'илир', 'косово', 'сег/сиг', 'слат', 'вар', 'лоз', 'луг', 'тер'],
-        ['мјесто', 'ријека', 'језеро', 'море', 'област'],
-        ['']
-    ], [
-        ['радни', 'војни', 'за истребљење', 'дјечији'],
-        [''],
-        ['']
-    ], [
-        ['Србин', 'Шиптар', 'Турчин', 'Бугарин', 'Маџар', 'Циган', 'Хрват', 'Муслиман', 'Талијан', 'Нијемац'],
-        ['човјек', 'дијете', 'жена', 'старији', 'војник'],
-        ['силовање', 'мучење', 'убиство', 'рањавање', 'протјеривање']
-    ], [
-        ['царство', 'каљевство', 'кнежевина', 'војводство', 'репоблика'],
-        ['сербско', 'маџарско', 'бугарско', 'грчко', 'турско'],
-        ['']
-    ]
-];
+if (isSatellite) {
+    // Don't change satellite view
+    return;
+}
+
+// Determine which style to use based on visibility settings
+var showRoads = window.mapLayerVisibility.putevi;
+var showBorders = window.mapLayerVisibility.granice;
+var showPlaces = window.mapLayerVisibility.mjesta;
+
+// Count how many are hidden
+var hiddenCount = (!showRoads ? 1 : 0) + (!showBorders ? 1 : 0) + (!showPlaces ? 1 : 0);
+
+// Remove all current terrain layers
+if (karta.hasLayer(tilelayer1)) karta.removeLayer(tilelayer1);
+if (karta.hasLayer(tilelayer1_noroads)) karta.removeLayer(tilelayer1_noroads);
+if (karta.hasLayer(tilelayer1_noborders)) karta.removeLayer(tilelayer1_noborders);
+if (karta.hasLayer(tilelayer1_noplaces)) karta.removeLayer(tilelayer1_noplaces);
+if (karta.hasLayer(tilelayer1_noall)) karta.removeLayer(tilelayer1_noall);
+
+// Add the appropriate layer based on what's hidden
+if (hiddenCount >= 2) {
+    // Multiple things hidden - use "no all" style for cleaner map
+    karta.addLayer(tilelayer1_noall);
+    console.log('Switched to no-all style (multiple layers hidden)');
+} else if (!showRoads) {
+    karta.addLayer(tilelayer1_noroads);
+    console.log('Switched to no-roads style');
+} else if (!showBorders) {
+    karta.addLayer(tilelayer1_noborders);
+    console.log('Switched to no-borders style');
+} else if (!showPlaces) {
+    karta.addLayer(tilelayer1_noplaces);
+    console.log('Switched to no-places style');
+} else {
+    // All visible - use base style
+    karta.addLayer(tilelayer1);
+    console.log('Switched to base style (all visible)');
+}
+    };
 
 //da se karta i sloj prilagode promenama
 $(document).ready(function () {
@@ -67,55 +73,88 @@ $(document).ready(function () {
 
     // Initialize map after height is set - centered on Skadar
     karta = L.map('kartaid').setView([42.046475, 19.494058], 6);
-    tilelayer1 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
+
+    // Base tile layer (streets with all features)
+    tilelayer1 = L.tileLayer(createTileLayerUrl(MAPBOX_STYLES.base), {
         maxZoom: 18,
         attribution: '<a target="_blank" href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
             'Imagery © <a target="_blank" href="https://www.mapbox.com/">Mapbox</a>',
-        id: 'mapbox/streets-v11',
+        id: MAPBOX_STYLES.base,
         tileSize: 512,
         zoomOffset: -1
     });
-    tilelayer2 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
+    // Satellite tile layer
+    tilelayer2 = L.tileLayer(createTileLayerUrl(MAPBOX_STYLES.satellite), {
         maxZoom: 18,
         attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
             'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-        id: 'mapbox/streets-v11',
+        id: MAPBOX_STYLES.satellite,
         tileSize: 512,
         zoomOffset: -1
     });
 
-    // Clean terrain layer (terenx)
-    tilelayer1_clean = L.tileLayer('https://api.mapbox.com/styles/v1/krajisnik/cmioh6qyt00n601s96mry52fh/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNtaW44dHJiNjAzdmgzZXNhM2RoZDZydmwifQ.ZQ99gNhQJ-ZAJtmjLzogLQ', {
+    // Alternative tile layer without roads (will use custom style when available)
+    tilelayer1_noroads = L.tileLayer(createTileLayerUrl(MAPBOX_STYLES.noRoads), {
         maxZoom: 18,
-        attribution: 'Mapbox',
+        attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+            'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+        id: MAPBOX_STYLES.noRoads,
         tileSize: 512,
         zoomOffset: -1
+    }).on('tileerror', function (e) {
+        console.error('Error loading NoRoads tile:', e.error, e.tile.src);
     });
 
-    // Clean satellite layer (satelitx)
-    tilelayer2_clean = L.tileLayer('https://api.mapbox.com/styles/v1/krajisnik/cmiogi93c015f01s61utu9qg8/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNtaW44dHJiNjAzdmgzZXNhM2RoZDZydmwifQ.ZQ99gNhQJ-ZAJtmjLzogLQ', {
+    // Alternative tile layer without borders
+    tilelayer1_noborders = L.tileLayer(createTileLayerUrl(MAPBOX_STYLES.noBorders), {
         maxZoom: 18,
-        attribution: 'Mapbox',
+        attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+            'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+        id: MAPBOX_STYLES.noBorders,
         tileSize: 512,
         zoomOffset: -1
+    }).on('tileerror', function (e) {
+        console.error('Error loading NoBorders tile:', e.error, e.tile.src);
     });
 
-    // Toggle function
-    window.toggleMapLayers = function () {
-        if (!karta) return;
-        var isSatellite = karta.hasLayer(tilelayer2) || karta.hasLayer(tilelayer2_clean);
-        if (karta.hasLayer(tilelayer1)) karta.removeLayer(tilelayer1);
-        if (karta.hasLayer(tilelayer1_clean)) karta.removeLayer(tilelayer1_clean);
-        if (karta.hasLayer(tilelayer2)) karta.removeLayer(tilelayer2);
-        if (karta.hasLayer(tilelayer2_clean)) karta.removeLayer(tilelayer2_clean);
-        if (isSatellite) {
-            karta.addLayer(window.layersVisible ? tilelayer2 : tilelayer2_clean);
-        } else {
-            karta.addLayer(window.layersVisible ? tilelayer1 : tilelayer1_clean);
-        }
-    };
+    // Alternative tile layer without places
+    tilelayer1_noplaces = L.tileLayer(createTileLayerUrl(MAPBOX_STYLES.noPlaces), {
+        maxZoom: 18,
+        attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+            'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+        id: MAPBOX_STYLES.noPlaces,
+        tileSize: 512,
+        zoomOffset: -1
+    }).on('tileerror', function (e) {
+        console.error('Error loading NoPlaces tile:', e.error, e.tile.src);
+    });
+
+    // Alternative tile layer with everything removed (no all)
+    tilelayer1_noall = L.tileLayer(createTileLayerUrl(MAPBOX_STYLES.noAll), {
+        maxZoom: 18,
+        attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+            'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+        id: MAPBOX_STYLES.noAll,
+        tileSize: 512,
+        zoomOffset: -1
+    }).on('tileerror', function (e) {
+        console.error('Error loading NoAll tile:', e.error, e.tile.src);
+    });
 
     tilelayer1.addTo(karta);
+
+    // Load visibility settings from localStorage
+    var savedVisibility = localStorage.getItem('mapLayerVisibility');
+    if (savedVisibility) {
+        try {
+            window.mapLayerVisibility = JSON.parse(savedVisibility);
+        } catch (e) {
+            console.error('Error parsing saved visibility settings:', e);
+        }
+    }
+
+    // Apply initial visibility settings
+    updateMapLayers();
 
     var idpointinfo = 0;
     var sidebar = L.control.sidebar('sidebar', {
@@ -284,14 +323,12 @@ $(document).on('click', '.izbor', function () {
 });
 
 $(document).on('click', '#promjena_karte', function () {
-    if (karta.hasLayer(tilelayer1) || karta.hasLayer(tilelayer1_clean)) {
+    if (karta.hasLayer(tilelayer1)) {
+        karta.addLayer(tilelayer2);
         karta.removeLayer(tilelayer1);
-        karta.removeLayer(tilelayer1_clean);
-        karta.addLayer(window.layersVisible ? tilelayer2 : tilelayer2_clean);
     } else {
+        karta.addLayer(tilelayer1);
         karta.removeLayer(tilelayer2);
-        karta.removeLayer(tilelayer2_clean);
-        karta.addLayer(window.layersVisible ? tilelayer1 : tilelayer1_clean);
     }
 });
 
