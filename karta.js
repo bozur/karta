@@ -87,7 +87,8 @@ $(document).ready(function () {
     // Clean terrain layer (terenx)
     tilelayer1_clean = L.tileLayer('https://api.mapbox.com/styles/v1/krajisnik/cmioh6qyt00n601s96mry52fh/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNtaW44dHJiNjAzdmgzZXNhM2RoZDZydmwifQ.ZQ99gNhQJ-ZAJtmjLzogLQ', {
         maxZoom: 18,
-        attribution: 'Mapbox',
+        attribution: '<a target="_blank" href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+            'Imagery © <a target="_blank" href="https://www.mapbox.com/">Mapbox</a>',
         tileSize: 512,
         zoomOffset: -1
     });
@@ -95,7 +96,8 @@ $(document).ready(function () {
     // Clean satellite layer (satelitx)
     tilelayer2_clean = L.tileLayer('https://api.mapbox.com/styles/v1/krajisnik/cmiogi93c015f01s61utu9qg8/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNtaW44dHJiNjAzdmgzZXNhM2RoZDZydmwifQ.ZQ99gNhQJ-ZAJtmjLzogLQ', {
         maxZoom: 18,
-        attribution: 'Mapbox',
+        attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
+            'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
         tileSize: 512,
         zoomOffset: -1
     });
