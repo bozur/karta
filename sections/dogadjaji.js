@@ -5,6 +5,7 @@ console.log('dogadjaji.js loaded successfully');
 $(document).ready(function () {
     console.log('Dogadjaji section loaded');
     initializeDogadjaji();
+    initDogadjajLayer();
 });
 
 function initializeDogadjaji() {
@@ -193,6 +194,9 @@ function viewDogadjaj(id) {
             if (data.success && data.results && data.results.length > 0) {
                 const dogadjaj = data.results[0];
 
+                // Show dogadjaj details in top layer
+                showDogadjajLayer(dogadjaj);
+
                 // ALWAYS remove previous marker first
                 if (currentDogadjajiMarker) {
                     karta.removeLayer(currentDogadjajiMarker);
@@ -219,8 +223,7 @@ function viewDogadjaj(id) {
 
                         currentDogadjajiMarker = L.marker([lat, lng], { icon: calendarIcon })
                             .addTo(karta)
-                            .bindPopup(dogadjaj.opis)
-                            .openPopup();
+                            .bindPopup(dogadjaj.opis);
 
                         // Pan to marker without changing zoom
                         karta.panTo([lat, lng]);
@@ -235,4 +238,75 @@ function viewDogadjaj(id) {
         .catch(error => {
             console.error('Error fetching dogadjaj details:', error);
         });
+}
+
+// Format datetime for display
+function formatDateTime(dateTimeStr) {
+    if (!dateTimeStr) return 'Није наведено';
+    const date = new Date(dateTimeStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}.${month}.${year}. ${hours}:${minutes}`;
+}
+
+// Show dogadjaj layer with data
+function showDogadjajLayer(dogadjaj) {
+    // First row: only opis
+    $('#dogadjaj_opis').text(dogadjaj.opis || 'Није наведено');
+
+    // Second row: Почетак: date - Крај: date (with bold labels)
+    const pocetakText = formatDateTime(dogadjaj.pocetak);
+    const krajText = formatDateTime(dogadjaj.kraj);
+    $('#dogadjaj_vrijeme').html('<b>Почетак:</b> ' + pocetakText + ' - <b>Крај:</b> ' + krajText);
+
+    // Third row: Извор: value (with bold label)
+    const izvorText = dogadjaj.izvor || 'Није наведено';
+    $('#dogadjaj_izvor').html('<b>Извор:</b> ' + izvorText);
+
+    $('#dogadjaj_layer').addClass('show');
+}
+
+// Close dogadjaj layer
+function closeDogadjajLayer() {
+    $('#dogadjaj_layer').removeClass('show');
+    // Reset height to initial 35px
+    $('#dogadjaj_layer').css('height', '35px');
+}
+
+// Initialize dogadjaj layer functionality
+function initDogadjajLayer() {
+    // Close button handler
+    $('#dogadjaj_close').off('click').on('click', function () {
+        closeDogadjajLayer();
+    });
+
+    // Draggable resize functionality
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+
+    $('.dogadjaj_resize_handle').off('mousedown').on('mousedown', function (e) {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = $('#dogadjaj_layer').outerHeight();
+        e.preventDefault();
+    });
+
+    $(document).on('mousemove', function (e) {
+        if (!isResizing) return;
+        const deltaY = e.clientY - startY;
+        const newHeight = startHeight + deltaY;
+        if (newHeight > 100 && newHeight < window.innerHeight * 0.8) {
+            $('#dogadjaj_layer').css('height', newHeight + 'px');
+        }
+    });
+
+    $(document).on('mouseup', function () {
+        if (isResizing) {
+            isResizing = false;
+        }
+    });
 }

@@ -208,6 +208,72 @@ i:hover {
   color: #000;
 }
 
+/* Dogadjaj detail layer - top positioned */
+.dogadjaj_layer {
+  width: 460px;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0;
+  z-index: 999;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 5px 10px 12px 10px;
+  border-left: 2px solid #bbb;
+  border-right: 2px solid #bbb;
+  border-bottom: 2px solid #bbb;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  color: #000;
+  font-size: 0.9rem;
+  display: none;
+  transition: 0.3s;
+  height: 35px;
+  overflow: hidden;
+}
+
+.dogadjaj_layer.show {
+  display: block;
+}
+
+.dogadjaj_header {
+  position: relative;
+  margin-bottom: 0;
+}
+
+.dogadjaj_content p {
+  margin: 3px 0;
+  word-wrap: break-word;
+  font-size: 0.9rem;
+}
+
+.dogadjaj_content p:first-child {
+  margin-top: 0;
+}
+
+.dogadjaj_resize_handle {
+  height: 8px;
+  cursor: ns-resize;
+  background: rgba(187, 187, 187, 0.3);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+.dogadjaj_resize_handle:hover {
+  background: rgba(187, 187, 187, 0.6);
+}
+
+#dogadjaj_close {
+  font-size: 1.2rem;
+}
+
+#dogadjaj_close:hover {
+  color: darkorange;
+}
+
 div {
   text-align: justify;
   text-justify: inter-word;
