@@ -25,25 +25,47 @@
 
                 <div class="form-row">
                     <div class="col">
-                        <textarea class="form-control" id="dogadjaji_unos_opis" name="opis" placeholder="опис *"
-                            rows="3" style="resize: both;"></textarea>
+                        <textarea class="form-control" id="dogadjaji_unos_opis" name="opis"
+                            placeholder="опис * (мин. 10 карактера)" rows="3" style="resize: both;"
+                            maxlength="255"></textarea>
                     </div>
                 </div>
 
                 <div class="form-row">
-                    <div class="col">
-                        <input type="text" class="form-control" id="dogadjaji_unos_pocetak" name="pocetak"
+                    <div class="col-6">
+                        <input type="datetime-local" class="form-control" id="dogadjaji_unos_pocetak" name="pocetak"
                             placeholder="почетак *">
                     </div>
-                    <div class="col">
-                        <input type="text" class="form-control" id="dogadjaji_unos_kraj" name="kraj" placeholder="крај">
+                    <div class="col-6">
+                        <input type="datetime-local" class="form-control" id="dogadjaji_unos_kraj" name="kraj"
+                            placeholder="крај">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="col">
+                        <input type="text" class="form-control" id="dogadjaji_unos_koordinate" name="koordinate"
+                            placeholder="координате" readonly>
+                    </div>
+                    <div class="col-auto">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="dogadjaji_marker_tool"
+                                name="marker_tool">
+                            <label class="form-check-label" for="dogadjaji_marker_tool">
+                                алат
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="col-9">
                         <input type="text" class="form-control" id="dogadjaji_unos_izvor" name="izvor"
-                            placeholder="извор *">
+                            placeholder="извор *" maxlength="50">
+                    </div>
+                    <div class="col-3">
+                        <input type="text" class="form-control" id="dogadjaji_unos_zapis" name="zapis"
+                            placeholder="запис">
                     </div>
                 </div>
 
@@ -76,20 +98,37 @@
                 </div>
 
                 <div class="form-row">
-                    <div class="col">
-                        <input type="text" class="form-control" id="dogadjaji_trazi_pocetak" name="pocetak"
+                    <div class="col-6">
+                        <input type="datetime-local" class="form-control" id="dogadjaji_trazi_pocetak" name="pocetak"
                             placeholder="почетак">
                     </div>
-                    <div class="col">
-                        <input type="text" class="form-control" id="dogadjaji_trazi_kraj" name="kraj"
+                    <div class="col-6">
+                        <input type="datetime-local" class="form-control" id="dogadjaji_trazi_kraj" name="kraj"
                             placeholder="крај">
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="col">
-                        <input type="text" class="form-control" id="dogadjaji_trazi_izvor" name="izvor"
-                            placeholder="извор">
+                        <select class="form-control" id="dogadjaji_trazi_izvor" name="izvor">
+                            <option value="">извор</option>
+                            <option value="1">одређено</option>
+                            <option value="0">неодређено</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <select class="form-control" id="dogadjaji_trazi_prostorno" name="prostorno">
+                            <option value="">просторно</option>
+                            <option value="1">одређено</option>
+                            <option value="0">неодређено</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <select class="form-control" id="dogadjaji_trazi_vremenski" name="vremenski">
+                            <option value="">временски</option>
+                            <option value="1">одређено</option>
+                            <option value="0">неодређено</option>
+                        </select>
                     </div>
                 </div>
 

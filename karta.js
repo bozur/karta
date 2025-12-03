@@ -192,14 +192,31 @@ $(document).ready(function () {
 
     // On draw - add drawing to 'drawnItems'
     karta.on("draw:created", function (e) {
-        e.layer.addTo(drawnItems);
+        var type = e.layerType;
+        var layer = e.layer;
 
-        var type = e.layerType,
-            layer = e.layer;
+        // Check if događaji marker tool is active
+        var dogadjajiMarkerActive = $('#dogadjaji_marker_tool').is(':checked');
+
         if (type === 'marker') {
-            layer.bindPopup('LatLng: ' + parseFloat(layer.getLatLng().lat).toFixed(5) + ',' + parseFloat(layer.getLatLng().lng.toFixed(5)).openPopup());
+            if (dogadjajiMarkerActive) {
+                // Let događaji.js handle this marker
+                console.log('Marker created - događaji tool active, skipping default handling');
+                // Fire custom event for događaji section
+                karta.fire('draw:created.dogadjaji', e);
+                return; // Don't add to drawnItems or show popup
+            } else {
+                // Default marker handling
+                var lat = parseFloat(layer.getLatLng().lat).toFixed(5);
+                var lng = parseFloat(layer.getLatLng().lng).toFixed(5);
+                layer.bindPopup('LatLng: ' + lat + ',' + lng).openPopup();
+            }
         }
 
+        // Add to drawnItems (except for događaji markers)
+        if (!dogadjajiMarkerActive) {
+            e.layer.addTo(drawnItems);
+        }
     });
 
     var scale = L.control.scale(); // Creating scale control

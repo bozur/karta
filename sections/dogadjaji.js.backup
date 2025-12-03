@@ -1,7 +1,5 @@
 // Dogadjaji (Events) section functionality
 
-console.log('dogadjaji.js loaded successfully');
-
 $(document).ready(function () {
     console.log('Dogadjaji section loaded');
     initializeDogadjaji();
@@ -32,9 +30,7 @@ function handleDogadjajiInsert() {
         opis: $('#dogadjaji_unos_opis').val(),
         pocetak: $('#dogadjaji_unos_pocetak').val(),
         kraj: $('#dogadjaji_unos_kraj').val(),
-        koordinate: $('#dogadjaji_unos_koordinate').val(),
-        izvor: $('#dogadjaji_unos_izvor').val(),
-        zapis: $('#dogadjaji_unos_zapis').val()
+        izvor: $('#dogadjaji_unos_izvor').val()
     };
 
     const errorDiv = $('#dogadjaji_unos_error');
@@ -49,10 +45,6 @@ function handleDogadjajiInsert() {
     if (!$('#dogadjaji_unos_opis').val().trim()) {
         $('#dogadjaji_unos_opis').css('border-color', 'red');
         errorMessage = 'попуните поље (опис)';
-        isValid = false;
-    } else if ($('#dogadjaji_unos_opis').val().trim().length < 10) {
-        $('#dogadjaji_unos_opis').css('border-color', 'red');
-        errorMessage = 'опис мора имати најмање 10 карактера';
         isValid = false;
     }
 
@@ -86,10 +78,12 @@ function handleDogadjajiInsert() {
         .then(data => {
             spinner.css('visibility', 'hidden');
             if (data.success) {
+                // Show success message in the error div (styled green)
                 errorDiv.css('color', 'green').text('догађај је додат').show();
                 $('#dogadjaji_unos_form')[0].reset();
                 $('#dogadjaji_unos_korisnik').val(sessionStorage.getItem('username') || 'TestUser');
 
+                // Hide success message after 3 seconds
                 setTimeout(() => {
                     errorDiv.hide().css('color', 'orange');
                 }, 3000);
@@ -109,9 +103,7 @@ function handleDogadjajiSearch() {
         opis: $('#dogadjaji_trazi_opis').val(),
         pocetak: $('#dogadjaji_trazi_pocetak').val(),
         kraj: $('#dogadjaji_trazi_kraj').val(),
-        izvor: $('#dogadjaji_trazi_izvor').val(),
-        prostorno: $('#dogadjaji_trazi_prostorno').val(),
-        vremenski: $('#dogadjaji_trazi_vremenski').val()
+        izvor: $('#dogadjaji_trazi_izvor').val()
     };
 
     const errorDiv = $('#dogadjaji_trazi_error');
@@ -152,21 +144,19 @@ function displayDogadjajiResults(results) {
     if (results.length === 0) {
         resultsBody.append(`
             <tr>
-                <td colspan="3" style="padding: 10px; text-align: center; color: #666;">
+                <td colspan="4" style="padding: 10px; text-align: center; color: #666;">
                     Нема резултата.
                 </td>
             </tr>
         `);
     } else {
         results.forEach(result => {
-            const hasCoordinates = result.koordinate && result.koordinate.trim() !== '';
-            const locationIcon = hasCoordinates ? '<i class="bi bi-geo-alt-fill"></i>' : '';
-
             resultsBody.append(`
                 <tr style="cursor: pointer;" onclick="viewDogadjaj(${result.id})">
                     <td style="padding: 5px; width: 60px;">${result.id}</td>
-                    <td style="padding: 5px;">${result.opis || ''}</td>
-                    <td style="padding: 5px; width: 30px; text-align: center;">${locationIcon}</td>
+                    <td style="padding: 5px; width: 200px;">${result.opis || ''}</td>
+                    <td style="padding: 5px; width: 150px;">${result.pocetak || ''}</td>
+                    <td style="padding: 5px;">${result.izvor || ''}</td>
                 </tr>
             `);
         });
@@ -175,64 +165,8 @@ function displayDogadjajiResults(results) {
     resultsContainer.show();
 }
 
-// Global variable to store the current dogadjaj marker
-var currentDogadjajiMarker = null;
-
 function viewDogadjaj(id) {
     console.log('Viewing dogadjaj with ID:', id);
-
-    fetch('/api/dogadjaji/search', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ id: id })
-    })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.results && data.results.length > 0) {
-                const dogadjaj = data.results[0];
-
-                // ALWAYS remove previous marker first
-                if (currentDogadjajiMarker) {
-                    karta.removeLayer(currentDogadjajiMarker);
-                    currentDogadjajiMarker = null;
-                    console.log('Previous marker removed');
-                }
-
-                // If this dogadjaj has coordinates, show NEW marker
-                if (dogadjaj.koordinate && dogadjaj.koordinate.trim() !== '') {
-                    const coordMatch = dogadjaj.koordinate.match(/POINT\s*\(\s*([\d.-]+)\s+([\d.-]+)\s*\)/i);
-
-                    if (coordMatch) {
-                        const lng = parseFloat(coordMatch[1]);
-                        const lat = parseFloat(coordMatch[2]);
-
-                        console.log('Showing marker at:', lat, lng);
-
-                        var calendarIcon = L.icon({
-                            iconUrl: '/ikone/calendar.png',
-                            iconSize: [32, 37],
-                            iconAnchor: [16, 37],
-                            popupAnchor: [0, -30]
-                        });
-
-                        currentDogadjajiMarker = L.marker([lat, lng], { icon: calendarIcon })
-                            .addTo(karta)
-                            .bindPopup(dogadjaj.opis)
-                            .openPopup();
-
-                        // Pan to marker without changing zoom
-                        karta.panTo([lat, lng]);
-                    } else {
-                        console.error('Could not parse coordinates:', dogadjaj.koordinate);
-                    }
-                } else {
-                    console.log('No coordinates - marker already removed');
-                }
-            }
-        })
-        .catch(error => {
-            console.error('Error fetching dogadjaj details:', error);
-        });
+    // TODO: Implement view functionality
+    // This could open a modal or sidebar with full event details
 }

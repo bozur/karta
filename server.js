@@ -580,6 +580,184 @@ app.get('/api/zapisi/:id', async (req, res) => {
     }
 });
 
+// ============================================
+// Dogadjaji (Events) API Routes
+// ============================================
+
+// POST /api/dogadjaji/insert
+app.post('/api/dogadjaji/insert', async (req, res) => {
+    try {
+        // 1. Authentication check
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+
+        const { opis, pocetak, kraj, izvor, zapis, koordinate, vremenski } = req.body;
+        const korisnik_id = req.session.user.id;
+
+        console.log('=== DOGADJAJI INSERT REQUEST ===');
+        console.log('User ID:', korisnik_id);
+        console.log('Request body:', JSON.stringify(req.body, null, 2));
+
+        // 1.5 Check if user has permission to insert (moze_ucitati = 1)
+        const pool = await poolPromise;
+        const permissionCheck = await pool.request()
+            .input('korisnik_id', sql.Int, korisnik_id)
+            .query('SELECT moze_ucitati FROM korisnik WHERE id = @korisnik_id');
+
+        console.log('Permission check result:', permissionCheck.recordset[0]);
+        const mozeUcitati = permissionCheck.recordset[0]?.moze_ucitati;
+        console.log('moze_ucitati value:', mozeUcitati, 'type:', typeof mozeUcitati);
+
+        // Handle both bit (true/false) and int (1/0) types
+        if (!permissionCheck.recordset[0] || (mozeUcitati !== 1 && mozeUcitati !== true)) {
+            console.log('Permission denied: moze_ucitati =', mozeUcitati);
+            return res.status(403).json({ error: 'Тренутно вам није одобрен унос података, обратите се уредницима' });
+        }
+        console.log('Permission granted');
+
+        // 2. Required fields validation
+        if (!opis || !pocetak || !izvor) {
+            console.log('Validation failed: missing required fields');
+            return res.status(400).json({ error: 'Сва обавезна поља морају бити попуњена' });
+        }
+
+        // 3. Validate opis length (min 10 chars)
+        if (opis.trim().length < 10) {
+            console.log('Validation failed: opis too short');
+            return res.status(400).json({ error: 'Опис мора имати најмање 10 карактера' });
+        }
+
+        // 4. Validate opis length (max 255 chars)
+        if (opis.length > 255) {
+            console.log('Validation failed: opis too long');
+            return res.status(400).json({ error: 'Опис може имати највише 255 карактера' });
+        }
+
+        // Pool already declared above for permission check
+        const request = pool.request();
+
+        // 5. Convert datetime-local format (YYYY-MM-DDTHH:mm) to SQL Server format (YYYY-MM-DDTHH:mm:ss)
+        const pocetakFormatted = pocetak ? pocetak + ':00' : null;
+        const krajFormatted = kraj ? kraj + ':00' : null;
+
+        // 6. Insert into database
+        request.input('opis', sql.NVarChar, opis);
+        request.input('pocetak', sql.DateTime2, pocetakFormatted);
+        request.input('kraj', sql.DateTime2, krajFormatted);
+        request.input('izvor', sql.NVarChar, izvor);
+        request.input('korisnik_id', sql.Int, korisnik_id);
+        request.input('zapis', sql.Int, zapis ? parseInt(zapis) : null);
+        request.input('koordinate', sql.NVarChar, koordinate || null);
+
+        console.log('Executing SQL insert...');
+        await request.query(`
+            INSERT INTO dogadjaji (opis, pocetak, kraj, izvor, korisnik_id, zapis, koordinate)
+            VALUES (@opis, @pocetak, @kraj, @izvor, @korisnik_id, @zapis, @koordinate)
+        `);
+
+        console.log(`✓ Event created by user ${korisnik_id}: ${opis.substring(0, 50)}...`);
+        res.json({
+            success: true,
+            message: 'Догађај је успјешно додат'
+        });
+
+    } catch (err) {
+        console.error('=== ERROR INSERTING DOGADJAJ ===');
+        console.error('Error message:', err.message);
+        console.error('Error code:', err.code);
+        console.error('Error number:', err.number);
+        console.error('Full error:', err);
+        res.status(500).json({ error: 'Грешка при додавању догађаја' });
+    }
+});
+
+// POST /api/dogadjaji/search
+app.post('/api/dogadjaji/search', async (req, res) => {
+    try {
+        const { id, opis, pocetak, kraj, izvor, prostorno, vremenski } = req.body;
+        const pool = await poolPromise;
+        const request = pool.request();
+
+        let query = `
+            SELECT d.id, d.opis, d.pocetak, d.kraj, d.izvor, d.zapis, d.koordinate, d.unos, k.korisnik
+            FROM dogadjaji d
+            INNER JOIN korisnik k ON d.korisnik_id = k.id
+        `;
+        let conditions = [];
+
+        // Build WHERE clause based on search criteria
+        if (id) {
+            conditions.push("d.id = @id");
+            request.input('id', sql.Int, id);
+        }
+
+        if (opis) {
+            conditions.push("d.opis LIKE @opis");
+            request.input('opis', sql.NVarChar, `%${opis}%`);
+        }
+
+        if (pocetak) {
+            conditions.push("d.pocetak >= @pocetak");
+            request.input('pocetak', sql.DateTime2, pocetak + ':00');
+        }
+
+        if (kraj) {
+            conditions.push("d.kraj <= @kraj");
+            request.input('kraj', sql.DateTime2, kraj + ':00');
+        }
+
+        if (izvor) {
+            conditions.push("d.izvor LIKE @izvor");
+            request.input('izvor', sql.NVarChar, `%${izvor}%`);
+        }
+
+        // Prostorno filter: check if koordinate field is populated
+        if (prostorno === '1') {
+            conditions.push("d.koordinate IS NOT NULL AND d.koordinate != ''");
+        } else if (prostorno === '0') {
+            conditions.push("(d.koordinate IS NULL OR d.koordinate = '')");
+        }
+
+        // Vremenski filter: check if kraj differs from pocetak (determined time range)
+        if (vremenski === '1') {
+            conditions.push("d.kraj != d.pocetak");
+        } else if (vremenski === '0') {
+            conditions.push("d.kraj = d.pocetak");
+        }
+
+        if (conditions.length > 0) {
+            query += " WHERE " + conditions.join(" AND ");
+        }
+
+        query += " ORDER BY d.id DESC";
+
+        const result = await request.query(query);
+
+        // Format dates for display
+        const formattedResults = result.recordset.map(row => ({
+            id: row.id,
+            opis: row.opis,
+            pocetak: row.pocetak ? new Date(row.pocetak).toLocaleString('sr-RS') : '',
+            kraj: row.kraj ? new Date(row.kraj).toLocaleString('sr-RS') : '',
+            izvor: row.izvor,
+            zapis: row.zapis,
+            koordinate: row.koordinate,
+            korisnik: row.korisnik,
+            unos: row.unos ? new Date(row.unos).toLocaleString('sr-RS') : ''
+        }));
+
+        res.json({
+            success: true,
+            results: formattedResults
+        });
+
+    } catch (err) {
+        console.error('Error searching dogadjaji:', err);
+        res.status(500).json({ error: 'Грешка при претрази' });
+    }
+});
+
 // Authentication Routes
 
 // POST /api/login
