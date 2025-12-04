@@ -23,9 +23,80 @@ function initializeDogadjaji() {
         e.preventDefault();
         handleDogadjajiSearch();
     });
+
+    // Initialize marker tool functionality
+    initializeMarkerTool();
 }
 
 window.initDogadjajiSection = initializeDogadjaji;
+
+// Initialize marker tool functionality
+function initializeMarkerTool() {
+    console.log('Initializing marker tool...');
+
+    // Synchronize checkbox state with current drawing control state
+    const isDrawingControlVisible = karta._controlContainer.querySelector('.leaflet-draw') !== null;
+    $('#dogadjaji_marker_tool').prop('checked', isDrawingControlVisible);
+    console.log('Drawing control visible on init:', isDrawingControlVisible);
+
+    // Handle checkbox toggle
+    $('#dogadjaji_marker_tool').off('change').on('change', function () {
+        const isChecked = $(this).is(':checked');
+        console.log('Marker tool checkbox changed:', isChecked);
+
+        if (isChecked) {
+            // Enable drawing control
+            if (!karta.hasLayer(drawnItems)) {
+                drawnItems.addTo(karta);
+            }
+            if (!karta._controlContainer.querySelector('.leaflet-draw')) {
+                drawnControl.addTo(karta);
+            }
+            console.log('Drawing control enabled');
+        } else {
+            // Disable drawing control
+            if (karta._controlContainer.querySelector('.leaflet-draw')) {
+                karta.removeControl(drawnControl);
+            }
+            console.log('Drawing control disabled');
+        }
+    });
+
+    // Listen for marker creation events from karta.js
+    karta.off('draw:created.dogadjaji').on('draw:created.dogadjaji', function (e) {
+        console.log('Dogadjaji marker created event received');
+
+        // Check zoom level - must be at least 15 (3 steps from max 18)
+        const currentZoom = karta.getZoom();
+        const minZoom = 15;
+
+        if (currentZoom < minZoom) {
+            // Show error in the form's error div
+            const errorDiv = $('#dogadjaji_unos_error');
+            errorDiv.text('Приближите карту ради тачности уноса!').show();
+            console.log('Zoom level too low:', currentZoom, '< minimum:', minZoom);
+
+            // Keep checkbox checked and tool visible - do NOT disable
+            return;
+        }
+
+        const layer = e.layer;
+        const lat = parseFloat(layer.getLatLng().lat).toFixed(6);
+        const lng = parseFloat(layer.getLatLng().lng).toFixed(6);
+
+        // Populate coordinates field in WKT POINT format
+        const coordinates = `POINT(${lng} ${lat})`;
+        $('#dogadjaji_unos_koordinate').val(coordinates);
+
+        console.log('Coordinates set:', coordinates, 'at zoom level:', currentZoom);
+
+        // Clear any previous error messages
+        $('#dogadjaji_unos_error').hide().text('');
+
+        // Uncheck the marker tool checkbox to disable drawing mode
+        $('#dogadjaji_marker_tool').prop('checked', false).trigger('change');
+    });
+}
 
 function handleDogadjajiInsert() {
     const formData = {
