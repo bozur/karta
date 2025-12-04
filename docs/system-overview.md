@@ -342,6 +342,7 @@ req.session.user = {
 - **Library:** Leaflet 1.7.1
 - **Initial View:** [42.046475, 19.494058] (Skadar)
 - **Initial Zoom:** 6
+- **Zoom Control:** Custom with Serbian text ("Приближи" / "Удаљи")
 - **Tile Layers:**
   - Terrain: Mapbox streets-v12
   - Satellite: Mapbox satellite-streets-v12
@@ -350,7 +351,7 @@ req.session.user = {
 
 **Map Features:**
 - Scale control
-- Drawing tools (Leaflet.Draw)
+- Drawing tools (Leaflet.Draw) - localized to Serbian Cyrillic
 - Custom marker icons
 - GeoJSON layers
 - Sidebar panel
@@ -448,6 +449,14 @@ req.session.user = {
 - No intersection allowed for polygons/polylines
 - Custom error messages in Serbian
 - Edit mode enabled for `drawnItems`
+
+**Localization:**
+All drawing tool tooltips and buttons are localized to Serbian Cyrillic via `L.drawLocal`:
+- **Toolbar buttons:** "Нацртај показивач", "Нацртај полигон", "Нацртај линију"
+- **Actions:** "Сачувај", "Поништи", "Обриши све", "Заврши"
+- **Tooltips:** "Притисни на карту да ставиш показивач", "Притисни да почнеш да црташ", etc.
+- **Edit mode:** "Измени слојеве", "Обриши слојеве", "Превуци ручице или показиваче ради измене"
+- **No layers:** "Нема слоја за измену", "Нема слоја за брисање"
 
 ### Custom Marker
 
@@ -634,3 +643,4 @@ const poolPromise = new sql.ConnectionPool({
 | Date | Changes | Modified By |
 |------|---------|-------------|
 | 2025-12-04 | Initial documentation created | AI Assistant |
+| 2025-12-04 | Added Serbian Cyrillic localization for drawing tools and zoom controls | AI Assistant |
