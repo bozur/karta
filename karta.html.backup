@@ -1,0 +1,76 @@
+﻿<!DOCTYPE html>
+<html lang="sr">
+
+<head>
+  <title>Карта</title>
+  <link rel="shortcut icon" href="slike/icon.ico">
+
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+    integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+    crossorigin="" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="css/custom.css">
+  <link rel="stylesheet" href="leaflet-sidebar-master/src/L.Control.Sidebar.css" />
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
+    integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
+    crossorigin="anonymous"></script> <!-- mora posle jquery-->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+    integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+    crossorigin=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script> <!--leaflet draw-->
+  <script src="leaflet-sidebar-master/src/L.Control.Sidebar.js"></script>
+
+</head>
+
+<body>
+  <div id="sidebar">
+  </div>
+  <div id="radna">
+    <div id="izbor_karte" class="izbor_karte">
+      <i class="mx-2" title="промјена карте" data-toggle="tooltip" data-placement="bottom" id="promjena_karte"
+        style="cursor: context-menu; font-style: normal;">терен/сателит</i>
+    </div>
+    <div id="navodi" class="navodi">
+      <i class="bi-layers mx-2 izbor" title="теме" data-toggle="tooltip" data-placement="bottom" title2="teme"></i>
+      <i class="bi-calendar3 mx-2 izbor" title="догађаји" data-toggle="tooltip" data-placement="bottom"
+        title2="dogadjaji"></i>
+      <i class="bi-folder mx-2 izbor" title="записи" data-toggle="tooltip" data-placement="bottom" title2="zapisi"></i>
+      <i class="bi-lightbulb mx-2 izbor" title="опште" data-toggle="tooltip" data-placement="bottom" title2="opste"></i>
+      <i class="bi-person mx-2 izbor" title="корисник" data-toggle="tooltip" data-placement="bottom"
+        title2="korisnik"></i>
+      <i class="bi bi-cash-coin mx-2 izbor" title="подршка" data-toggle="tooltip" data-placement="bottom"
+        title2="podrska"></i>
+      <i class="bi-envelope mx-2 izbor" title="контакт" data-toggle="tooltip" data-placement="bottom"
+        title2="kontakt"></i>
+      <i class="bi-question-circle mx-2 izbor" title="упутство" data-toggle="tooltip" data-placement="bottom"
+        title2="uputstvo"\u003e\u003c/i\u003e
+        title2="uslovi"\u003e\u003c/i\u003e
+        style="cursor: pointer;"></i>
+    </div>
+    <!-- Dogadjaj detail layer - top positioned -->
+    <div id="dogadjaj_layer" class="dogadjaj_layer">
+      <div class="dogadjaj_header">
+        <i class="bi bi-x" id="dogadjaj_close" style="cursor: pointer; float: right;"></i>
+      </div>
+      <div class="dogadjaj_content">
+        <p id="dogadjaj_opis"></p>
+        <p id="dogadjaj_vrijeme"></p>
+        <p id="dogadjaj_izvor"></p>
+      </div>
+      <div class="dogadjaj_resize_handle"></div>
+    </div>
+    <div id="kartaid" style="width: 100%;"></div>
+    <!-- Dynamic content container for navigation sections -->
+    <div id="section-content" class="sloj_vidi"></div>
+  </div>
+
+  <script src="karta.js"></script>
+</body>
+
+</html>
