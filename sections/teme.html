@@ -14,14 +14,159 @@
         background-color: #6c757d !important;
         border-color: #6c757d !important;
     }
-</style>
-<div class="form-group">
-    <select class="form-control" id="teme_izbor">
-        <option value="0">изабери:</option>
-        <!-- Theme options will be loaded dynamically from database -->
-    </select>
 
-</div>
-<div class="form-group mt-2" id="teme_trazi">
-    <p>промјена теме брише приједлог за унос и сакрива податке о изабраној ставци!</p>
+    #teme_dogadjaji_results table tr:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    #teme_dogadjaji_results {
+        margin-top: 15px;
+    }
+
+    .teme_insert_row {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 10px;
+        flex-wrap: nowrap;
+        min-width: fit-content;
+    }
+
+    .teme_insert_row input,
+    .teme_insert_row select {
+        font-size: 0.85rem;
+    }
+
+    #teme_novo_podaci {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    /* Compact popup styles */
+    .teme-popup-form .form-group {
+        margin-bottom: 2px !important;
+    }
+
+    .teme-popup-form .form-control-sm {
+        height: calc(1.4em + 0.5rem + 2px);
+        padding: 0.2rem 0.4rem;
+        font-size: 0.8rem;
+    }
+</style>
+
+
+
+<div id="teme_content">
+    <!-- Тражи Section -->
+    <div id="teme_trazi" class="mt-2">тражи <span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+            data-target="#teme_trazi_podaci"></span>
+    </div>
+    <div id="teme_trazi_podaci" class="collapse show">
+        <form id="form_trazi">
+            <div class="form-row mb-2">
+                <div class="col">
+                    <select class="form-control" id="teme_izbor">
+                        <option value="0">изабери:</option>
+                        <!-- Theme options will be loaded dynamically from database -->
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <select id="razred" class="form-control">
+                        <option value="">разред</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="vrsta" class="form-control">
+                        <option value="">врста</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="podvrsta" class="form-control">
+                        <option value="">подврста</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <input type="text" id="od" class="form-control" placeholder="од">
+                </div>
+                <div class="col">
+                    <input type="text" id="do" class="form-control" placeholder="до">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <select id="prostorno" class="form-control">
+                        <option value="">просторно</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="vremenski" class="form-control">
+                        <option value="">временски</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="izvor" class="form-control">
+                        <option value="-1">извор</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <input type="text" id="opis" class="form-control" placeholder="опис">
+                </div>
+            </div>
+            <div class="form-row mt-2">
+                <div class="col">
+                    <div id="teme_alert_area" style="color: orange; display: none;"></div>
+                </div>
+                <button type="submit" class="btn btn-white border border-dark">тражи</button>
+                <div class="spinner-border text-secondary spinner-border-sm m-2" id="form_trazi_cekanje" role="status"
+                    style="visibility: hidden;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Догађаји Section -->
+    <div id="teme_dogadjaji" class="mt-2">догађаји <span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+            data-target="#teme_dogadjaji_podaci"></span>
+    </div>
+    <div id="teme_dogadjaji_podaci" class="collapse">
+        <div id="teme_dogadjaji_results">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody id="teme_dogadjaji_results_body">
+                    <!-- Results will be populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Ново Section -->
+    <div id="teme_novo" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span>ново <span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#teme_novo_podaci"></span></span>
+        <div class="custom-control custom-checkbox" id="teme_alat_container" style="display: none;">
+            <input type="checkbox" class="custom-control-input" id="teme_alat_checkbox">
+            <label class="custom-control-label" for="teme_alat_checkbox" style="font-size: 0.9rem;">алат</label>
+        </div>
+    </div>
+    <div id="teme_novo_podaci" class="collapse">
+        <p style="padding: 10px; margin: 5px 0;">Нацртајте објекат на мапи да бисте додали нови унос.</p>
+        <div id="teme_insert_rows_container">
+            <!-- Dynamic insert rows will be added here -->
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-2" id="teme_predlozi_row"
+            style="display: none;">
+            <div id="teme_novo_alert_area" style="color: orange; display: none;"></div>
+            <button type="button" id="teme_predlozi_button"
+                class="btn btn-white border border-dark ml-auto">предложи</button>
+        </div>
+    </div>
 </div>

@@ -1,14 +1,3 @@
-// Check authentication on page load
-$.get('/api/check-auth')
-    .fail(function () {
-        // Not authenticated, redirect to login page
-        window.location.href = '/index.html';
-    });
-
-var tabela;
-var addedGeoJSON;
-var karta;
-var tilelayer1;
 var tilelayer2;
 var drawnItems;
 var drawnControl;
@@ -251,23 +240,29 @@ $(document).ready(function () {
         // Check if događaji marker tool is active
         var dogadjajiMarkerActive = $('#dogadjaji_marker_tool').is(':checked');
 
-        if (type === 'marker') {
-            if (dogadjajiMarkerActive) {
-                // Let događaji.js handle this marker
-                console.log('Marker created - događaji tool active, skipping default handling');
-                // Fire custom event for događaji section
-                karta.fire('draw:created.dogadjaji', e);
-                return; // Don't add to drawnItems or show popup
-            } else {
-                // Default marker handling
-                var lat = parseFloat(layer.getLatLng().lat).toFixed(5);
-                var lng = parseFloat(layer.getLatLng().lng).toFixed(5);
-                layer.bindPopup('LatLng: ' + lat + ',' + lng).openPopup();
-            }
+        // Check if teme drawing tool is active
+        var temeDrawingActive = $('#teme_alat_checkbox').is(':checked');
+
+        if (dogadjajiMarkerActive && type === 'marker') {
+            // Let događaji.js handle this marker
+            console.log('Marker created - događaji tool active, skipping default handling');
+            // Fire custom event for događaji section
+            karta.fire('draw:created.dogadjaji', e);
+            return; // Don't add to drawnItems or show popup
+        } else if (temeDrawingActive) {
+            // Let teme.js handle this drawing
+            console.log('Drawing created - teme tool active, firing teme event');
+            karta.fire('draw:created.teme', e);
+            return; // Don't add to drawnItems
+        } else if (type === 'marker') {
+            // Default marker handling
+            var lat = parseFloat(layer.getLatLng().lat).toFixed(5);
+            var lng = parseFloat(layer.getLatLng().lng).toFixed(5);
+            layer.bindPopup('LatLng: ' + lat + ',' + lng).openPopup();
         }
 
-        // Add to drawnItems (except for događaji markers)
-        if (!dogadjajiMarkerActive) {
+        // Add to drawnItems (except for događaji markers and teme drawings)
+        if (!dogadjajiMarkerActive && !temeDrawingActive) {
             e.layer.addTo(drawnItems);
         }
     });
@@ -284,164 +279,170 @@ $(document).ready(function () {
     });
 
     L.marker([42.046475, 19.494058], { icon: iconSkadar }).addTo(karta).bindPopup('Скадар - престони град!')
+    var currentSection = null;
+    var loadedScripts = {};
 
-    // Logout functionality
-    $('#logout-link').click(function (e) {
-        e.preventDefault();
-        if (confirm('Да ли сте сигурни да желите да се одјавите?')) {
-            $.post('/api/logout', function (response) {
-                if (response.success) {
-                    window.location.href = '/index.html';
+    $(document).on('click', '.izbor', function () {
+        var sectionName = $(this).attr('title2');
+
+        if (currentSection === sectionName && $('#section-content').hasClass('in')) {
+            // Toggle off if clicking the same section
+            $('#section-content').removeClass('in');
+            currentSection = null;
+        } else {
+            // Load new section
+            currentSection = sectionName;
+
+            // Load HTML content
+            $.ajax({
+                url: 'sections/' + sectionName + '.html?v=' + new Date().getTime(),
+                cache: false,
+                dataType: 'html',
+                success: function (html) {
+                    $('#section-content').html(html);
+                    $('#section-content').addClass('in');
+
+                    // Debug: Check if col-auto exists
+                    console.log('Teme HTML loaded. col-auto divs found:', $('#section-content').find('.col-auto').length);
+                    console.log('Search button parent classes:', $('#section-content').find('button[type="submit"]').parent().attr('class'));
+
+                    // Load and execute section-specific JavaScript
+                    if (!loadedScripts[sectionName]) {
+                        $.getScript('sections/' + sectionName + '.js?v=' + new Date().getTime())
+                            .done(function () {
+                                loadedScripts[sectionName] = true;
+                                console.log(sectionName + '.js loaded successfully');
+
+                                // Call init function after a short delay to ensure DOM is ready
+                                setTimeout(function () {
+                                    var initFunctionName = 'init' + sectionName.charAt(0).toUpperCase() + sectionName.slice(1) + 'Section';
+                                    if (typeof window[initFunctionName] === 'function') {
+                                        window[initFunctionName]();
+                                    }
+                                }, 100);
+                            })
+                            .fail(function () {
+                                console.error('Failed to load ' + sectionName + '.js');
+                            });
+                    } else {
+                        // Force reload the script to get latest changes
+                        delete loadedScripts[sectionName];
+                        $.getScript('sections/' + sectionName + '.js?v=' + new Date().getTime())
+                            .done(function () {
+                                loadedScripts[sectionName] = true;
+                                console.log(sectionName + '.js reloaded successfully');
+
+                                // Re-trigger initialization for reloaded scripts
+                                setTimeout(function () {
+                                    var initFunctionName = 'init' + sectionName.charAt(0).toUpperCase() + sectionName.slice(1) + 'Section';
+                                    if (typeof window[initFunctionName] === 'function') {
+                                        window[initFunctionName]();
+                                    }
+                                }, 100);
+                            })
+                            .fail(function () {
+                                console.error('Failed to reload ' + sectionName + '.js');
+                            });
+                    }
+                },
+                error: function () {
+                    console.error('Failed to load section: ' + sectionName);
+                    $('#section-content').html('<p>Грешка при учитавању садржаја.</p>');
+                    $('#section-content').addClass('in');
                 }
-            }).fail(function () {
-                alert('Грешка при одјављивању');
             });
         }
     });
 
-});
-
-//za uvlacenje slojeva - dynamic section loading
-var currentSection = null;
-var loadedScripts = {};
-
-$(document).on('click', '.izbor', function () {
-    var sectionName = $(this).attr('title2');
-
-    if (currentSection === sectionName && $('#section-content').hasClass('in')) {
-        // Toggle off if clicking the same section
-        $('#section-content').removeClass('in');
-        currentSection = null;
-    } else {
-        // Load new section
-        currentSection = sectionName;
-
-        // Load HTML content
-        $.ajax({
-            url: 'sections/' + sectionName + '.html',
-            cache: false,
-            dataType: 'html',
-            success: function (html) {
-                $('#section-content').html(html);
-                $('#section-content').addClass('in');
-
-                // Load and execute section-specific JavaScript
-                if (!loadedScripts[sectionName]) {
-                    $.getScript('sections/' + sectionName + '.js')
-                        .done(function () {
-                            loadedScripts[sectionName] = true;
-                            console.log(sectionName + '.js loaded successfully');
-                        })
-                        .fail(function () {
-                            console.error('Failed to load ' + sectionName + '.js');
-                        });
-                } else {
-                    // Re-trigger initialization for already loaded scripts
-                    // Call section-specific init function if it exists
-                    var initFunctionName = 'init' + sectionName.charAt(0).toUpperCase() + sectionName.slice(1) + 'Section';
-                    if (typeof window[initFunctionName] === 'function') {
-                        window[initFunctionName]();
-                    }
-                }
-            },
-            error: function () {
-                console.error('Failed to load section: ' + sectionName);
-                $('#section-content').html('<p>Грешка при учитавању садржаја.</p>');
-                $('#section-content').addClass('in');
-            }
-        });
-    }
-});
-
-$(document).on('click', '#promjena_karte', function () {
-    if (karta.hasLayer(tilelayer1) || karta.hasLayer(tilelayer1_clean)) {
-        karta.removeLayer(tilelayer1);
-        karta.removeLayer(tilelayer1_clean);
-        karta.addLayer(window.layersVisible ? tilelayer2 : tilelayer2_clean);
-    } else {
-        karta.removeLayer(tilelayer2);
-        karta.removeLayer(tilelayer2_clean);
-        karta.addLayer(window.layersVisible ? tilelayer1 : tilelayer1_clean);
-    }
-});
-
-// Section-specific event handlers are now in individual section JS files
-// (teme.js, kontakt.js, uputstvo.js, etc.)
-
-
-function LoadWithoutCache(url, dest) {
-    $.ajax({
-        url: url,
-        cache: false,
-        dataType: "html",
-        success: function (data) {
-            $("#" + dest).html(data);
-            return false;
+    $(document).on('click', '#promjena_karte', function () {
+        if (karta.hasLayer(tilelayer1) || karta.hasLayer(tilelayer1_clean)) {
+            karta.removeLayer(tilelayer1);
+            karta.removeLayer(tilelayer1_clean);
+            karta.addLayer(window.layersVisible ? tilelayer2 : tilelayer2_clean);
+        } else {
+            karta.removeLayer(tilelayer2);
+            karta.removeLayer(tilelayer2_clean);
+            karta.addLayer(window.layersVisible ? tilelayer1 : tilelayer1_clean);
         }
     });
-}
 
-function onEachFeature(feature, layer) {
+    // Section-specific event handlers are now in individual section JS files
+    // (teme.js, kontakt.js, uputstvo.js, etc.)
 
 
-    //alert (table[1][0][0]);
-
-    // does this feature have a property named popupContent?
-    if (feature.properties && feature.properties.v) {
-        layer.bindPopup('<a href="#" class="detalji" pointinfo="' + feature.properties.id + '"><i class="bi bi-book"></i></a> ' + table[tabela][1][feature.properties.v]);
-    }
-}
-
-var LeafIcon = L.Icon.extend({
-    options: {
-        iconSize: [32, 37], // size of the icon
-        iconAnchor: [16, 37], // point of the icon which will correspond to marker's location
-        popupAnchor: [0, -30] // point from which the popup should open relative to the iconAnchor
-    }
-});
-
-function createIcon(r, tabela) {
-    return new LeafIcon({
-        iconUrl: 'ikone/' + tabela + '/' + r + '.png'
-    });
-}
-
-function pretrazi() {
-    $("#form_trazi").submit(function (e) {
-        e.preventDefault();
-        tabela = $('#teme_izbor').val();
-        $("#form_trazi_cekanje").css('visibility', 'visible');
-        var formData = {
-            'tabela': tabela,
-            'vrsta': $('#vrsta').val(),
-            'podvrsta': $('#podvrsta').val(),
-            'razred': $('#razred').val(),
-            'prostorno': $('#prostorno').val(),
-            'vremenski': $('#vremenski').val(),
-            'izvor': $('#izvor').val(),
-            'opis': $('#opis').val(),
-        };
+    function LoadWithoutCache(url, dest) {
         $.ajax({
-            url: 'api/search',
-            type: 'post',
-            dataType: 'json',
-            data: formData,
+            url: url,
+            cache: false,
+            dataType: "html",
             success: function (data) {
-                $("#form_trazi_cekanje").css('visibility', 'hidden');
-                if (!$.isEmptyObject(addedGeoJSON)) {
-                    karta.removeLayer(addedGeoJSON);
-                }
-                addedGeoJSON = L.geoJSON(data, {
-                    pointToLayer: function (feature, latlng) {
-                        return L.marker(latlng, { icon: createIcon(feature.properties.r, tabela) });
-                    },
-                    onEachFeature: onEachFeature
-                }).addTo(karta);
-
-                if (!$.isEmptyObject(addedGeoJSON)) {
-                    karta.fitBounds(addedGeoJSON.getBounds());
-                }
+                $("#" + dest).html(data);
+                return false;
             }
         });
+    }
+
+    window.onEachFeature = function (feature, layer) {
+        // Use global window.tabela if available to ensure sync with teme.js, otherwise fallback to local closure
+        var currentTabela = (typeof window.tabela !== 'undefined' && window.tabela !== null) ? window.tabela : tabela;
+
+        // does this feature have a property named popupContent?
+        if (feature.properties && feature.properties.v) {
+            layer.bindPopup('<a href="#" class="detalji" pointinfo="' + feature.properties.id + '"><i class="bi bi-book"></i></a> ' + table[currentTabela][1][feature.properties.v]);
+        }
+    }
+
+    var LeafIcon = L.Icon.extend({
+        options: {
+            iconSize: [32, 37], // size of the icon
+            iconAnchor: [16, 37], // point of the icon which will correspond to marker's location
+            popupAnchor: [0, -30] // point from which the popup should open relative to the iconAnchor
+        }
     });
-}
+
+    window.createIcon = function (r, tabela) {
+        return new LeafIcon({
+            iconUrl: 'ikone/' + tabela + '/' + r + '.png'
+        });
+    }
+
+    function pretrazi() {
+        $("#form_trazi").submit(function (e) {
+            e.preventDefault();
+            tabela = $('#teme_izbor').val();
+            $("#form_trazi_cekanje").css('visibility', 'visible');
+            var formData = {
+                'tabela': tabela,
+                'vrsta': $('#vrsta').val(),
+                'podvrsta': $('#podvrsta').val(),
+                'razred': $('#razred').val(),
+                'prostorno': $('#prostorno').val(),
+                'vremenski': $('#vremenski').val(),
+                'izvor': $('#izvor').val(),
+                'opis': $('#opis').val(),
+            };
+            $.ajax({
+                url: 'api/search',
+                type: 'post',
+                dataType: 'json',
+                data: formData,
+                success: function (data) {
+                    $("#form_trazi_cekanje").css('visibility', 'hidden');
+                    if (!$.isEmptyObject(addedGeoJSON)) {
+                        karta.removeLayer(addedGeoJSON);
+                    }
+                    addedGeoJSON = L.geoJSON(data, {
+                        pointToLayer: function (feature, latlng) {
+                            return L.marker(latlng, { icon: window.createIcon(feature.properties.r, tabela) });
+                        },
+                        onEachFeature: window.onEachFeature
+                    }).addTo(karta);
+
+                    if (!$.isEmptyObject(addedGeoJSON)) {
+                        karta.fitBounds(addedGeoJSON.getBounds());
+                    }
+                }
+            });
+        });
+    }
+});
