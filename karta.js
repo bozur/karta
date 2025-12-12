@@ -45,6 +45,18 @@ var table = [
 
 //da se karta i sloj prilagode promenama
 $(document).ready(function () {
+    // Check authentication immediately
+    $.get('api/check-auth')
+        .fail(function () {
+            window.location.href = 'index.html';
+        });
+
+    // Logout handler
+    $('#logout-link').click(function () {
+        $.post('api/logout', function () {
+            window.location.href = 'index.html';
+        });
+    });
     $('#kartaid').height(window.innerHeight)
     $('.sloj_vidi').height(window.innerHeight - 78)
     $(window).resize(function () {
