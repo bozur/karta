@@ -10,38 +10,7 @@ window.layersVisible = true;
 // This array is kept for backward compatibility and as a fallback if the API fails
 // New implementation fetches options dynamically from /api/v2/theme-options/:tema_id
 // Structure: table[tema_id][type][index] where type: 0=razred, 1=vrsta, 2=podvrsta
-var table = [
-    [
-        [''],
-        [''],
-        ['']
-    ],
-    [
-        ['црква', 'конак', 'манастир', 'дом', 'капела', 'споменик', 'гробље'],
-        ['оштећено', 'уништено'],
-        ['спаљено', 'опљачкано', 'поломљено', 'минирано']
-    ], [
-        ['задржано сопство', 'промјена сопства'],
-        ['Серби', 'Славени', 'Грци', 'Турци', 'Нијемци', 'Маџари'],
-        ['бријег', 'језеро', 'мјесто', 'море', 'област', 'планина', 'ријека']
-    ], [
-        ['с(е)рб', 'влах', 'венет/венд', 'илир', 'косово', 'сег/сиг', 'слат', 'вар', 'лоз', 'луг', 'тер'],
-        ['мјесто', 'ријека', 'језеро', 'море', 'област'],
-        ['']
-    ], [
-        ['радни', 'војни', 'за истребљење', 'дјечији'],
-        [''],
-        ['']
-    ], [
-        ['Србин', 'Шиптар', 'Турчин', 'Бугарин', 'Маџар', 'Циган', 'Хрват', 'Муслиман', 'Талијан', 'Нијемац'],
-        ['човјек', 'дијете', 'жена', 'старији', 'војник'],
-        ['силовање', 'мучење', 'убиство', 'рањавање', 'протјеривање']
-    ], [
-        ['царство', 'каљевство', 'кнежевина', 'војводство', 'репоблика'],
-        ['сербско', 'маџарско', 'бугарско', 'грчко', 'турско'],
-        ['']
-    ]
-];
+// Table definition moved to js/config/theme_config.js
 
 //da se karta i sloj prilagode promenama
 $(document).ready(function () {
@@ -179,73 +148,19 @@ $(document).ready(function () {
     // Create feature group for drawn items
     drawnItems = L.featureGroup(); //.addTo(karta);
 
-    // Localize Leaflet.draw to Serbian Cyrillic
-    L.drawLocal.draw.toolbar.buttons.polyline = 'Нацртај линију';
-    L.drawLocal.draw.toolbar.buttons.polygon = 'Нацртај полигон';
-    L.drawLocal.draw.toolbar.buttons.marker = 'Нацртај показивач';
-
-    L.drawLocal.draw.toolbar.actions.title = 'Поништи цртање';
-    L.drawLocal.draw.toolbar.actions.text = 'Поништи';
-
-    L.drawLocal.draw.toolbar.finish.title = 'Заврши цртање';
-    L.drawLocal.draw.toolbar.finish.text = 'Заврши';
-
-    L.drawLocal.draw.toolbar.undo.title = 'Обриши задњу тачку';
-    L.drawLocal.draw.toolbar.undo.text = 'Обриши задњу тачку';
-
-    L.drawLocal.draw.handlers.marker.tooltip.start = 'Притисни на карту да ставиш показивач';
-
-    L.drawLocal.draw.handlers.polyline.tooltip.start = 'Притисни да почнеш да црташ';
-    L.drawLocal.draw.handlers.polyline.tooltip.cont = 'Притисни да наставиш цртање';
-    L.drawLocal.draw.handlers.polyline.tooltip.end = 'Притисни задњу тачку да завршиш';
-
-    L.drawLocal.draw.handlers.polygon.tooltip.start = 'Притисни да почнеш да црташ';
-    L.drawLocal.draw.handlers.polygon.tooltip.cont = 'Притисни да наставиш цртање';
-    L.drawLocal.draw.handlers.polygon.tooltip.end = 'Притисни прву тачку да завршиш';
-
-    L.drawLocal.edit.toolbar.actions.save.title = 'Сачувај измене';
-    L.drawLocal.edit.toolbar.actions.save.text = 'Сачувај';
-    L.drawLocal.edit.toolbar.actions.cancel.title = 'Поништи измене';
-    L.drawLocal.edit.toolbar.actions.cancel.text = 'Поништи';
-    L.drawLocal.edit.toolbar.actions.clearAll.title = 'Обриши све';
-    L.drawLocal.edit.toolbar.actions.clearAll.text = 'Обриши све';
-
-    L.drawLocal.edit.toolbar.buttons.edit = 'Измени слојеве';
-    L.drawLocal.edit.toolbar.buttons.editDisabled = 'Нема слоја за измену';
-    L.drawLocal.edit.toolbar.buttons.remove = 'Обриши слојеве';
-    L.drawLocal.edit.toolbar.buttons.removeDisabled = 'Нема слоја за брисање';
-
-    L.drawLocal.edit.handlers.edit.tooltip.text = 'Превуци ручице или показиваче ради измене';
-    L.drawLocal.edit.handlers.edit.tooltip.subtext = 'Притисни Поништи да вратиш измене';
-
-    L.drawLocal.edit.handlers.remove.tooltip.text = 'Притисни слој да обришеш';
+    // Draw configuration moved to js/config/draw_config.js
 
     // Add draw control
-    drawnControl = new L.Control.Draw({
-        draw: {
-            circle: false,
-            rectangle: false,
-            circlemarker: false,
-            polygon: {
-                allowIntersection: false,
-                drawError: {
-                    message: 'није дозвољено преклапање површина' // Message that will show when intersect 
-                }
-            },
-            polyline: {
-                allowIntersection: false,
-                drawError: {
-                    message: 'није дозвољено пресијецање линија' // Message that will show when intersect 
-                }
-            },
-        },
-        edit: {
-            featureGroup: drawnItems,
-            poly: {
-                allowIntersection: false
-            }
-        }
-    }); // .addTo(karta);
+    // Configure featureGroup dynamically
+    if (window.drawControlOptions && window.drawControlOptions.edit) {
+        window.drawControlOptions.edit.featureGroup = drawnItems;
+        drawnControl = new L.Control.Draw(window.drawControlOptions);
+    } else {
+        console.error('Draw control options not loaded!');
+        // Fallback or empty initialization to prevent crash
+        drawnControl = new L.Control.Draw({ edit: { featureGroup: drawnItems } });
+    }
+    // .addTo(karta);
 
     // On draw - add drawing to 'drawnItems'
     karta.on("draw:created", function (e) {
