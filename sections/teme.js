@@ -12,11 +12,15 @@ if (typeof window.temeInsertRows === 'undefined') {
 if (typeof window.temeSearchTimeSpan === 'undefined') {
     window.temeSearchTimeSpan = { od: null, do: null };
 }
+// Global variable for theme metadata
+if (typeof window.temeMetadata === 'undefined') {
+    window.temeMetadata = {};
+}
 
 // Function to load teme content based on selected theme
-function loadTemeContent(valueSelected) {
+function loadTemeContent(valueSelected, isRestoring = false) {
     // Check if there are pending inserts
-    if (window.temeInsertRows.length > 0) {
+    if (!isRestoring && window.temeInsertRows.length > 0) {
         $('#teme_alert_area').text("Нова претрага нија могућа док постоје приједлози за унос у дијелу 'ново'").show();
         setTimeout(function () { $('#teme_alert_area').fadeOut(); }, 3000);
         // Revert dropdown selection to previous valid theme
@@ -42,7 +46,19 @@ function loadTemeContent(valueSelected) {
             }
         }
         clearInsertRows();
+        if (typeof karta !== 'undefined' && typeof drawnItems !== 'undefined' && typeof drawnControl !== 'undefined') {
+            if (karta.hasLayer(drawnItems)) {
+                karta.removeLayer(drawnItems);
+            }
+            if (karta._controlContainer.querySelector('.leaflet-draw')) {
+                karta.removeControl(drawnControl);
+            }
+        }
+        clearInsertRows();
         $('#teme_dogadjaji_podaci').hide();
+        $('#teme_objasnjenje_content').text("тема није изабрана");
+
+        // Clear dropdown options
 
         // Clear dropdown options
         $('#razred').find('option:not(:first)').remove();
@@ -91,6 +107,12 @@ function loadTemeContent(valueSelected) {
                     }
                 });
 
+                options.podvrsta.forEach((value, index) => {
+                    if (value) {
+                        $('#podvrsta').append(`<option value="${index}">${value}</option>`);
+                    }
+                });
+
                 console.log('Theme options loaded from API:', options);
             })
             .catch(error => {
@@ -115,8 +137,11 @@ function loadThemesDropdown() {
             themes.forEach(theme => {
                 const id = theme.id || theme.ID;
                 const naziv = theme.naziv || theme.NAZIV;
+                const opis = theme.opis || theme.OPIS || "";
                 if (id && naziv) {
                     select.append(`<option value="${id}">${naziv}</option>`);
+                    // Store metadata
+                    window.temeMetadata[id] = { naziv: naziv, opis: opis };
                 }
             });
 
@@ -175,6 +200,15 @@ function handleTemeSearch(e) {
 
     // Clear alert area
     $('#teme_alert_area').hide().text('');
+
+    // Update Clarification Section
+    if (window.temeMetadata && window.temeMetadata[window.lastSelectedTeme] && window.temeMetadata[window.lastSelectedTeme].opis) {
+        $('#teme_objasnjenje_content').text(window.temeMetadata[window.lastSelectedTeme].opis);
+        $('#teme_objasnjenje_podaci').collapse('show');
+    } else {
+        $('#teme_objasnjenje_content').text("тема није изабрана");
+        $('#teme_objasnjenje_podaci').collapse('show');
+    }
 
     // Perform actual search via API
     $.ajax({
@@ -445,6 +479,16 @@ function renderInsertRow(rowIndex) {
             <select class="form-control" data-field="podvrsta" style="min-width: 120px;">
                 ${podvrstaOptions}
             </select>
+            <select class="form-control" data-field="prostorno" style="min-width: 120px;">
+                <option value="">просторно</option>
+                <option value="одређено">одређено</option>
+                <option value="неодређено">неодређено</option>
+            </select>
+            <select class="form-control" data-field="vremenski" style="min-width: 120px;">
+                <option value="">временски</option>
+                <option value="одређено">одређено</option>
+                <option value="неодређено">неодређено</option>
+            </select>
             <input type="datetime-local" class="form-control" data-field="pocetak" style="min-width: 180px;">
             <input type="datetime-local" class="form-control" data-field="kraj" style="min-width: 180px;">
             <input type="text" class="form-control" placeholder="извор" data-field="izvor" style="min-width: 120px;">
@@ -520,33 +564,47 @@ function bindPopupToLayer(layer, rowIndex) {
     popupContent.style.margin = '-5px';
 
     popupContent.innerHTML = `
-        <div style="min-width: 220px;">
-            <div class="form-group mb-1">
-                <input type="text" class="form-control form-control-sm popup-input" data-field="opis" placeholder="опис">
+        <div style="min-width: 260px; line-height: normal !important; font-size: 13px;">
+            <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
+                <input type="text" class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="opis" placeholder="опис">
             </div>
-            <div class="form-group mb-1">
-                <select class="form-control form-control-sm popup-input" data-field="razred">${razredOptions}</select>
+            <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
+                <select class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="razred">${razredOptions}</select>
             </div>
-            <div class="form-group mb-1">
-                 <select class="form-control form-control-sm popup-input" data-field="vrsta">${vrstaOptions}</select>
+            <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
+                 <select class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="vrsta">${vrstaOptions}</select>
             </div>
-            <div class="form-group mb-1">
-                 <select class="form-control form-control-sm popup-input" data-field="podvrsta">${podvrstaOptions}</select>
+            <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
+                 <select class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="podvrsta">${podvrstaOptions}</select>
             </div>
-            <div class="form-group mb-1">
-                <input type="datetime-local" class="form-control form-control-sm popup-input" data-field="pocetak" placeholder="почетак">
+            <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
+                 <select class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="prostorno">
+                    <option value="">просторно</option>
+                    <option value="одређено">одређено</option>
+                    <option value="неодређено">неодређено</option>
+                 </select>
             </div>
-            <div class="form-group mb-1">
-                <input type="datetime-local" class="form-control form-control-sm popup-input" data-field="kraj" placeholder="крај">
+            <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
+                 <select class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="vremenski">
+                    <option value="">временски</option>
+                    <option value="одређено">одређено</option>
+                    <option value="неодређено">неодређено</option>
+                 </select>
             </div>
-            <div class="form-group mb-1">
-                 <input type="text" class="form-control form-control-sm popup-input" data-field="izvor" placeholder="извор">
+            <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
+                <input type="datetime-local" class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="pocetak" placeholder="почетак">
             </div>
-            <div class="form-group mb-1">
-                 <select class="form-control form-control-sm popup-input" data-field="zapis">${zapisOptions}</select>
+            <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
+                <input type="datetime-local" class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="kraj" placeholder="крај">
             </div>
-            <div class="form-group mb-0">
-                 <button class="btn btn-sm btn-light w-100 border py-0" onclick="$('.teme_insert_row[data-row-index=${rowIndex}]').get(0).scrollIntoView({behavior: 'smooth', block: 'center'}); $('.teme_insert_row[data-row-index=${rowIndex}]').find('input').first().focus();">Иди на ред</button>
+            <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
+                 <input type="text" class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="izvor" placeholder="извор">
+            </div>
+            <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
+                 <select class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="zapis">${zapisOptions}</select>
+            </div>
+            <div class="form-group mb-0" style="margin-bottom: 0px !important; line-height: 1 !important;">
+                 <button class="btn btn-sm btn-light w-100 border py-0" style="height: 30px !important; line-height: 1.5 !important;" onclick="$('.teme_insert_row[data-row-index=${rowIndex}]').get(0).scrollIntoView({behavior: 'smooth', block: 'center'}); $('.teme_insert_row[data-row-index=${rowIndex}]').find('input').first().focus();">Иди на ред</button>
             </div>
         </div>
     `;
@@ -790,7 +848,7 @@ function initTemeSection() {
             $('#teme_izbor').val(window.lastSelectedTeme);
 
             // We load theme options unconditionally and wait for it
-            loadTemeContent(window.lastSelectedTeme).then(() => {
+            loadTemeContent(window.lastSelectedTeme, true).then(() => {
                 // Restore search criteria values AFTER options are loaded
                 if (window.temeState && window.temeState.searchData) {
                     $('#razred').val(window.temeState.searchData.razred);
@@ -808,10 +866,10 @@ function initTemeSection() {
                     window.temeInsertRows.forEach((row, index) => {
                         renderInsertRow(index);
                         // Restore data into inputs
-                        const newRow = $(`.teme_insert_row[data - row - index= "${index}"]`);
+                        const newRow = $(`.teme_insert_row[data-row-index="${index}"]`);
                         if (row.data) {
                             Object.keys(row.data).forEach(key => {
-                                newRow.find(`[data - field= "${key}"]`).val(row.data[key]);
+                                newRow.find(`[data-field="${key}"]`).val(row.data[key]);
                             });
                         }
                         // Re-bind popup
@@ -859,6 +917,15 @@ function initTemeSection() {
                 displayDogadjajiResults(window.temeState.dogadjajiResults);
                 $('#teme_dogadjaji_podaci').collapse('show');
             }
+
+            // RESTORE NOVO INSERT ROWS (Persistence Fix)
+            if (window.temeInsertRows && window.temeInsertRows.length > 0) {
+                for (let i = 0; i < window.temeInsertRows.length; i++) {
+                    renderInsertRow(i);
+                }
+                $('#teme_predlozi_row').show();
+                $('#teme_novo_podaci').collapse('show');
+            }
         }, 300);
     }
 
@@ -886,7 +953,7 @@ function initTemeSection() {
     // Initialize Bootstrap collapse properly
     console.log('=== Initializing collapse ===');
     // toggle: false prevents auto-toggling on init
-    $('#teme_dogadjaji_podaci, #teme_novo_podaci').collapse({ toggle: false });
+    $('#teme_dogadjaji_podaci, #teme_novo_podaci, #teme_objasnjenje_podaci').collapse({ toggle: false });
 
     // Ensure dogadjaji section does NOT have inline display: block from previous show() calls
     $('#teme_dogadjaji_podaci').css('display', '');

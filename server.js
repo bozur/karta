@@ -345,7 +345,7 @@ app.post('/api/comments/:id/upvote', async (req, res) => {
 app.get('/api/v2/themes', async (req, res) => {
     try {
         const pool = await poolPromise;
-        const result = await pool.request().query('SELECT id, naziv FROM teme ORDER BY id');
+        const result = await pool.request().query('SELECT id, naziv, opis FROM teme ORDER BY id');
         console.log('Themes fetched:', result.recordset);
         res.json({ themes: result.recordset });
     } catch (err) {
