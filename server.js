@@ -428,7 +428,7 @@ app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req,
         const { naziv, opis, tema_id, tagovi } = req.body;
         const korisnik_id = req.session.user.id;
         // 4. Required fields validation
-        if (!naziv || !tema_id || !tagovi) {
+        if (!naziv || !tema_id || !opis || !tagovi) {
             fs.unlinkSync(req.file.path);
             return res.status(400).json({ error: 'Сва поља морају бити попуњена' });
         }
