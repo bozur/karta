@@ -995,6 +995,79 @@ function initTemeSection() {
 
     console.log('Handlers attached');
 
+    // --- SYNC DELETION: Removed from map -> Remove from sidebar ---
+    karta.off('draw:deleted').on('draw:deleted', function (e) {
+        var layers = e.layers;
+        layers.eachLayer(function (layer) {
+            // Find index in temeInsertRows
+            // Because removing items shifts indices, we must be careful.
+            // However, Leaflet ID should be unique.
+            if (window.temeInsertRows && window.temeInsertRows.length > 0) {
+                // Find the index. We iterate assuming unique layers.
+                let foundIndex = -1;
+                for (let i = 0; i < window.temeInsertRows.length; i++) {
+                    if (window.temeInsertRows[i].layer === layer || window.temeInsertRows[i].layer._leaflet_id === layer._leaflet_id) {
+                        foundIndex = i;
+                        break;
+                    }
+                }
+
+                if (foundIndex !== -1) {
+                    console.log(`Sync deletion: Removing row ${foundIndex} for layer ${layer._leaflet_id}`);
+                    removeInsertRow(foundIndex);
+                }
+            }
+        });
+    });
+
+    // --- SYNC EDITING: Modified on map -> Update sidebar coordinates ---
+    karta.off('draw:edited').on('draw:edited', function (e) {
+        var layers = e.layers;
+        layers.eachLayer(function (layer) {
+            if (window.temeInsertRows && window.temeInsertRows.length > 0) {
+                let foundRow = null;
+                let foundIndex = -1;
+
+                for (let i = 0; i < window.temeInsertRows.length; i++) {
+                    if (window.temeInsertRows[i].layer === layer || window.temeInsertRows[i].layer._leaflet_id === layer._leaflet_id) {
+                        foundRow = window.temeInsertRows[i];
+                        foundIndex = i;
+                        break;
+                    }
+                }
+
+                if (foundRow) {
+                    console.log(`Sync editing: Updating coords for row ${foundIndex}`);
+                    // Update coordinates based on layer type
+                    if (layer instanceof L.Marker) {
+                        foundRow.tacke = JSON.stringify([layer.getLatLng().lat, layer.getLatLng().lng]);
+                    } else if (layer instanceof L.Polyline || layer instanceof L.Polygon) {
+                        // Simplify for storage: array of [lat, lng] arrays
+                        const latlngs = layer.getLatLngs();
+                        // Handle nested arrays (multipolygons) if necessary, strictly flattened for now as per previous logic
+                        // Assuming simple polygon/polyline for basic implementation matching existing add logic
+                        let points = [];
+                        if (Array.isArray(latlngs[0])) { // Polygon default structure often nested
+                            latlngs[0].forEach(ll => points.push([ll.lat, ll.lng]));
+                        } else {
+                            latlngs.forEach(ll => points.push([ll.lat, ll.lng]));
+                        }
+                        foundRow.tacke = JSON.stringify(points);
+                    }
+
+                    // Update the hidden input in the sidebar
+                    const rowElement = $(`#teme_insert_row_${foundIndex}`);
+                    if (rowElement.length) {
+                        rowElement.find('input[data-field="koordinate"]').val(foundRow.tacke);
+                        // Also highlight to indicate update
+                        rowElement.css('background-color', '#fff3cd');
+                        setTimeout(() => rowElement.css('background-color', ''), 500);
+                    }
+                }
+            }
+        });
+    });
+
     // Initialize clustering toggle listener
     $('#gr_cluster_checkbox').off('change').on('change', function () {
         // If we have search results, re-render markers
