@@ -57,8 +57,15 @@
 
 <div id="teme_content">
     <!-- Тражи Section -->
-    <div id="teme_trazi" class="mt-2"><strong>тражи</strong> <span class="bi bi-arrows-expand ml-2"
-            data-toggle="collapse" data-target="#teme_trazi_podaci"></span>
+    <div id="teme_trazi" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <div>
+            <strong>тражи</strong> <span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#teme_trazi_podaci"></span>
+        </div>
+        <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="gr_cluster_checkbox">
+            <label class="custom-control-label" for="gr_cluster_checkbox" style="font-size: 0.9rem;">групиши</label>
+        </div>
     </div>
     <div id="teme_trazi_podaci" class="collapse show">
         <form id="form_trazi">
@@ -124,10 +131,6 @@
             <div class="form-row mt-2">
                 <div class="col">
                     <div id="teme_alert_area" style="color: orange; display: none;"></div>
-                </div>
-                <div class="custom-control custom-checkbox mr-3 align-self-center">
-                    <input type="checkbox" class="custom-control-input" id="gr_cluster_checkbox">
-                    <label class="custom-control-label" for="gr_cluster_checkbox">групиши</label>
                 </div>
                 <button type="submit" class="btn btn-white border border-dark">тражи</button>
                 <div class="spinner-border text-secondary spinner-border-sm m-2" id="form_trazi_cekanje" role="status"

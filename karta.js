@@ -136,8 +136,8 @@ $(document).ready(function () {
             $.getJSON('api/points/' + idpoint + '?table=' + tabela, function (data) {
                 console.log(data);
                 var vrem, pros;
-                if (data.vremenski == '1') { vrem = "тачно"; } else { vrem = "оквирно"; }
-                if (data.prostorno == '1') { pros = "тачно"; } else { pros = "оквирно"; }
+                if (data.vremenski == '1') { vrem = "одређено"; } else { vrem = "неодређено"; }
+                if (data.prostorno == '1') { pros = "одређено"; } else { pros = "неодређено"; }
 
                 function formatDate(dateStr) {
                     if (!dateStr) return '';

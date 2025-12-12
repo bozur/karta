@@ -204,10 +204,8 @@ function handleTemeSearch(e) {
     // Update Clarification Section
     if (window.temeMetadata && window.temeMetadata[window.lastSelectedTeme] && window.temeMetadata[window.lastSelectedTeme].opis) {
         $('#teme_objasnjenje_content').text(window.temeMetadata[window.lastSelectedTeme].opis);
-        $('#teme_objasnjenje_podaci').collapse('show');
     } else {
         $('#teme_objasnjenje_content').text("тема није изабрана");
-        $('#teme_objasnjenje_podaci').collapse('show');
     }
 
     // Perform actual search via API
