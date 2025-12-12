@@ -6,8 +6,12 @@ $(document).ready(function () {
 
     // Event handler for contact subject selection
     $('#kontakt_izbor').on('change', function () {
-        // Load description from kontakt.txt based on selection
-        $("#kontakt_opis").load("kontakt.txt #kontakt_p" + this.value);
+        // Hide all description divs
+        $('#kontakt_opis > div').hide();
+
+        // Show the selected description div
+        const selectedValue = this.value;
+        $('#kontakt_p' + selectedValue).show();
     });
 
     // TODO: Implement contact form submission
