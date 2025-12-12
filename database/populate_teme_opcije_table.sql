@@ -3,6 +3,7 @@
 -- Migrated from karta.js table array
 -- Database: MSSQL (SQL Server)
 -- Created: 2025-11-30
+-- Updated: 2025-12-06 (Reflected requested changes for IDs 4, 5, 6)
 -- ============================================
 
 -- Theme 1: напади на објекте СПЦ (ID=1)
@@ -71,27 +72,37 @@ INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (3, 'vrsta', 4
 -- podvrsta options: empty (no entries)
 
 -- Theme 4: логори за Србе (ID=4)
--- razred options
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 0, N'радни');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 1, N'војни');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 2, N'за истребљење');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 3, N'дјечији');
+-- razred: хрватски/бугарски/њемачки/турски/шиптарски/талијански/комунистички
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 0, N'хрватски');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 1, N'бугарски');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 2, N'њемачки');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 3, N'турски');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 4, N'шиптарски');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 5, N'талијански');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 6, N'комунистички');
 
--- vrsta options: empty (no entries)
--- podvrsta options: empty (no entries)
+-- vrsta: војни/политички/цивилни/општи
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'vrsta', 0, N'војни');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'vrsta', 1, N'политички');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'vrsta', 2, N'цивилни');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'vrsta', 3, N'општи');
 
--- Theme 5: страдања људи (ID=5)
--- razred options
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 0, N'Србин');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 1, N'Шиптар');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 2, N'Турчин');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 3, N'Бугарин');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 4, N'Маџар');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 5, N'Циган');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 6, N'Хрват');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 7, N'Муслиман');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 8, N'Талијан');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 9, N'Нијемац');
+-- podvrsta: радни/сабирни/за истребљење
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'podvrsta', 0, N'радни');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'podvrsta', 1, N'сабирни');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'podvrsta', 2, N'за истребљење');
+
+-- Theme 5: страдања Срба (ID=5)
+-- razred options: од Грка/од Турака/од Нијемаца/од Маџара/од Бугара/од Хрвата/од босанских муслимана/од Шиптара/од Талијана
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 0, N'од Грка');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 1, N'од Турака');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 2, N'од Нијемаца');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 3, N'од Маџара');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 4, N'од Бугара');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 5, N'од Хрвата');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 6, N'од босанских муслимана');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 7, N'од Шиптара');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 8, N'од Талијана');
 
 -- vrsta options
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'vrsta', 0, N'човјек');
@@ -108,21 +119,31 @@ INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'podvrsta'
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'podvrsta', 4, N'протјеривање');
 
 -- Theme 6: границе (ID=6)
--- razred options
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'razred', 0, N'царство');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'razred', 1, N'каљевство');
+-- razred: царевина/краљевина/кнежевина/деспотовина/војводство/република
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'razred', 0, N'царевина');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'razred', 1, N'краљевина');
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'razred', 2, N'кнежевина');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'razred', 3, N'војводство');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'razred', 4, N'репоблика');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'razred', 3, N'деспотовина');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'razred', 4, N'војводство');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'razred', 5, N'република');
 
--- vrsta options
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 0, N'сербско');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 1, N'маџарско');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 2, N'бугарско');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 3, N'грчко');
-INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 4, N'турско');
+-- vrsta: Србска/Руска/Немачка/Римска/Бугарска/Турска
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 0, N'Србска');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 1, N'Руска');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 2, N'Немачка');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 3, N'Римска');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 4, N'Бугарска');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'vrsta', 5, N'Турска');
 
--- podvrsta options: empty (no entries)
+-- podvrsta: плава/црвена/сива/црна/зелена/жута/наранџаста/бела
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'podvrsta', 0, N'плава');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'podvrsta', 1, N'црвена');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'podvrsta', 2, N'сива');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'podvrsta', 3, N'црна');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'podvrsta', 4, N'зелена');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'podvrsta', 5, N'жута');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'podvrsta', 6, N'наранџаста');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (6, 'podvrsta', 7, N'бела');
 
 -- Verify insertion
 SELECT 
