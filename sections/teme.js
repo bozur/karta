@@ -226,26 +226,52 @@ function handleTemeSearch(e) {
             window.temeState.timeSpan = window.temeSearchTimeSpan;
 
 
-            // Remove previous GeoJSON layer if exists
-            if (typeof addedGeoJSON !== 'undefined' && !$.isEmptyObject(addedGeoJSON)) {
-                karta.removeLayer(addedGeoJSON);
-            }
-
-            // Add new GeoJSON layer with markers
-            if (typeof window.addedGeoJSON === 'undefined') {
+            // Remove previous layers
+            if (typeof window.addedGeoJSON !== 'undefined' && window.addedGeoJSON) {
+                karta.removeLayer(window.addedGeoJSON);
                 window.addedGeoJSON = null;
             }
+            if (typeof window.temeClusterLayer !== 'undefined' && window.temeClusterLayer) {
+                karta.removeLayer(window.temeClusterLayer);
+                window.temeClusterLayer = null;
+            }
 
-            window.addedGeoJSON = L.geoJSON(data, {
-                pointToLayer: function (feature, latlng) {
-                    return L.marker(latlng, {
-                        icon: typeof window.createIcon === 'function'
-                            ? window.createIcon(feature.properties.r, searchData.tabela)
-                            : new L.Icon.Default()
-                    });
-                },
-                onEachFeature: typeof window.onEachFeature === 'function' ? window.onEachFeature : function () { }
-            }).addTo(karta);
+            // Check if clustering is enabled
+            const groupingEnabled = $('#gr_cluster_checkbox').is(':checked');
+
+            if (groupingEnabled) {
+                // Initialize MarkerClusterGroup
+                window.temeClusterLayer = L.markerClusterGroup();
+
+                const geoJsonLayer = L.geoJSON(data, {
+                    pointToLayer: function (feature, latlng) {
+                        return L.marker(latlng, {
+                            icon: typeof window.createIcon === 'function'
+                                ? window.createIcon(feature.properties.r, searchData.tabela)
+                                : new L.Icon.Default()
+                        });
+                    },
+                    onEachFeature: typeof window.onEachFeature === 'function' ? window.onEachFeature : function () { }
+                });
+
+                window.temeClusterLayer.addLayer(geoJsonLayer);
+                karta.addLayer(window.temeClusterLayer);
+
+                // Store reference for consistency
+                window.addedGeoJSON = window.temeClusterLayer;
+            } else {
+                // Standard GeoJSON Layer
+                window.addedGeoJSON = L.geoJSON(data, {
+                    pointToLayer: function (feature, latlng) {
+                        return L.marker(latlng, {
+                            icon: typeof window.createIcon === 'function'
+                                ? window.createIcon(feature.properties.r, searchData.tabela)
+                                : new L.Icon.Default()
+                        });
+                    },
+                    onEachFeature: typeof window.onEachFeature === 'function' ? window.onEachFeature : function () { }
+                }).addTo(karta);
+            }
 
             // Fit map bounds to show all markers
             if (window.addedGeoJSON && !$.isEmptyObject(window.addedGeoJSON)) {
@@ -254,14 +280,10 @@ function handleTemeSearch(e) {
 
             // Show the алат checkbox after successful search
             $('#teme_alat_container').show();
-            // Restore checkbox state if saved, or default to false/true?
-            // Actually, keep it as is.
 
             // Search for događaji regardless of time span
             const od = $('#od').val();
             const doDate = $('#do').val();
-            // Pass true as third argument to force refresh logic if needed, 
-            // but fundamentally we just call the search
             searchDogadjajiForTeme(od, doDate);
         },
         error: function () {
@@ -974,6 +996,59 @@ function initTemeSection() {
     });
 
     console.log('Handlers attached');
+
+    // Initialize clustering toggle listener
+    $('#gr_cluster_checkbox').off('change').on('change', function () {
+        // If we have search results, re-render markers
+        if (window.temeState && window.temeState.searchResults) {
+            const data = window.temeState.searchResults;
+            const searchData = window.temeState.searchData || { tabela: window.lastSelectedTeme }; // Use saved searchData or fallback
+
+            // Remove previous layers
+            if (typeof window.addedGeoJSON !== 'undefined' && window.addedGeoJSON) {
+                karta.removeLayer(window.addedGeoJSON);
+                window.addedGeoJSON = null;
+            }
+            if (typeof window.temeClusterLayer !== 'undefined' && window.temeClusterLayer) {
+                karta.removeLayer(window.temeClusterLayer);
+                window.temeClusterLayer = null;
+            }
+
+            const groupingEnabled = $(this).is(':checked');
+
+            if (groupingEnabled) {
+                // Initialize MarkerClusterGroup
+                window.temeClusterLayer = L.markerClusterGroup();
+
+                const geoJsonLayer = L.geoJSON(data, {
+                    pointToLayer: function (feature, latlng) {
+                        return L.marker(latlng, {
+                            icon: typeof window.createIcon === 'function'
+                                ? window.createIcon(feature.properties.r, searchData.tabela)
+                                : new L.Icon.Default()
+                        });
+                    },
+                    onEachFeature: typeof window.onEachFeature === 'function' ? window.onEachFeature : function () { }
+                });
+
+                window.temeClusterLayer.addLayer(geoJsonLayer);
+                karta.addLayer(window.temeClusterLayer);
+                window.addedGeoJSON = window.temeClusterLayer;
+            } else {
+                // Standard GeoJSON Layer
+                window.addedGeoJSON = L.geoJSON(data, {
+                    pointToLayer: function (feature, latlng) {
+                        return L.marker(latlng, {
+                            icon: typeof window.createIcon === 'function'
+                                ? window.createIcon(feature.properties.r, searchData.tabela)
+                                : new L.Icon.Default()
+                        });
+                    },
+                    onEachFeature: typeof window.onEachFeature === 'function' ? window.onEachFeature : function () { }
+                }).addTo(karta);
+            }
+        }
+    });
 }
 
 // Export for dynamic section loading
