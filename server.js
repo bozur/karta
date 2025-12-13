@@ -155,7 +155,11 @@ app.get('/api/points/:id', async (req, res) => {
 
 // POST /api/search (Replaces back/test5.asp)
 app.post('/api/search', async (req, res) => {
-    const { tabela, vrsta, podvrsta, razred, prostorno, vremenski, izvor, opis } = req.body;
+    const { tabela, vrsta, podvrsta, razred, prostorno, vremenski, izvor, opis, od, do: doDate } = req.body;
+
+    console.log('--- Search Request ---');
+    console.log('Tabela:', tabela);
+    console.log('OD:', od, 'DO:', doDate);
 
     // Basic validation for table name
     if (!/^\d+$/.test(tabela)) {
@@ -192,17 +196,40 @@ app.post('/api/search', async (req, res) => {
             request.input('vremenski', sql.NVarChar, `%${vremenski}%`);
         }
         if (izvor && izvor !== '-1') {
-            conditions.push("LEN(ISNULL(LTRIM(RTRIM(izvor)),'')) > @izvorLen");
-            request.input('izvorLen', sql.Int, parseInt(izvor));
+            if (izvor === '1') {
+                conditions.push("(zapis IS NOT NULL OR LEN(ISNULL(izvor,'')) > 20)");
+            } else {
+                conditions.push("(zapis IS NULL AND LEN(ISNULL(izvor,'')) <= 20)");
+            }
         }
         if (opis) {
             conditions.push("opis LIKE @opis");
             request.input('opis', sql.NVarChar, `%${opis}%`);
         }
 
+        // Time span filtering - Direct DateTime2
+        // User confirmed column is datetime2. Input is YYYY-MM-DD HH:mm from Flatpickr.
+        // We just append seconds if missing to be safe for SQL parsing.
+
+        if (od) {
+            conditions.push("vrijeme0 >= @od");
+            // Flatpickr sends "YYYY-MM-DD HH:mm". SQL DateTime2 prefers "YYYY-MM-DD HH:mm:ss" or just date.
+            // We append ':00' if it looks like it lacks seconds (length 16).
+            const odVal = od.length === 16 ? od + ':00' : od;
+            request.input('od', sql.DateTime2, odVal);
+        }
+        if (doDate) {
+            conditions.push("vrijeme1 <= @do");
+            const doVal = doDate.length === 16 ? doDate + ':59' : doDate; // End of range inclusive
+            request.input('do', sql.DateTime2, doVal);
+        }
+
         if (conditions.length > 0) {
             query += " WHERE " + conditions.join(" AND ");
         }
+
+        console.log('Query:', query);
+        // console.log('Params:', request.parameters); // Too verbose
 
         const result = await request.query(query);
 

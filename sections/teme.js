@@ -186,7 +186,9 @@ function handleTemeSearch(e) {
         prostorno: $('#prostorno').val(),
         vremenski: $('#vremenski').val(),
         izvor: $('#izvor').val(),
-        opis: $('#opis').val()
+        opis: $('#opis').val(),
+        od: $('#od').val(),
+        do: $('#do').val()
     };
 
     // Store time span for validation

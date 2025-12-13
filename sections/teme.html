@@ -15,8 +15,14 @@
         border-color: #6c757d !important;
     }
 
+    /* Flatpickr overrides for bootstrap theme compatibility */
+    .flatpickr-input {
+        background-color: white !important;
+    }
+
     #teme_dogadjaji_results table tr:hover {
         background-color: rgba(0, 0, 0, 0.05);
+    }
     }
 
     #teme_dogadjaji_results {
@@ -52,6 +58,9 @@
         font-size: 0.8rem;
     }
 </style>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/sr.js"></script>
 
 
 
@@ -64,7 +73,7 @@
         </div>
         <div class="custom-control custom-checkbox">
             <input type="checkbox" class="custom-control-input" id="gr_cluster_checkbox">
-            <label class="custom-control-label" for="gr_cluster_checkbox" style="font-size: 0.9rem;">групиши</label>
+            <label class="custom-control-label" for="gr_cluster_checkbox" style="font-size: 0.9rem;">скупи</label>
         </div>
     </div>
     <div id="teme_trazi_podaci" class="collapse show">
@@ -93,11 +102,13 @@
                         <option value="">подврста</option>
                     </select>
                 </div>
-                <div class="col">
-                    <input type="text" id="od" class="form-control" placeholder="од">
+            </div>
+            <div class="form-row">
+                <div class="col-6">
+                    <input type="text" id="od" class="form-control flatpickr-datetime" placeholder="од">
                 </div>
-                <div class="col">
-                    <input type="text" id="do" class="form-control" placeholder="до">
+                <div class="col-6">
+                    <input type="text" id="do" class="form-control flatpickr-datetime" placeholder="до">
                 </div>
             </div>
             <div class="form-row">
@@ -188,3 +199,38 @@
         </div>
     </div>
 </div>
+<script>
+    // Initialize Flatpickr when possible
+    function initFlatpickr() {
+        if (typeof flatpickr !== 'undefined') {
+            // Manually define Serbian Cyrillic
+            const SerbianCyrillic = {
+                weekdays: {
+                    shorthand: ["Нед", "Пон", "Уто", "Сре", "Чет", "Пет", "Суб"],
+                    longhand: ["Недеља", "Понедељак", "Уторак", "Среда", "Четвртак", "Петак", "Субота"]
+                },
+                months: {
+                    shorthand: ["Јан", "Феб", "Мар", "Апр", "Мај", "Јун", "Јул", "Авг", "Сеп", "Окт", "Нов", "Дец"],
+                    longhand: ["Јануар", "Фебруар", "Март", "Април", "Мај", "Јун", "Јул", "Август", "Септембар", "Октобар", "Новембар", "Децембар"]
+                },
+                firstDayOfWeek: 1,
+                weekAbbreviation: "Нед.",
+                rangeSeparator: " до ",
+                time_24hr: true
+            };
+
+            $(".flatpickr-datetime").flatpickr({
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                time_24hr: true,
+                locale: SerbianCyrillic
+            });
+            console.log("Flatpickr initialized");
+        } else {
+            console.warn("Flatpickr not loaded yet, retrying...");
+            setTimeout(initFlatpickr, 500);
+        }
+    }
+    // Try to init
+    initFlatpickr();
+</script>
