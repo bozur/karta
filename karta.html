@@ -68,6 +68,23 @@
       </div>
       <div class="dogadjaj_resize_handle"></div>
     </div>
+    <!-- Playback info layer - bottom positioned -->
+    <div id="playback_info_layer" class="dogadjaj_layer"
+      style="top: auto; bottom: 0; height: auto; display: none; z-index: 2000;">
+      <div class="dogadjaj_header">
+        <i class="bi bi-x" id="playback_close" style="cursor: pointer; float: right;"></i>
+      </div>
+      <div class="dogadjaj_content"
+        style="display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 20px; padding: 10px;">
+        <p id="playback_time_window" style="font-weight: bold; margin: 0;">-</p>
+        <div id="playback_controls" style="font-size: 1.5rem; display: flex; gap: 10px;">
+          <i class="bi bi-pause-btn-fill" id="playback_pause_btn" style="cursor: pointer; color: #6c757d;"
+            title="заустави"></i>
+          <i class="bi bi-stop-btn-fill" id="playback_stop_btn" style="cursor: pointer; color: #6c757d;"
+            title="прекини"></i>
+        </div>
+      </div>
+    </div>
     <div id="kartaid" style="width: 100%;"></div>
     <!-- Dynamic content container for navigation sections -->
     <div id="section-content" class="sloj_vidi"></div>

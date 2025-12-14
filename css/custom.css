@@ -278,6 +278,7 @@ div {
   text-align: justify;
   text-justify: inter-word;
 }
+
 /* Terms of Use (Uslovi) section styles */
 .terms-content {
   line-height: 1.6;
@@ -327,4 +328,28 @@ div {
 
 .terms-content .text-muted {
   color: #6c757d !important;
+}
+
+/* Playback layer specific styles */
+#playback_info_layer {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+}
+
+#playback_info_layer .dogadjaj_header {
+  display: none;
+}
+
+#playback_info_layer .dogadjaj_content {
+  padding: 5px 10px !important;
+  height: 40px;
+}
+
+/* Hover effects for all playback icons */
+#playback_start_btn:hover,
+#playback_pause_btn:hover,
+#playback_stop_btn:hover,
+#playback_close:hover {
+  color: #ff8c00 !important;
 }

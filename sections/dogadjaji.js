@@ -249,6 +249,7 @@ function displayDogadjajiResults(results) {
 
 // Global variable to store the current dogadjaj marker
 var currentDogadjajiMarker = null;
+window.currentDogadjajiMarker = currentDogadjajiMarker;
 
 function viewDogadjaj(id) {
     console.log('Viewing dogadjaj with ID:', id);
@@ -264,6 +265,11 @@ function viewDogadjaj(id) {
         .then(data => {
             if (data.success && data.results && data.results.length > 0) {
                 const dogadjaj = data.results[0];
+
+                // Debug: Log the raw date values
+                console.log('Događaj data:', dogadjaj);
+                console.log('Pocetak value:', dogadjaj.pocetak, 'Type:', typeof dogadjaj.pocetak);
+                console.log('Kraj value:', dogadjaj.kraj, 'Type:', typeof dogadjaj.kraj);
 
                 // Show dogadjaj details in top layer
                 showDogadjajLayer(dogadjaj);
@@ -296,6 +302,9 @@ function viewDogadjaj(id) {
                             .addTo(karta)
                             .bindPopup(dogadjaj.opis);
 
+                        // Sync with window variable for playback access
+                        window.currentDogadjajiMarker = currentDogadjajiMarker;
+
                         // Pan to marker without changing zoom
                         karta.panTo([lat, lng]);
                     } else {
@@ -311,10 +320,43 @@ function viewDogadjaj(id) {
         });
 }
 
+// Expose globally for playback integration
+window.viewDogadjaj = viewDogadjaj;
+
+// Parse Serbian date format "DD. MM. YYYY. HH:MM:SS" to Date object
+function parseSerbianDate(dateStr) {
+    if (!dateStr) return null;
+
+    // Match format: "14. 12. 1991. 18:23:00"
+    const match = dateStr.match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\.\s*(\d{1,2}):(\d{2}):(\d{2})/);
+    if (!match) {
+        console.warn('Could not parse Serbian date:', dateStr);
+        return null;
+    }
+
+    const [, day, month, year, hours, minutes, seconds] = match;
+    // Month is 0-indexed in JavaScript Date
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day),
+        parseInt(hours), parseInt(minutes), parseInt(seconds));
+}
+
+// Expose globally for playback integration
+window.parseSerbianDate = parseSerbianDate;
+
 // Format datetime for display
 function formatDateTime(dateTimeStr) {
     if (!dateTimeStr) return 'Није наведено';
+
+    // If it's already in Serbian format, return as-is
+    if (typeof dateTimeStr === 'string' && dateTimeStr.match(/\d{1,2}\.\s*\d{1,2}\.\s*\d{4}\.\s*\d{1,2}:\d{2}/)) {
+        return dateTimeStr;
+    }
+
     const date = new Date(dateTimeStr);
+
+    // Check if date is valid
+    if (isNaN(date.getTime())) return 'Није наведено';
+
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
@@ -345,7 +387,17 @@ function closeDogadjajLayer() {
     $('#dogadjaj_layer').removeClass('show');
     // Reset height to initial 35px
     $('#dogadjaj_layer').css('height', '35px');
+
+    // Also remove marker when closing layer
+    if (currentDogadjajiMarker) {
+        karta.removeLayer(currentDogadjajiMarker);
+        currentDogadjajiMarker = null;
+        window.currentDogadjajiMarker = null;
+    }
 }
+
+// Expose globally for playback integration
+window.closeDogadjajLayer = closeDogadjajLayer;
 
 // Initialize dogadjaj layer functionality
 function initDogadjajLayer() {

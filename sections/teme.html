@@ -165,8 +165,30 @@
             </table>
         </div>
     </div>
+    <!-- Playback Section -->
+    <div id="teme_playback" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>прикажи као снимак</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#teme_playback_podaci"></span></span>
+    </div>
+    <div id="teme_playback_podaci" class="collapse">
+        <div class="d-flex justify-content-between align-items-center p-2">
+            <div>
+                <span>почетак:</span> <span id="playback_min_val">-</span>
+            </div>
+            <div>
+                <span>крај:</span> <span id="playback_max_val">-</span>
+            </div>
+            <select id="playback_steps_select" class="form-control form-control-sm"
+                style="width: 70px; height: 30px; font-size: 0.9rem;">
+                <option value="10" selected>10</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <i class="bi bi-play-btn-fill" id="playback_start_btn"
+                style="font-size: 1.5rem; cursor: pointer; color: #6c757d;" title="Покрени"></i>
+        </div>
+    </div>
 
-    <!-- Појашњење Section -->
     <div id="teme_objasnjenje" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
         <span><strong>појашњење за изабрану тему</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#teme_objasnjenje_podaci"></span></span>

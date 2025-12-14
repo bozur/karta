@@ -104,6 +104,8 @@ $(document).ready(function () {
         position: 'left'
     });
     karta.addControl(sidebar);
+    window.sidebarControl = sidebar;
+
 
     $(document).on('click', '.detalji', function () {
         var idpoint = $(this).attr("pointinfo");

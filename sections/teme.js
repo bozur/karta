@@ -17,6 +17,19 @@ if (typeof window.temeMetadata === 'undefined') {
     window.temeMetadata = {};
 }
 
+if (typeof window.playbackState === 'undefined') {
+    window.playbackState = {
+        intervalId: null,
+        isRunning: false,
+        allMarkers: null,
+        currentStep: 0,
+        totalSteps: 100,
+        stepSizeDays: 0,
+        minDate: null,
+        maxDate: null
+    };
+}
+
 // Function to load teme content based on selected theme
 function loadTemeContent(valueSelected, isRestoring = false) {
     // Check if there are pending inserts
@@ -285,6 +298,11 @@ function handleTemeSearch(e) {
             const od = $('#od').val();
             const doDate = $('#do').val();
             searchDogadjajiForTeme(od, doDate);
+
+            // Update playback date range if playback section exists
+            if (typeof calculatePlaybackRange === 'function') {
+                calculatePlaybackRange();
+            }
         },
         error: function () {
             spinner.css('visibility', 'hidden');
@@ -1122,7 +1140,460 @@ function initTemeSection() {
             }
         }
     });
+    // Initialize playback UI
+    if (typeof initPlaybackUI === 'function') {
+        initPlaybackUI();
+    }
 }
 
 // Export for dynamic section loading
 window.initTemeSection = initTemeSection;
+
+// ==========================================
+// Playback (Time Lapse) Functionality
+// ==========================================
+
+if (typeof window.playbackState === 'undefined') {
+    window.playbackState = {
+        intervalId: null,
+        isRunning: false,
+        allMarkers: null,
+        currentStep: 0,
+        totalSteps: 100,
+        stepSizeDays: 0,
+        minDate: null,
+        maxDate: null
+    };
+}
+
+function initPlaybackUI() {
+    console.log('Initializing Playback UI events');
+
+    // Listen for collapse show to calculate min/max
+    $('#teme_playback_podaci').off('show.bs.collapse').on('show.bs.collapse', function () {
+        calculatePlaybackRange();
+    });
+
+    // Start button
+    $('#playback_start_btn').off('click').on('click', function () {
+        startPlayback();
+    });
+
+    // Close layer button
+    $(document).off('click', '#playback_close').on('click', '#playback_close', function () {
+        stopPlayback();
+    });
+
+    // Pause/Resume button
+    $(document).off('click', '#playback_pause_btn').on('click', '#playback_pause_btn', function () {
+        togglePausePlayback();
+    });
+
+    // Stop button
+    $(document).off('click', '#playback_stop_btn').on('click', '#playback_stop_btn', function () {
+        stopPlayback();
+    });
+}
+
+function calculatePlaybackRange() {
+    if (!window.temeState || !window.temeState.searchResults || !window.temeState.searchResults.features) {
+        // No search results - show empty state
+        $('#playback_empty_state').show();
+        $('#playback_controls_container').hide();
+        return;
+    }
+
+    const features = window.temeState.searchResults.features;
+
+    // Check if there are any features
+    if (features.length === 0) {
+        // No features - show empty state
+        $('#playback_empty_state').show();
+        $('#playback_controls_container').hide();
+        return;
+    }
+
+    let minTime = null;
+    let maxTime = null;
+
+    features.forEach(f => {
+        const v0 = f.properties.v0; // vrijeme0
+        const v1 = f.properties.v1; // vrijeme1
+
+        if (v0) {
+            const d = new Date(v0).getTime();
+            if (!isNaN(d)) {
+                if (minTime === null || d < minTime) minTime = d;
+                if (maxTime === null || d > maxTime) maxTime = d;
+            }
+        }
+        if (v1) {
+            const d = new Date(v1).getTime();
+            if (!isNaN(d)) {
+                if (minTime === null || d < minTime) minTime = d;
+                if (maxTime === null || d > maxTime) maxTime = d;
+            }
+        }
+    });
+
+    if (minTime !== null && maxTime !== null) {
+        // We have valid time data - show controls
+        $('#playback_empty_state').hide();
+        $('#playback_controls_container').show();
+
+        window.playbackState.minDate = minTime;
+        window.playbackState.maxDate = maxTime;
+
+        // Format dates for display
+        const minDateObj = new Date(minTime);
+        const maxDateObj = new Date(maxTime);
+
+        $('#playback_min_val').text(formatDateForDisplay(minDateObj));
+        $('#playback_max_val').text(formatDateForDisplay(maxDateObj));
+    } else {
+        // No valid time data - show empty state
+        $('#playback_empty_state').show();
+        $('#playback_controls_container').hide();
+        window.playbackState.minDate = null;
+        window.playbackState.maxDate = null;
+    }
+}
+
+function formatDateForDisplay(date) {
+    return date.getDate() + '.' + (date.getMonth() + 1) + '.' + date.getFullYear() + '.';
+}
+
+function startPlayback() {
+    console.log('--- startPlayback called ---');
+
+    // Safety check: if already running, stop it first to reset
+    if (window.playbackState.isRunning) {
+        console.warn('Playback already running, stopping first...');
+        stopPlayback();
+    }
+
+    // Recalculate to be sure
+    calculatePlaybackRange();
+
+    if (window.playbackState.minDate === null || window.playbackState.maxDate === null) {
+        alert('Нема валидних временских података за приказ (недостају вријеме0/вријеме1).');
+        return;
+    }
+
+    if (window.playbackState.minDate === window.playbackState.maxDate) {
+        alert('Минимално и максимално вријеме су исти, анимација није могућа.');
+        return;
+    }
+
+    // Check for searchData availability (needed for icons)
+    if (!window.temeState || !window.temeState.searchData) {
+        alert('Подаци о претрази недостају. Молимо поновите претрагу.');
+        return;
+    }
+
+    // Prepare state
+    window.playbackState.isRunning = true;
+    window.playbackState.isPaused = false;
+    window.playbackState.currentStep = 0;
+    window.playbackState.currentDogadjajId = null;
+
+    // Read step count from dropdown
+    const selectedSteps = parseInt($('#playback_steps_select').val()) || 100;
+    window.playbackState.totalSteps = selectedSteps;
+
+    // Reset Pause icon to Pause state (in case it was Play)
+    $('#playback_pause_btn').removeClass('bi-play-btn-fill').addClass('bi-pause-btn-fill').attr('title', 'заустави');
+
+    // Calculate step size: (max - min) / totalSteps
+    const diff = window.playbackState.maxDate - window.playbackState.minDate;
+    window.playbackState.stepSizeDays = diff / window.playbackState.totalSteps;
+
+    console.log('Starting playback: Steps', window.playbackState.totalSteps, 'Step Size', window.playbackState.stepSizeDays);
+
+    try {
+        // Close teme tab content (RIGHT PANEL)
+        $('#section-content').removeClass('in');
+
+        // Close sidebar (LEFT PANEL)
+        if (typeof window.sidebarControl !== 'undefined') {
+            window.sidebarControl.hide();
+        } else if (typeof sidebar !== 'undefined') {
+            sidebar.hide();
+        }
+
+        // Show bottom layer - Force visible styles just in case
+        $('#playback_info_layer').css({
+            'display': 'block',
+            'z-index': 2000,
+            'top': 'auto',
+            'bottom': '0'
+        }).show();
+
+        console.log('Layer shown');
+
+        // Start loop
+        // Run first step immediately
+        try {
+            updatePlaybackStep();
+        } catch (e) {
+            console.error('Error in initial updatePlaybackStep:', e);
+            throw e; // Re-throw to trigger stopPlayback
+        }
+
+        window.playbackState.intervalId = setInterval(function () {
+            window.playbackState.currentStep++;
+            if (window.playbackState.currentStep >= window.playbackState.totalSteps) {
+                // End of show
+                stopPlayback();
+            } else {
+                try {
+                    updatePlaybackStep();
+                } catch (e) {
+                    console.error('Error in playback loop:', e);
+                    stopPlayback();
+                }
+            }
+        }, 3000); // 3 seconds per step
+
+        console.log('Interval started');
+
+    } catch (err) {
+        console.error('Critical error in startPlayback:', err);
+        alert('Дошло је до грешке при покретању репродукције: ' + err.message);
+        stopPlayback();
+    }
+}
+
+function updatePlaybackStep() {
+    // Check state validity
+    if (!window.playbackState.isRunning) return;
+
+    const start = window.playbackState.minDate + (window.playbackState.currentStep * window.playbackState.stepSizeDays);
+    const end = start + window.playbackState.stepSizeDays;
+
+    // Update layer text
+    const startStr = formatDateForDisplay(new Date(start));
+    const endStr = formatDateForDisplay(new Date(end));
+    const infoText = `${startStr} - ${endStr}`;
+
+    const layer = $('#playback_time_window');
+    if (layer.length) {
+        layer.text(infoText);
+    } else {
+        console.warn('Playback info layer text element not found!');
+    }
+
+    // Update markers on map
+    if (!window.temeState || !window.temeState.searchResults || !window.temeState.searchResults.features) return;
+
+    // Filter features
+    const matchingFeatures = window.temeState.searchResults.features.filter(f => isFeatureInWindow(f, start, end));
+
+    // console.log(`Step ${window.playbackState.currentStep}: showing ${matchingFeatures.length} features for range ${infoText}`);
+
+    // Display
+    const tabelaId = window.temeState.searchData ? window.temeState.searchData.tabela : null;
+
+    if (window.temeClusterLayer) {
+        // Using clustering
+        window.temeClusterLayer.clearLayers();
+
+        if (matchingFeatures.length > 0) {
+            const geoJsonLayer = L.geoJSON({
+                type: "FeatureCollection",
+                features: matchingFeatures
+            }, {
+                pointToLayer: function (feature, latlng) {
+                    return L.marker(latlng, {
+                        icon: typeof window.createIcon === 'function' && tabelaId
+                            ? window.createIcon(feature.properties.r, tabelaId)
+                            : new L.Icon.Default()
+                    });
+                },
+                onEachFeature: typeof window.onEachFeature === 'function' ? window.onEachFeature : function () { }
+            });
+            window.temeClusterLayer.addLayer(geoJsonLayer);
+        }
+
+    } else if (window.addedGeoJSON) {
+        // Standard Layer
+        window.addedGeoJSON.clearLayers();
+        if (matchingFeatures.length > 0) {
+            window.addedGeoJSON.addData({
+                type: "FeatureCollection",
+                features: matchingFeatures
+            });
+        }
+    }
+
+    // Check for događaji in current time window
+    if (window.temeState && window.temeState.dogadjajiResults && window.temeState.dogadjajiResults.length > 0) {
+        let matchingDogadjaj = null;
+
+        for (const dogadjaj of window.temeState.dogadjajiResults) {
+            // Use parseSerbianDate to handle Serbian date format
+            let pocetakTime = null;
+            let krajTime = null;
+
+            if (dogadjaj.pocetak) {
+                const pocetakDate = typeof window.parseSerbianDate === 'function'
+                    ? window.parseSerbianDate(dogadjaj.pocetak)
+                    : new Date(dogadjaj.pocetak);
+                pocetakTime = pocetakDate ? pocetakDate.getTime() : null;
+            }
+
+            if (dogadjaj.kraj) {
+                const krajDate = typeof window.parseSerbianDate === 'function'
+                    ? window.parseSerbianDate(dogadjaj.kraj)
+                    : new Date(dogadjaj.kraj);
+                krajTime = krajDate ? krajDate.getTime() : null;
+            }
+
+            // Check if događaj overlaps with current window
+            const overlaps = (pocetakTime && pocetakTime >= start && pocetakTime < end) ||
+                (krajTime && krajTime >= start && krajTime < end) ||
+                (pocetakTime && krajTime && pocetakTime <= start && krajTime >= end);
+
+            if (overlaps) {
+                matchingDogadjaj = dogadjaj;
+                break; // Show first matching događaj
+            }
+        }
+
+        if (matchingDogadjaj && matchingDogadjaj.id !== window.playbackState.currentDogadjajId) {
+            // New događaj in window - show it
+            console.log('Showing događaj:', matchingDogadjaj.id, matchingDogadjaj.opis);
+            window.playbackState.currentDogadjajId = matchingDogadjaj.id;
+
+            // Call the global viewDogadjaj function
+            if (typeof window.viewDogadjaj === 'function') {
+                window.viewDogadjaj(matchingDogadjaj.id);
+            } else {
+                console.error('window.viewDogadjaj function not found');
+            }
+        } else if (!matchingDogadjaj && window.playbackState.currentDogadjajId !== null) {
+            // No događaj in current window - close layer and remove marker
+            console.log('Closing događaj layer and removing marker - no events in window');
+            window.playbackState.currentDogadjajId = null;
+
+            // Close layer using global function (also removes marker)
+            if (typeof window.closeDogadjajLayer === 'function') {
+                window.closeDogadjajLayer();
+            } else {
+                $('#dogadjaj_layer').removeClass('show');
+            }
+
+            // Remove marker (fallback if closeDogadjajLayer didn't handle it)
+            if (typeof window.currentDogadjajiMarker !== 'undefined' && window.currentDogadjajiMarker !== null) {
+                karta.removeLayer(window.currentDogadjajiMarker);
+                window.currentDogadjajiMarker = null;
+            }
+        }
+    }
+}
+
+function isFeatureInWindow(feature, start, end) {
+    // If the "vrijme0" or "vrijeme1" of particular object are inside one of the calculated time windows
+    // "vrijme0" or "vrijeme1" ... equal or higher of time when specific time window starts and less than end
+
+    const v0Val = feature.properties.v0;
+    const v1Val = feature.properties.v1;
+
+    const v0 = v0Val ? new Date(v0Val).getTime() : null;
+    const v1 = v1Val ? new Date(v1Val).getTime() : null;
+
+    if (v0 !== null && !isNaN(v0)) {
+        if (v0 >= start && v0 < end) return true;
+    }
+
+    if (v1 !== null && !isNaN(v1)) {
+        if (v1 >= start && v1 < end) return true;
+    }
+
+    return false;
+}
+
+function stopPlayback() {
+    console.log('--- stopPlayback called ---');
+    if (window.playbackState.intervalId) {
+        clearInterval(window.playbackState.intervalId);
+    }
+    window.playbackState.isRunning = false;
+    window.playbackState.isPaused = false;
+    window.playbackState.intervalId = null;
+
+    // Hide layer
+    $('#playback_info_layer').hide();
+
+    // Close događaj layer if open
+    if (window.playbackState.currentDogadjajId !== null) {
+        window.playbackState.currentDogadjajId = null;
+        if (typeof closeDogadjajLayer === 'function') {
+            closeDogadjajLayer();
+        } else {
+            $('#dogadjaj_layer').removeClass('show');
+        }
+    }
+
+    // Restore UI: Open teme tab content
+    $('#section-content').addClass('in');
+
+    // Restore Sidebar if it was closed? 
+    // User requested: "right-side layer visible". This usually means the 'teme' content panel.
+    // If we want to be safe, we might show the sidebar too if it was previously open, but requirements say "right-side layer visible".
+
+    // Restore all markers
+    if (window.temeState && window.temeState.searchResults) {
+        const tabelaId = window.temeState.searchData ? window.temeState.searchData.tabela : null;
+
+        if (window.temeClusterLayer) {
+            window.temeClusterLayer.clearLayers();
+            const geoJsonLayer = L.geoJSON(window.temeState.searchResults, {
+                pointToLayer: function (feature, latlng) {
+                    return L.marker(latlng, {
+                        icon: typeof window.createIcon === 'function' && tabelaId
+                            ? window.createIcon(feature.properties.r, tabelaId)
+                            : new L.Icon.Default()
+                    });
+                },
+                onEachFeature: typeof window.onEachFeature === 'function' ? window.onEachFeature : function () { }
+            });
+            window.temeClusterLayer.addLayer(geoJsonLayer);
+        } else if (window.addedGeoJSON) {
+            window.addedGeoJSON.clearLayers();
+            window.addedGeoJSON.addData(window.temeState.searchResults);
+        }
+    }
+}
+
+function togglePausePlayback() {
+    if (!window.playbackState.isRunning) return;
+
+    const btn = $('#playback_pause_btn');
+
+    if (window.playbackState.isPaused) {
+        // RESUME
+        window.playbackState.isPaused = false;
+        btn.removeClass('bi-play-btn-fill').addClass('bi-pause-btn-fill').attr('title', 'заустави');
+
+        // Restart interval
+        window.playbackState.intervalId = setInterval(function () {
+            window.playbackState.currentStep++;
+            if (window.playbackState.currentStep >= window.playbackState.totalSteps) {
+                stopPlayback();
+            } else {
+                updatePlaybackStep();
+            }
+        }, 3000);
+
+    } else {
+        // PAUSE
+        window.playbackState.isPaused = true;
+        btn.removeClass('bi-pause-btn-fill').addClass('bi-play-btn-fill').attr('title', 'настави');
+
+        if (window.playbackState.intervalId) {
+            clearInterval(window.playbackState.intervalId);
+            window.playbackState.intervalId = null;
+        }
+    }
+}
