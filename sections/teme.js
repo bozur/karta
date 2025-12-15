@@ -248,6 +248,11 @@ function handleTemeSearch(e) {
                 karta.removeLayer(window.temeClusterLayer);
                 window.temeClusterLayer = null;
             }
+            // Remove submitted objects layer from previous sessions
+            if (typeof window.submittedObjectsLayer !== 'undefined' && window.submittedObjectsLayer) {
+                karta.removeLayer(window.submittedObjectsLayer);
+                window.submittedObjectsLayer = null;
+            }
 
             // Check if clustering is enabled
             const groupingEnabled = $('#gr_cluster_checkbox').is(':checked');
@@ -864,10 +869,226 @@ function clearInsertRows() {
 
 
 
+// Function to validate a single insert row
+function validateInsertRow(rowIndex) {
+    const row = window.temeInsertRows[rowIndex];
+    const rowElement = $(`.teme_insert_row[data-row-index="${rowIndex}"]`);
+    const data = row.data;
+    let isValid = true;
+    let errorMsg = null; // Store only the FIRST error message
+
+    // Reset styles
+    rowElement.find('input, select').css('border', '');
+
+    // 1. Validate Opis (Required, max 255) - First visually
+    if (!data.opis || data.opis.trim() === "") {
+        rowElement.find('input[data-field="opis"]').css('border', '1px solid red');
+        isValid = false;
+        if (!errorMsg) errorMsg = "Унесите опис.";
+    } else if (data.opis.length > 255) {
+        rowElement.find('input[data-field="opis"]').css('border', '1px solid red');
+        isValid = false;
+        if (!errorMsg) errorMsg = "Опис је предугачак (макс 255).";
+    }
+
+    // 2. Validate Razred (Required)
+    if (!data.razred || data.razred === "") {
+        rowElement.find('select[data-field="razred"]').css('border', '1px solid red');
+        isValid = false;
+        if (!errorMsg) errorMsg = "Изаберите разред.";
+    }
+
+    // 3. Validate Vrsta (Required if options exist)
+    const vrstaSelect = rowElement.find('select[data-field="vrsta"]');
+    if (vrstaSelect.find('option').length > 1 && (!data.vrsta || data.vrsta === "")) {
+        vrstaSelect.css('border', '1px solid red');
+        isValid = false;
+        if (!errorMsg) errorMsg = "Изаберите врсту.";
+    }
+
+    // 4. Validate Podvrsta (Required if options exist)
+    const podvrstaSelect = rowElement.find('select[data-field="podvrsta"]');
+    if (podvrstaSelect.find('option').length > 1 && (!data.podvrsta || data.podvrsta === "")) {
+        podvrstaSelect.css('border', '1px solid red');
+        isValid = false;
+        if (!errorMsg) errorMsg = "Изаберите подврсту.";
+    }
+
+    // 5. Validate Pocetak (Required)
+    if (!data.pocetak || data.pocetak === "") {
+        rowElement.find('input[data-field="pocetak"]').css('border', '1px solid red');
+        isValid = false;
+        if (!errorMsg) errorMsg = "Унесите вријеме почетка.";
+    }
+
+    // 6. Validate Time Window
+    // Ensure we have search parameters to validate against
+    if (window.temeSearchTimeSpan && window.temeSearchTimeSpan.od && window.temeSearchTimeSpan.do) {
+        const searchOd = new Date(window.temeSearchTimeSpan.od);
+        const searchDo = new Date(window.temeSearchTimeSpan.do);
+
+        let timeError = false;
+
+        if (data.pocetak) {
+            const pocetak = new Date(data.pocetak);
+            // Check for valid date
+            if (!isNaN(pocetak.getTime())) {
+                if (pocetak < searchOd || pocetak > searchDo) {
+                    rowElement.find('input[data-field="pocetak"]').css('border', '1px solid red');
+                    isValid = false;
+                    timeError = true;
+                }
+            }
+        }
+
+        if (data.kraj) {
+            const kraj = new Date(data.kraj);
+            if (!isNaN(kraj.getTime())) {
+                if (kraj < searchOd || kraj > searchDo) {
+                    rowElement.find('input[data-field="kraj"]').css('border', '1px solid red');
+                    isValid = false;
+                    timeError = true;
+                }
+            }
+        }
+
+        if (timeError && !errorMsg) {
+            errorMsg = "Временски распон мора бити унутар изабраног у претрази!";
+        }
+    } else {
+        // Fallback: If no search time span is active (e.g. page reload without search),
+        // we might want to warn or skip. For now, we skip as we can't validate against nothing.
+        // But if the user bypassed search (e.g. by some hack), we can't validate.
+        // Assuming normal flow: insert is only possible after search unlocks 'alat', so timeSpan should be there.
+    }
+
+    return { isValid, errorMsg: errorMsg || "" };
+}
+
 // Function to handle предложи button click
 function handlePredloziSubmit() {
-    console.log('Предложи clicked - functionality to be implemented');
-    // TODO: Implement API call to submit proposals
+    console.log('Предложи clicked');
+
+    // Clear previous alerts
+    $('#teme_novo_alert_area').hide().text('');
+
+    if (!window.temeInsertRows || window.temeInsertRows.length === 0) {
+        return;
+    }
+
+    let allValid = true;
+    let firstError = null;
+
+    // Validate all rows
+    for (let i = 0; i < window.temeInsertRows.length; i++) {
+        const result = validateInsertRow(i);
+        if (!result.isValid) {
+            allValid = false;
+            if (!firstError) firstError = result.errorMsg;
+        }
+    }
+
+    if (!allValid) {
+        $('#teme_novo_alert_area').text(firstError || "Попуните недостајуће вредности").show();
+        return;
+    }
+
+    // Prepare data for submission
+    const rowsToSubmit = window.temeInsertRows.map(row => {
+        // Prepare WKT or GeoJSON geometry for backend to handle
+        // We send the GeoJSON geometry object directly
+        return {
+            geometry: row.geometry,
+            ...row.data
+        };
+    });
+
+    // Disable button
+    $('#teme_predlozi_button').prop('disabled', true).text('Слање...');
+
+    // Post to API
+    $.ajax({
+        url: '/api/teme/insert',
+        type: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+            temaId: window.tabela || window.lastSelectedTeme,
+            rows: rowsToSubmit
+        }),
+        success: function (response) {
+            // Success handling
+
+            // 1. Show success message
+            const successMsg = $('<div class="alert alert-success mt-2" style="padding: 5px 10px; font-size: 0.9rem;">Подаци чекају на одобрење!</div>');
+            $('#teme_predlozi_row').prepend(successMsg);
+
+            // Close any open popup globally
+            karta.closePopup();
+
+            // Initialize global submitted objects layer if not exists
+            if (typeof window.submittedObjectsLayer === 'undefined' || !window.submittedObjectsLayer) {
+                window.submittedObjectsLayer = L.featureGroup().addTo(karta);
+            }
+
+            // 2. Update map objects visual style (grey, non-interactive)
+            window.temeInsertRows.forEach(row => {
+                if (row.layer) {
+                    // Update style based on layer type
+                    if (row.geometryType === 'marker' && row.layer instanceof L.Marker) {
+                        const latLng = row.layer.getLatLng();
+                        // Remove original from map/drawnItems
+                        karta.removeLayer(row.layer);
+                        if (typeof drawnItems !== 'undefined') drawnItems.removeLayer(row.layer);
+
+                        // Create grey persistent marker
+                        const greyMarker = L.circleMarker(latLng, {
+                            radius: 8,
+                            fillColor: 'grey',
+                            color: 'grey',
+                            weight: 1,
+                            opacity: 1,
+                            fillOpacity: 0.8
+                        }); // .addTo(window.submittedObjectsLayer); added below
+
+                        window.submittedObjectsLayer.addLayer(greyMarker);
+
+                    } else {
+                        // Polyline / Polygon
+                        if (row.layer.setStyle) {
+                            row.layer.setStyle({ color: 'grey', fillColor: 'grey' });
+                        }
+
+                        // Remove from map/drawnItems
+                        karta.removeLayer(row.layer);
+                        if (typeof drawnItems !== 'undefined') drawnItems.removeLayer(row.layer);
+
+                        // Add clone or same layer to persistent group
+                        window.submittedObjectsLayer.addLayer(row.layer);
+                    }
+                }
+            });
+
+            // 3. Clear insert rows data
+            window.temeInsertRows = [];
+            $('#teme_insert_rows_container').empty();
+            $('#teme_predlozi_button').hide(); // Hide the button instead of row to keep success msg
+
+            // 4. Fade out success message and restore UI state
+            setTimeout(() => {
+                successMsg.fadeOut(function () {
+                    $(this).remove();
+                    $('#teme_predlozi_row').hide();
+                    $('#teme_predlozi_button').show().prop('disabled', false).text('предложи');
+                });
+            }, 3000);
+
+        },
+        error: function (err) {
+            console.error('Error submitting data:', err);
+            $('#teme_novo_alert_area').text('Грешка при слању података: ' + (err.responseJSON?.error || err.statusText)).show();
+            $('#teme_predlozi_button').prop('disabled', false).text('предложи');
+        }
+    });
 }
 
 

@@ -429,7 +429,113 @@ app.get('/api/v2/theme-options/:tema_id', async (req, res) => {
     }
 });
 
-// POST /api/zapisi/upload - WITH ALL SECURITY FEATURES
+// POST /api/teme/insert (Insert new theme data)
+app.post('/api/teme/insert', async (req, res) => {
+    try {
+        // 1. Authenticate
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+
+        const { temaId, rows } = req.body;
+        const userId = req.session.user.id;
+
+        if (!temaId || !rows || !Array.isArray(rows) || rows.length === 0) {
+            return res.status(400).json({ error: 'Неисправни подаци' });
+        }
+
+        const tableName = `Table_${temaId}`;
+        // Basic SQL injection protection for table name
+        if (!/^\d+$/.test(temaId)) {
+            return res.status(400).json({ error: "Invalid theme ID" });
+        }
+
+        const pool = await poolPromise;
+
+        // Loop through rows and insert
+        for (const row of rows) {
+            const request = pool.request();
+
+            // Logic for tp and tv (1 if "одређено", 0 if "неодређено")
+            const tp = row.dp === 'одређено' ? '1' : (row.prostorno === 'одређено' ? '1' : '0'); // Field name is prostorno in frontend
+            const tv = row.vremenski === 'одређено' ? '1' : '0';
+
+            // Logic for kraj (if empty, use pocetak)
+            let pocetak = row.pocetak;
+            let kraj = row.kraj;
+            if (!kraj) kraj = pocetak;
+
+            // Ensure proper datetime format (append :00 if missing seconds)
+            if (pocetak && pocetak.length === 16) pocetak += ':00';
+            if (kraj && kraj.length === 16) kraj += ':00';
+
+            // Coordinates Conversion (GeoJSON -> WKT)
+            let wkt = null;
+            if (row.geometry) {
+                const geo = row.geometry;
+                const type = geo.type.toUpperCase();
+                const coords = geo.coordinates;
+
+                if (type === 'POINT') {
+                    // Coordinates: [lng, lat]
+                    wkt = `POINT (${coords[0]} ${coords[1]})`;
+                } else if (type === 'LINESTRING') {
+                    // Coordinates: [[lng, lat], [lng, lat], ...]
+                    const points = coords.map(c => `${c[0]} ${c[1]}`).join(', ');
+                    wkt = `LINESTRING (${points})`;
+                } else if (type === 'POLYGON') {
+                    // Coordinates: [[[lng, lat], ...]] (Leaflet usually nests polygons)
+                    // WKT expects closed ring (first point == last point)
+                    // Leaflet might not close it, but SQL often requires it.
+                    // Let's assume input is simple polygon
+                    let ring = coords[0];
+                    // Check if closed
+                    const first = ring[0];
+                    const last = ring[ring.length - 1];
+                    if (first[0] !== last[0] || first[1] !== last[1]) {
+                        ring.push(first);
+                    }
+                    const points = ring.map(c => `${c[0]} ${c[1]}`).join(', ');
+                    wkt = `POLYGON ((${points}))`;
+                }
+            }
+
+            if (!wkt) {
+                // If geometry is required this should be an error, but let's continue or skip
+                continue;
+            }
+
+            request.input('vrsta', sql.NVarChar, row.vrsta || null);
+            request.input('podvrsta', sql.NVarChar, row.podvrsta || null);
+            request.input('razred', sql.NVarChar, row.razred);
+            request.input('tp', sql.NVarChar, tp);
+            request.input('vrijeme0', sql.DateTime2, pocetak);
+            request.input('vrijeme1', sql.DateTime2, kraj);
+            request.input('tv', sql.NVarChar, tv);
+            request.input('opis', sql.NVarChar, row.opis);
+            request.input('izvor', sql.NVarChar, row.izvor || null);
+            request.input('dodao', sql.Int, userId);
+            request.input('zapis', sql.Int, row.zapis ? parseInt(row.zapis) : null);
+            // stanje defaults to '0'
+
+            // Note: We use query with specific parameter for WKT injection
+            const query = `
+                INSERT INTO ${tableName} 
+                (vrsta, podvrsta, razred, prostorno, tp, vrijeme0, vrijeme1, tv, opis, izvor, dodao, dodao_vrijeme, zapis, stanje)
+                VALUES 
+                (@vrsta, @podvrsta, @razred, geometry::STGeomFromText('${wkt}', 4326), @tp, @vrijeme0, @vrijeme1, @tv, @opis, @izvor, @dodao, SYSDATETIME(), @zapis, '0')
+            `;
+
+            await request.query(query);
+        }
+
+        res.json({ success: true });
+
+    } catch (err) {
+        console.error('Error in teme insert:', err);
+        res.status(500).json({ error: 'Грешка при упису података: ' + err.message });
+    }
+});
 app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req, res) => {
     try {
         // 1. Authentication check
