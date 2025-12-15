@@ -211,6 +211,9 @@ app.post('/api/search', async (req, res) => {
         // User confirmed column is datetime2. Input is YYYY-MM-DD HH:mm from Flatpickr.
         // We just append seconds if missing to be safe for SQL parsing.
 
+        // Filter to only show objects with stanje '1'
+        conditions.push("stanje = '1'");
+
         if (od) {
             conditions.push("vrijeme0 >= @od");
             // Flatpickr sends "YYYY-MM-DD HH:mm". SQL DateTime2 prefers "YYYY-MM-DD HH:mm:ss" or just date.
@@ -227,9 +230,6 @@ app.post('/api/search', async (req, res) => {
         if (conditions.length > 0) {
             query += " WHERE " + conditions.join(" AND ");
         }
-
-        console.log('Query:', query);
-        // console.log('Params:', request.parameters); // Too verbose
 
         const result = await request.query(query);
 

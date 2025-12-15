@@ -248,6 +248,7 @@ function handleTemeSearch(e) {
                 karta.removeLayer(window.temeClusterLayer);
                 window.temeClusterLayer = null;
             }
+
             // Remove submitted objects layer from previous sessions
             if (typeof window.submittedObjectsLayer !== 'undefined' && window.submittedObjectsLayer) {
                 karta.removeLayer(window.submittedObjectsLayer);
@@ -291,9 +292,16 @@ function handleTemeSearch(e) {
                 }).addTo(karta);
             }
 
-            // Fit map bounds to show all markers
+            // Fit map bounds to show all markers (only if there are layers)
             if (window.addedGeoJSON && !$.isEmptyObject(window.addedGeoJSON)) {
-                karta.fitBounds(window.addedGeoJSON.getBounds());
+                try {
+                    const bounds = window.addedGeoJSON.getBounds();
+                    if (bounds.isValid()) {
+                        karta.fitBounds(bounds);
+                    }
+                } catch (err) {
+                    console.log("Could not fit bounds (empty or invalid):", err);
+                }
             }
 
             // Show the алат checkbox after successful search
@@ -1102,6 +1110,50 @@ function initTemeSection() {
 
     // Load themes from database
     loadThemesDropdown();
+
+    // Initialize Flatpickr (Global Library) - robust init with retry
+    function ensureFlatpickr() {
+        if (typeof flatpickr === 'undefined') {
+            console.warn("Flatpickr lib not loaded yet?");
+            return;
+        }
+
+        const inputs = $(".flatpickr-datetime");
+        if (inputs.length === 0) {
+            console.warn("Flatpickr inputs not found in DOM yet. Retrying...");
+            setTimeout(ensureFlatpickr, 200);
+            return;
+        }
+
+        // Manually define Serbian Cyrillic to be safe
+        const SerbianCyrillic = {
+            weekdays: {
+                shorthand: ["Нед", "Пон", "Уто", "Сре", "Чет", "Пет", "Суб"],
+                longhand: ["Недеља", "Понедељак", "Уторак", "Среда", "Четвртак", "Петак", "Субота"]
+            },
+            months: {
+                shorthand: ["Јан", "Феб", "Мар", "Апр", "Мај", "Јун", "Јул", "Авг", "Сеп", "Окт", "Нов", "Дец"],
+                longhand: ["Јануар", "Фебруар", "Март", "Април", "Мај", "Јун", "Јул", "Август", "Септембар", "Октобар", "Новембар", "Децембар"]
+            },
+            firstDayOfWeek: 1,
+            weekAbbreviation: "Нед.",
+            rangeSeparator: " до ",
+            time_24hr: true
+        };
+
+        inputs.flatpickr({
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            time_24hr: true,
+            locale: SerbianCyrillic,
+            disableMobile: true, // Force custom picker even on touch devices
+            onReady: function () { console.log("Flatpickr READY and mounted"); }
+        });
+        console.log(`Flatpickr initialized on ${inputs.length} inputs in teme.js`);
+    }
+
+    // Call it
+    ensureFlatpickr();
 
     // Restore the previously selected theme when section reloads
     if (window.lastSelectedTeme && window.lastSelectedTeme != "0") {

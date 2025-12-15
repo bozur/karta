@@ -23,7 +23,7 @@
     #teme_dogadjaji_results table tr:hover {
         background-color: rgba(0, 0, 0, 0.05);
     }
-    }
+
 
     #teme_dogadjaji_results {
         margin-top: 15px;
@@ -58,9 +58,8 @@
         font-size: 0.8rem;
     }
 </style>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-<script src="https://npmcdn.com/flatpickr/dist/l10n/sr.js"></script>
+
+
 
 
 
@@ -221,38 +220,3 @@
         </div>
     </div>
 </div>
-<script>
-    // Initialize Flatpickr when possible
-    function initFlatpickr() {
-        if (typeof flatpickr !== 'undefined') {
-            // Manually define Serbian Cyrillic
-            const SerbianCyrillic = {
-                weekdays: {
-                    shorthand: ["Нед", "Пон", "Уто", "Сре", "Чет", "Пет", "Суб"],
-                    longhand: ["Недеља", "Понедељак", "Уторак", "Среда", "Четвртак", "Петак", "Субота"]
-                },
-                months: {
-                    shorthand: ["Јан", "Феб", "Мар", "Апр", "Мај", "Јун", "Јул", "Авг", "Сеп", "Окт", "Нов", "Дец"],
-                    longhand: ["Јануар", "Фебруар", "Март", "Април", "Мај", "Јун", "Јул", "Август", "Септембар", "Октобар", "Новембар", "Децембар"]
-                },
-                firstDayOfWeek: 1,
-                weekAbbreviation: "Нед.",
-                rangeSeparator: " до ",
-                time_24hr: true
-            };
-
-            $(".flatpickr-datetime").flatpickr({
-                enableTime: true,
-                dateFormat: "Y-m-d H:i",
-                time_24hr: true,
-                locale: SerbianCyrillic
-            });
-            console.log("Flatpickr initialized");
-        } else {
-            console.warn("Flatpickr not loaded yet, retrying...");
-            setTimeout(initFlatpickr, 500);
-        }
-    }
-    // Try to init
-    initFlatpickr();
-</script>
