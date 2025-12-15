@@ -542,8 +542,8 @@ function renderInsertRow(rowIndex) {
                 <option value="одређено">одређено</option>
                 <option value="неодређено">неодређено</option>
             </select>
-            <input type="datetime-local" class="form-control" data-field="pocetak" style="min-width: 180px;">
-            <input type="datetime-local" class="form-control" data-field="kraj" style="min-width: 180px;">
+            <input type="text" class="form-control flatpickr-input" data-field="pocetak" style="min-width: 180px;" placeholder="почетак">
+            <input type="text" class="form-control flatpickr-input" data-field="kraj" style="min-width: 180px;" placeholder="крај">
             <input type="text" class="form-control" placeholder="извор" data-field="izvor" style="min-width: 120px;">
             <select class="form-control" data-field="zapis" style="min-width: 100px;">
                 <option value="">запис</option>
@@ -553,6 +553,17 @@ function renderInsertRow(rowIndex) {
     `;
 
     $('#teme_insert_rows_container').append(rowHtml);
+
+    // Initialize Flatpickr for the new row
+    if (typeof flatpickr !== 'undefined') {
+        const rowSelector = `.teme_insert_row[data-row-index="${rowIndex}"]`;
+        flatpickr(`${rowSelector} input[data-field="pocetak"], ${rowSelector} input[data-field="kraj"]`, {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            locale: "sr",
+            time_24hr: true
+        });
+    }
 
     // Populate zapis dropdown
     populateZapisDropdown(rowIndex, window.tabela || window.lastSelectedTeme);
@@ -645,10 +656,10 @@ function bindPopupToLayer(layer, rowIndex) {
                  </select>
             </div>
             <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
-                <input type="datetime-local" class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="pocetak" placeholder="почетак">
+                <input type="text" class="form-control form-control-sm popup-input flatpickr-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="pocetak" placeholder="почетак">
             </div>
             <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
-                <input type="datetime-local" class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="kraj" placeholder="крај">
+                <input type="text" class="form-control form-control-sm popup-input flatpickr-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="kraj" placeholder="крај">
             </div>
             <div class="form-group mb-1" style="margin-bottom: 4px !important; line-height: 1 !important;">
                  <input type="text" class="form-control form-control-sm popup-input" style="height: 30px !important; font-size: 13px !important; padding: 2px 5px !important; line-height: normal !important; box-sizing: border-box !important;" data-field="izvor" placeholder="извор">
@@ -680,6 +691,15 @@ function bindPopupToLayer(layer, rowIndex) {
 
     // On popup open, sync values from data
     layer.on('popupopen', function () {
+        // Initialize Flatpickr for popup inputs
+        if (typeof flatpickr !== 'undefined') {
+            flatpickr($(popupContent).find('input[data-field="pocetak"], input[data-field="kraj"]'), {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                locale: "sr",
+                time_24hr: true
+            });
+        }
         if (window.temeInsertRows[rowIndex]) {
             const data = window.temeInsertRows[rowIndex].data;
             $(popupContent).find('.popup-input').each(function () {

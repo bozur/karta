@@ -26,6 +26,18 @@ function initializeDogadjaji() {
 
     // Initialize marker tool functionality
     initializeMarkerTool();
+
+    // Initialize Flatpickr for datetime inputs
+    if (typeof flatpickr !== 'undefined') {
+        flatpickr("#dogadjaji_unos_pocetak, #dogadjaji_unos_kraj, #dogadjaji_trazi_pocetak, #dogadjaji_trazi_kraj", {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            locale: "sr",
+            time_24hr: true
+        });
+    } else {
+        console.error("Flatpickr not loaded!");
+    }
 }
 
 window.initDogadjajiSection = initializeDogadjaji;
