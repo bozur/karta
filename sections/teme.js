@@ -952,42 +952,59 @@ function validateInsertRow(rowIndex) {
     // 6. Validate Time Window
     // Ensure we have search parameters to validate against
     if (window.temeSearchTimeSpan && window.temeSearchTimeSpan.od && window.temeSearchTimeSpan.do) {
-        const searchOd = new Date(window.temeSearchTimeSpan.od);
-        const searchDo = new Date(window.temeSearchTimeSpan.do);
+        // Helper to parse "YYYY-MM-DD HH:mm" or standard ISO
+        const parseDate = (dateStr) => {
+            if (!dateStr) return null;
+            // Try standard Date constructor first (ISO 8601)
+            let d = new Date(dateStr);
+            if (!isNaN(d.getTime())) return d;
+
+            // Try parsing "YYYY-MM-DD HH:mm" manually if Date() fails (e.g. cross-browser safety)
+            // Example: "2025-01-15 12:30"
+            const parts = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})\s(\d{2}):(\d{2})$/);
+            if (parts) {
+                return new Date(parts[1], parts[2] - 1, parts[3], parts[4], parts[5]);
+            }
+            return null;
+        };
+
+        const searchOd = parseDate(window.temeSearchTimeSpan.od);
+        const searchDo = parseDate(window.temeSearchTimeSpan.do);
 
         let timeError = false;
 
-        if (data.pocetak) {
-            const pocetak = new Date(data.pocetak);
-            // Check for valid date
-            if (!isNaN(pocetak.getTime())) {
-                if (pocetak < searchOd || pocetak > searchDo) {
-                    rowElement.find('input[data-field="pocetak"]').css('border', '1px solid red');
-                    isValid = false;
-                    timeError = true;
+        if (searchOd && searchDo) {
+            if (data.pocetak) {
+                const pocetak = parseDate(data.pocetak);
+                // Check for valid date
+                if (pocetak) {
+                    if (pocetak < searchOd || pocetak > searchDo) {
+                        rowElement.find('input[data-field="pocetak"]').css('border', '1px solid red');
+                        isValid = false;
+                        timeError = true;
+                    }
                 }
             }
-        }
 
-        if (data.kraj) {
-            const kraj = new Date(data.kraj);
-            if (!isNaN(kraj.getTime())) {
-                if (kraj < searchOd || kraj > searchDo) {
-                    rowElement.find('input[data-field="kraj"]').css('border', '1px solid red');
-                    isValid = false;
-                    timeError = true;
+            if (data.kraj) {
+                const kraj = parseDate(data.kraj);
+                if (kraj) {
+                    if (kraj < searchOd || kraj > searchDo) {
+                        rowElement.find('input[data-field="kraj"]').css('border', '1px solid red');
+                        isValid = false;
+                        timeError = true;
+                    }
                 }
             }
-        }
 
-        if (timeError && !errorMsg) {
-            errorMsg = "Временски распон мора бити унутар изабраног у претрази!";
+            if (timeError && !errorMsg) {
+                errorMsg = "Временски распон мора бити унутар изабраног у претрази!";
+            }
         }
     } else {
-        // Fallback: If no search time span is active (e.g. page reload without search),
-        // we might want to warn or skip. For now, we skip as we can't validate against nothing.
-        // But if the user bypassed search (e.g. by some hack), we can't validate.
-        // Assuming normal flow: insert is only possible after search unlocks 'alat', so timeSpan should be there.
+        // Should we alert if trying to insert without a valid search context? 
+        // For now, silently allow to prevent blocking unexpected workflows, 
+        // but strictly the req is "must be within search".
     }
 
     return { isValid, errorMsg: errorMsg || "" };
