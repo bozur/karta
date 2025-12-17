@@ -17,6 +17,11 @@ if (typeof window.temeMetadata === 'undefined') {
     window.temeMetadata = {};
 }
 
+// Global variable to cache theme options for popup/sidebar display
+if (typeof window.themeOptionsCache === 'undefined') {
+    window.themeOptionsCache = {};
+}
+
 if (typeof window.playbackState === 'undefined') {
     window.playbackState = {
         intervalId: null,
@@ -122,7 +127,16 @@ function loadTemeContent(valueSelected, isRestoring = false) {
 
 
 
+
                 console.log('Theme options loaded from API:', options);
+
+                // Cache the options for use in karta.js (popups/sidebar)
+                // Structure matches the old 'table' array: [razred, vrsta, podvrsta]
+                window.themeOptionsCache[valueSelected] = [
+                    options.razred,   // index 0
+                    options.vrsta,    // index 1
+                    options.podvrsta  // index 2
+                ];
             })
             .catch(error => {
                 console.error('Error loading theme options from API:', error);

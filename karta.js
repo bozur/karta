@@ -134,10 +134,21 @@ $(document).ready(function () {
                     return parts[2] + '.' + parts[1] + '.' + parts[0] + '.';
                 }
 
-                var htmlContent = '<p><b>разред:</b> ' + table[tabela][0][data.raz] + '</p>' +
-                    '<p><b>врста:</b> ' + table[tabela][1][data.vrs] + '</p>' +
-                    '<p><b>подврста:</b> ' + table[tabela][2][data.pod] + '</p>' +
-                    '<p><b>просторно:</b> ' + pros + '</p>' +
+                var htmlContent = '';
+                // Use cached theme options if available, otherwise fallback to index or empty
+                // window.themeOptionsCache[tabela] = [razredArray, vrstaArray, podvrstaArray]
+                if (window.themeOptionsCache && window.themeOptionsCache[tabela]) {
+                    htmlContent += '<p><b>разред:</b> ' + (window.themeOptionsCache[tabela][0][data.raz] || data.raz) + '</p>';
+                    htmlContent += '<p><b>врста:</b> ' + (window.themeOptionsCache[tabela][1][data.vrs] || data.vrs) + '</p>';
+                    htmlContent += '<p><b>подврста:</b> ' + (window.themeOptionsCache[tabela][2][data.pod] || data.pod) + '</p>';
+                } else {
+                    // Fallback to raw indices if cache not loaded (should not happen in normal flow)
+                    htmlContent += '<p><b>разред:</b> ' + data.raz + '</p>';
+                    htmlContent += '<p><b>врста:</b> ' + data.vrs + '</p>';
+                    htmlContent += '<p><b>подврста:</b> ' + data.pod + '</p>';
+                }
+
+                htmlContent += '<p><b>просторно:</b> ' + pros + '</p>' +
                     '<p><b>временски:</b> ' + vrem + '</p>' +
                     '<p><b>вријеме:</b> ' + formatDate(data.vri0) + ' - ' + formatDate(data.vri1) + ' (' + vrem + ')</p>' +
                     '<p><b>опис:</b> ' + data.opi + '</p>' +
@@ -325,7 +336,15 @@ $(document).ready(function () {
 
         // does this feature have a property named popupContent?
         if (feature.properties && feature.properties.v) {
-            layer.bindPopup('<a href="#" class="detalji" pointinfo="' + feature.properties.id + '"><i class="bi bi-book"></i></a> ' + table[currentTabela][1][feature.properties.v]);
+            var popupLabel = feature.properties.v; // Default to raw value/index
+            // Try to resolve using dynamic cache
+            if (typeof window.themeOptionsCache !== 'undefined' &&
+                window.themeOptionsCache[currentTabela] &&
+                window.themeOptionsCache[currentTabela][1]) {
+                popupLabel = window.themeOptionsCache[currentTabela][1][feature.properties.v] || feature.properties.v;
+            }
+
+            layer.bindPopup('<a href="#" class="detalji" pointinfo="' + feature.properties.id + '"><i class="bi bi-book"></i></a> ' + popupLabel);
         }
     }
 

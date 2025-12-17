@@ -1,36 +1,9 @@
-// LEGACY: Hardcoded dropdown options for themes
-// This array is kept for backward compatibility and as a fallback if the API fails
-// New implementation fetches options dynamically from /api/v2/theme-options/:tema_id
-// Structure: table[tema_id][type][index] where type: 0=razred, 1=vrsta, 2=podvrsta
+// LEGACY: This configuration is DEPRECATED.
+// Theme options are now fetched dynamically from the API and cached in window.themeOptionsCache.
+// See sections/teme.js (loadTemeContent) and karta.js (onEachFeature/sidebar logic).
+
 var table = [
-    [
-        [''],
-        [''],
-        ['']
-    ],
-    [
-        ['црква', 'конак', 'манастир', 'дом', 'капела', 'споменик', 'гробље'],
-        ['оштећено', 'уништено'],
-        ['спаљено', 'опљачкано', 'поломљено', 'минирано']
-    ], [
-        ['задржано сопство', 'промјена сопства'],
-        ['Серби', 'Славени', 'Грци', 'Турци', 'Нијемци', 'Маџари'],
-        ['бријег', 'језеро', 'мјесто', 'море', 'област', 'планина', 'ријека']
-    ], [
-        ['с(е)рб', 'влах', 'венет/венд', 'илир', 'косово', 'сег/сиг', 'слат', 'вар', 'лоз', 'луг', 'тер'],
-        ['вода', 'равница', 'узвишење'],
-        ['мјесто', 'ријека', 'језеро', 'море', 'област', 'планина']
-    ], [
-        ['радни', 'војни', 'за истребљење', 'дјечији'],
-        [''],
-        ['']
-    ], [
-        ['Србин', 'Шиптар', 'Турчин', 'Бугарин', 'Маџар', 'Циган', 'Хрват', 'Муслиман', 'Талијан', 'Нијемац'],
-        ['човјек', 'дијете', 'жена', 'старији', 'војник'],
-        ['силовање', 'мучење', 'убиство', 'рањавање', 'протјеривање']
-    ], [
-        ['царство', 'каљевство', 'кнежевина', 'војводство', 'репоблика'],
-        ['сербско', 'маџарско', 'бугарско', 'грчко', 'турско'],
-        ['']
-    ]
+    // Empty structure to maintain variable existence if referenced elsewhere during transition
+    // but should be empty to force fallback/errors if legacy code is hit
+    [], [], [], [], [], [], []
 ];
