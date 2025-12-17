@@ -4,11 +4,18 @@
 
     <!-- Novosti -->
     <div id="urednik_novosti" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
-        <span><strong>новости</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+        <span><strong>унос новости</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_novosti_podaci"></span></span>
     </div>
     <div id="urednik_novosti_podaci" class="collapse">
-        <p style="padding: 10px; margin: 5px 0;">Садржај за новости...</p>
+        <div class="form-group mb-1 mt-1">
+            <textarea id="novosti_opis" class="form-control" rows="3" placeholder="опис" maxlength="255"
+                style="font-size: 0.9rem;"></textarea>
+        </div>
+        <div class="d-flex align-items-center mt-2">
+            <div id="novosti_alerts" style="color: orange; flex-grow: 1;"></div>
+            <button id="btn_unesi_novosti" class="btn btn-white border border-dark ml-auto">унеси</button>
+        </div>
     </div>
 
     <!-- Nova Tema -->

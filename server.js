@@ -1254,6 +1254,68 @@ app.post('/api/logout', (req, res) => {
 // Serve static files (MUST be after API routes to avoid conflicts)
 app.use(express.static(path.join(__dirname, '.')));
 
+// ============================================
+// Novosti (News) API Routes
+// ============================================
+
+// POST /api/novosti (Insert new news)
+app.post('/api/novosti', async (req, res) => {
+    try {
+        // 1. Authentication check
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+
+        const { opis } = req.body;
+        const korisnik_id = req.session.user.id;
+
+        // 2. Validation
+        if (!opis) {
+            return res.status(400).json({ error: 'Опис је обавезан.' });
+        }
+
+        if (opis.length < 10) {
+            return res.status(400).json({ error: 'Опис мора имати најмање 10 карактера.' });
+        }
+
+        if (opis.length > 255) {
+            return res.status(400).json({ error: 'Опис не смије бити дужи од 255 карактера.' });
+        }
+
+        const pool = await poolPromise;
+        const request = pool.request();
+
+        request.input('opis', sql.NVarChar, opis);
+        request.input('uneo', sql.Int, korisnik_id);
+
+        // Insert with current server time for 'vrijeme'
+        await request.query(`
+            INSERT INTO novosti (vrijeme, opis, uneo)
+            VALUES (SYSDATETIME(), @opis, @uneo)
+        `);
+
+        res.json({ success: true, message: 'Новости успјешно додате.' });
+
+    } catch (err) {
+        console.error('Error in novosti insert:', err);
+        res.status(500).json({ error: 'Грешка при упису новости.' });
+    }
+});
+
+// GET /api/novosti (Fetch news)
+app.get('/api/novosti', async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        // Fetch top 50, ordered by time DESC
+        const result = await pool.request().query('SELECT TOP 50 vrijeme, opis FROM novosti ORDER BY vrijeme DESC');
+
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Error fetching novosti:', err);
+        res.status(500).json({ error: 'Грешка при добављању новости.' });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
