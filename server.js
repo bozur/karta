@@ -785,8 +785,8 @@ app.post('/api/dogadjaji/insert', async (req, res) => {
 
         console.log('Executing SQL insert...');
         await request.query(`
-            INSERT INTO dogadjaji (opis, pocetak, kraj, izvor, korisnik_id, zapis, koordinate)
-            VALUES (@opis, @pocetak, @kraj, @izvor, @korisnik_id, @zapis, @koordinate)
+            INSERT INTO dogadjaji (opis, pocetak, kraj, izvor, korisnik_id, zapis, koordinate, stanje)
+            VALUES (@opis, @pocetak, @kraj, @izvor, @korisnik_id, @zapis, @koordinate, '0')
         `);
 
         console.log(`✓ Event created by user ${korisnik_id}: ${opis.substring(0, 50)}...`);
@@ -818,6 +818,9 @@ app.post('/api/dogadjaji/search', async (req, res) => {
             INNER JOIN korisnik k ON d.korisnik_id = k.id
         `;
         let conditions = [];
+
+        // Filter: Only show approved events (stanje = 1)
+        conditions.push("d.stanje = '1'");
 
         // Build WHERE clause based on search criteria
         if (id) {
