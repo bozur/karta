@@ -896,7 +896,12 @@ app.post('/api/dogadjaji/search', async (req, res) => {
 // POST /api/login
 app.get('/api/check-auth', (req, res) => {
     if (req.session.user) {
-        res.json({ user: req.session.user });
+        // Refresh privileges from DB to be sure (optional but safer)
+        // or just rely on session if we update it at login
+        res.json({
+            user: req.session.user,
+            is_admin: req.session.user.urednik == 1 || req.session.user.urednik == "1"
+        });
     } else {
         res.status(401).json({ error: 'Not authenticated' });
     }
@@ -1093,7 +1098,8 @@ app.post('/api/login', async (req, res) => {
         req.session.user = {
             id: user.id,
             username: user.korisnik,
-            email: user.eposta
+            email: user.eposta,
+            urednik: user.urednik
         };
 
         res.json({ success: true, redirect: '/karta.html' });

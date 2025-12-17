@@ -16,6 +16,11 @@ window.layersVisible = true;
 $(document).ready(function () {
     // Check authentication immediately
     $.get('api/check-auth')
+        .done(function (data) {
+            if (data.is_admin) {
+                $('#urednik_tab_icon').show();
+            }
+        })
         .fail(function () {
             window.location.href = 'index.html';
         });
