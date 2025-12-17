@@ -120,11 +120,7 @@ function loadTemeContent(valueSelected, isRestoring = false) {
                     }
                 });
 
-                options.podvrsta.forEach((value, index) => {
-                    if (value) {
-                        $('#podvrsta').append(`<option value="${index}">${value}</option>`);
-                    }
-                });
+
 
                 console.log('Theme options loaded from API:', options);
             })
