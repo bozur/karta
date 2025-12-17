@@ -943,6 +943,36 @@ app.get('/api/user-info', async (req, res) => {
     }
 });
 
+// POST /api/user/check-username - Check if username is available
+app.post('/api/user/check-username', async (req, res) => {
+    const { username } = req.body;
+
+    if (!username) {
+        return res.status(400).json({ error: 'Username is required' });
+    }
+
+    try {
+        const pool = await poolPromise;
+        // Check if username exists, excluding current user if logged in
+        let query = 'SELECT id FROM korisnik WHERE korisnik = @username';
+
+        const request = pool.request()
+            .input('username', sql.NVarChar, username);
+
+        if (req.session.user) {
+            query += ' AND id != @id';
+            request.input('id', sql.Int, req.session.user.id);
+        }
+
+        const result = await request.query(query);
+
+        res.json({ available: result.recordset.length === 0 });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // PUT /api/user/update - Update user profile
 app.put('/api/user/update', async (req, res) => {
     if (!req.session.user) {
@@ -998,6 +1028,16 @@ app.put('/api/user/update', async (req, res) => {
         }
 
         if (korisnik !== null && korisnik !== undefined) {
+            // Check if username is already taken by another user
+            const usernameCheck = await pool.request()
+                .input('korisnik', sql.NVarChar, korisnik)
+                .input('id', sql.Int, req.session.user.id)
+                .query('SELECT id FROM korisnik WHERE korisnik = @korisnik AND id != @id');
+
+            if (usernameCheck.recordset.length > 0) {
+                return res.status(409).json({ error: 'Корисничко име је већ у употреби' });
+            }
+
             updateFields.push('korisnik = @korisnik');
             request.input('korisnik', sql.NVarChar, korisnik || null);
         }
