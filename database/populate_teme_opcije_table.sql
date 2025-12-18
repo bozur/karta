@@ -103,6 +103,8 @@ INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 6, N'од босанских муслимана');
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 7, N'од Шиптара');
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 8, N'од Талијана');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 9, N'од комуниста');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'razred', 10, N'од Срба');
 
 -- vrsta options
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (5, 'vrsta', 0, N'човјек');
