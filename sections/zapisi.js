@@ -202,9 +202,11 @@ function displaySearchResults(results) {
     } else {
         results.forEach(result => {
             resultsBody.append(`
-                <tr style="cursor: pointer;" onclick="viewZapis(${result.id})">
+                <tr>
                     <td style="padding: 5px; width: 60px;">${result.id}</td>
-                    <td style="padding: 5px; width: 200px;">${result.naziv}</td>
+                    <td style="padding: 5px; width: 200px;">
+                        <a href="#" class="zapis-link" onclick="viewZapis(${result.id}); return false;">${result.naziv}</a>
+                    </td>
                     <td style="padding: 5px;">${result.opis || ''}</td>
                 </tr>
             `);
