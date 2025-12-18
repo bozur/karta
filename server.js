@@ -277,7 +277,7 @@ app.post('/api/comments', async (req, res) => {
             .query(`
                 INSERT INTO comments (parent, created, modified, content, creator, fullname, profile_picture_url, created_by_admin, created_by_current_user, upvote_count, user_has_upvoted, is_new)
                 OUTPUT INSERTED.*
-                VALUES (@parent, GETDATE(), GETDATE(), @content, @creator, @fullname, @profile_picture_url, @created_by_admin, @created_by_current_user, 0, 0, 1)
+                VALUES (@parent, GETUTCDATE(), GETUTCDATE(), @content, @creator, @fullname, @profile_picture_url, @created_by_admin, @created_by_current_user, 0, 0, 1)
             `);
 
         res.json(result.recordset[0]);
@@ -299,7 +299,7 @@ app.put('/api/comments/:id', async (req, res) => {
             .input('content', sql.NVarChar, content)
             .query(`
                 UPDATE comments
-                SET content = @content, modified = GETDATE()
+                SET content = @content, modified = GETUTCDATE()
                 OUTPUT INSERTED.*
                 WHERE id = @id
             `);
@@ -536,11 +536,16 @@ app.post('/api/teme/insert', async (req, res) => {
                 INSERT INTO ${tableName} 
                 (vrsta, podvrsta, razred, prostorno, tp, vrijeme0, vrijeme1, tv, opis, izvor, dodao, dodao_vrijeme, zapis, stanje)
                 VALUES 
-                (@vrsta, @podvrsta, @razred, geometry::STGeomFromText('${wkt}', 4326), @tp, @vrijeme0, @vrijeme1, @tv, @opis, @izvor, @dodao, SYSDATETIME(), @zapis, @stanje)
+                (@vrsta, @podvrsta, @razred, geometry::STGeomFromText('${wkt}', 4326), @tp, @vrijeme0, @vrijeme1, @tv, @opis, @izvor, @dodao, GETUTCDATE(), @zapis, @stanje)
             `;
-
             await request.query(query);
         }
+
+        // Update user counter for stavki
+        await pool.request()
+            .input('userId', sql.Int, userId)
+            .input('count', sql.Int, rows.length)
+            .query('UPDATE korisnik SET brojac_stavki = ISNULL(brojac_stavki, 0) + @count WHERE id = @userId');
 
         res.json({ success: true, message: message });
 
@@ -622,10 +627,16 @@ app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req,
             .input('file_size', sql.Int, req.file.size)
             .input('stanje', sql.NVarChar, stanje)
             .query(`
-                INSERT INTO zapisi (naziv, opis, tema_id, korisnik_id, tagovi, file_path, file_type, file_size, stanje)
+                INSERT INTO zapisi (naziv, opis, tema_id, korisnik_id, tagovi, file_path, file_type, file_size, stanje, created_at)
                 OUTPUT INSERTED.id
-                VALUES (@naziv, @opis, @tema_id, @korisnik_id, @tagovi, @file_path, @file_type, @file_size, @stanje)
+                VALUES (@naziv, @opis, @tema_id, @korisnik_id, @tagovi, @file_path, @file_type, @file_size, @stanje, GETUTCDATE())
             `);
+
+        // Update user counter for zapisi
+        await pool.request()
+            .input('userId', sql.Int, korisnik_id)
+            .query('UPDATE korisnik SET brojac_zapisa = ISNULL(brojac_zapisa, 0) + 1 WHERE id = @userId');
+
         console.log(`✓ File uploaded by user ${korisnik_id}: ${naziv} (${fileTypeResult.mime}, ${req.file.size} bytes)`);
         res.json({
             success: true,
@@ -657,11 +668,11 @@ app.post('/api/zapisi/search', async (req, res) => {
             FROM zapisi z
             INNER JOIN teme t ON z.tema_id = t.id
             INNER JOIN korisnik k ON z.korisnik_id = k.id
-        `;
+                `;
         let conditions = [];
         if (naziv) {
             conditions.push("z.naziv LIKE @naziv");
-            request.input('naziv', sql.NVarChar, `%${naziv}%`);
+            request.input('naziv', sql.NVarChar, `% ${naziv} % `);
         }
         if (tema_id) {
             conditions.push("z.tema_id = @tema_id");
@@ -669,15 +680,15 @@ app.post('/api/zapisi/search', async (req, res) => {
         }
         if (korisnik) {
             conditions.push("k.korisnik LIKE @korisnik");
-            request.input('korisnik', sql.NVarChar, `%${korisnik}%`);
+            request.input('korisnik', sql.NVarChar, `% ${korisnik} % `);
         }
         if (opis) {
             conditions.push("z.opis LIKE @opis");
-            request.input('opis', sql.NVarChar, `%${opis}%`);
+            request.input('opis', sql.NVarChar, `% ${opis} % `);
         }
         if (tagovi) {
             conditions.push("z.tagovi LIKE @tagovi");
-            request.input('tagovi', sql.NVarChar, `%${tagovi}%`);
+            request.input('tagovi', sql.NVarChar, `% ${tagovi} % `);
         }
         if (conditions.length > 0) {
             query += " WHERE " + conditions.join(" AND ");
@@ -798,9 +809,13 @@ app.post('/api/dogadjaji/insert', async (req, res) => {
 
         console.log('Executing SQL insert...');
         await request.query(`
-            INSERT INTO dogadjaji (opis, pocetak, kraj, izvor, korisnik_id, zapis, koordinate, stanje)
-            VALUES (@opis, @pocetak, @kraj, @izvor, @korisnik_id, @zapis, @koordinate, @stanje)
-        `);
+            INSERT INTO dogadjaji(opis, pocetak, kraj, izvor, korisnik_id, zapis, koordinate, stanje, unos)
+            VALUES(@opis, @pocetak, @kraj, @izvor, @korisnik_id, @zapis, @koordinate, @stanje, GETUTCDATE())
+                    `);
+        // Update user counter for dogadjaji
+        await pool.request()
+            .input('userId', sql.Int, korisnik_id)
+            .query('UPDATE korisnik SET brojac_dogadjaja = ISNULL(brojac_dogadjaja, 0) + 1 WHERE id = @userId');
 
         console.log(`✓ Event created by user ${korisnik_id}: ${opis.substring(0, 50)}...`);
         res.json({
@@ -829,7 +844,7 @@ app.post('/api/dogadjaji/search', async (req, res) => {
             SELECT d.id, d.opis, d.pocetak, d.kraj, d.izvor, d.zapis, d.koordinate, d.unos, k.korisnik
             FROM dogadjaji d
             INNER JOIN korisnik k ON d.korisnik_id = k.id
-        `;
+                `;
         let conditions = [];
 
         // Filter: Only show approved events (stanje = 1)
@@ -843,7 +858,7 @@ app.post('/api/dogadjaji/search', async (req, res) => {
 
         if (opis) {
             conditions.push("d.opis LIKE @opis");
-            request.input('opis', sql.NVarChar, `%${opis}%`);
+            request.input('opis', sql.NVarChar, `% ${opis} % `);
         }
 
         if (pocetak) {
@@ -858,7 +873,7 @@ app.post('/api/dogadjaji/search', async (req, res) => {
 
         if (izvor) {
             conditions.push("d.izvor LIKE @izvor");
-            request.input('izvor', sql.NVarChar, `%${izvor}%`);
+            request.input('izvor', sql.NVarChar, `% ${izvor} % `);
         }
 
         // Prostorno filter: check if koordinate field is populated
@@ -931,15 +946,73 @@ app.get('/api/user-info', async (req, res) => {
 
     try {
         const pool = await poolPromise;
-        const result = await pool.request()
-            .input('id', sql.Int, req.session.user.id)
+        const userId = req.session.user.id;
+        const previousVisit = req.session.user.previousVisit || '1970-01-01';
+
+        // 1. Fetch user profile
+        const userResult = await pool.request()
+            .input('id', sql.Int, userId)
             .query('SELECT id, ime, prezime, korisnik, eposta, slika_url, pristup0, pristup1, brojac_pristupa FROM korisnik WHERE id = @id');
 
-        if (result.recordset.length === 0) {
+        if (userResult.recordset.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
 
-        const user = result.recordset[0];
+        const user = userResult.recordset[0];
+
+        // 2. Fetch User-Specific Total Stats (from counters)
+        const statsResult = await pool.request()
+            .input('id', sql.Int, userId)
+            .query('SELECT brojac_stavki, brojac_zapisa, brojac_dogadjaja FROM korisnik WHERE id = @id');
+
+        const userStats = statsResult.recordset[0] || { brojac_stavki: 0, brojac_zapisa: 0, brojac_dogadjaja: 0 };
+
+        // 3. Fetch Site-Wide "Since Last Visit" Stats (timestamp based)
+        // a. Zapisi
+        const zapisiSince = await pool.request()
+            .input('prevVisit', sql.DateTime2, previousVisit)
+            .query("SELECT COUNT(*) as count FROM zapisi WHERE created_at > @prevVisit AND stanje IN('0', '1')");
+
+        // b. Dogadjaji
+        const dogadjajiSince = await pool.request()
+            .input('prevVisit', sql.DateTime2, previousVisit)
+            .query("SELECT COUNT(*) as count FROM dogadjaji WHERE unos > @prevVisit AND stanje IN('0', '1')");
+
+        // c. Novosti
+        const novostiSince = await pool.request()
+            .input('prevVisit', sql.DateTime2, previousVisit)
+            .query("SELECT COUNT(*) as count FROM novosti WHERE vrijeme > @prevVisit");
+
+        // d. Stavki (Site-wide across all Table_X)
+        const themesResult = await pool.request().query('SELECT id FROM teme');
+        let sinceLastStavki = 0;
+
+        for (const theme of themesResult.recordset) {
+            const tableName = `Table_${theme.id}`;
+            try {
+                const stavkiSince = await pool.request()
+                    .input('prevVisit', sql.DateTime2, previousVisit)
+                    .query(`SELECT COUNT(*) as count FROM ${tableName} WHERE dodao_vrijeme > @prevVisit AND stanje IN('0', '1')`);
+                sinceLastStavki += stavkiSince.recordset[0].count || 0;
+            } catch (err) {
+                // Table might not exist
+            }
+        }
+
+        const currentTotal = {
+            stavki: userStats.brojac_stavki || 0,
+            zapisi: userStats.brojac_zapisa || 0,
+            dogadjaji: userStats.brojac_dogadjaja || 0
+        };
+
+        const sinceLast = {
+            stavki: sinceLastStavki,
+            zapisi: zapisiSince.recordset[0].count || 0,
+            dogadjaji: dogadjajiSince.recordset[0].count || 0,
+            novosti: novostiSince.recordset[0].count || 0,
+            teme: 0 // No specific tracking for new themes yet
+        };
+
         res.json({
             user: {
                 id: user.id,
@@ -951,6 +1024,10 @@ app.get('/api/user-info', async (req, res) => {
                 pristup0: user.pristup0,
                 pristup1: user.pristup1,
                 brojac_pristupa: user.brojac_pristupa
+            },
+            stats: {
+                total: currentTotal,
+                sinceLast: sinceLast
             }
         });
     } catch (err) {
@@ -1126,6 +1203,7 @@ app.post('/api/login', async (req, res) => {
         }
 
         const user = result.recordset[0];
+        const previousVisit = user.pristup1;
 
         // Verify password
         const match = await bcrypt.compare(password, user.lozinka);
@@ -1140,9 +1218,9 @@ app.post('/api/login', async (req, res) => {
             .input('id', sql.Int, user.id)
             .query(`
                 UPDATE korisnik 
-                SET pristup0 = CASE WHEN pristup0 IS NULL THEN GETDATE() ELSE pristup0 END,
-                    pristup1 = GETDATE(),
-                    brojac_pristupa = ISNULL(brojac_pristupa, 0) + 1 
+                SET pristup0 = CASE WHEN pristup0 IS NULL THEN GETUTCDATE() ELSE pristup0 END,
+            pristup1 = GETUTCDATE(),
+            brojac_pristupa = ISNULL(brojac_pristupa, 0) + 1 
                 WHERE id = @id
             `);
 
@@ -1155,7 +1233,13 @@ app.post('/api/login', async (req, res) => {
             id: user.id,
             username: user.korisnik,
             email: user.eposta,
-            urednik: user.urednik
+            urednik: user.urednik,
+            previousVisit: previousVisit,
+            statsAtLogin: {
+                stavki: user.brojac_stavki || 0,
+                zapisi: user.brojac_zapisa || 0,
+                dogadjaji: user.brojac_dogadjaja || 0
+            }
         };
 
         res.json({ success: true, redirect: '/karta.html' });
@@ -1201,7 +1285,7 @@ app.post('/api/register', async (req, res) => {
             .input('password', sql.NVarChar, hashedPassword)
             .query(`
                 INSERT INTO korisnik (eposta, korisnik, lozinka, pristup0, brojac_pristupa)
-                VALUES (@email, @username, @password, GETDATE(), 0)
+                VALUES (@email, @username, @password, GETUTCDATE(), 0)
             `);
 
         // Mock sending email
@@ -1248,7 +1332,7 @@ app.post('/api/forgot-password', async (req, res) => {
             .query('UPDATE korisnik SET lozinka = @password WHERE eposta = @email');
 
         // Mock sending email
-        console.log(`[MOCK EMAIL] To: ${email}, New Password: ${newPassword}`);
+        console.log(`[MOCK EMAIL]To: ${email}, New Password: ${newPassword} `);
 
         res.json({ success: true, message: 'Password sent to email' });
 
@@ -1304,10 +1388,10 @@ app.post('/api/novosti', async (req, res) => {
         request.input('opis', sql.NVarChar, opis);
         request.input('uneo', sql.Int, korisnik_id);
 
-        // Insert with current server time for 'vrijeme'
+        // Insert with current server time (UTC)
         await request.query(`
             INSERT INTO novosti (vrijeme, opis, uneo)
-            VALUES (SYSDATETIME(), @opis, @uneo)
+            VALUES (GETUTCDATE(), @opis, @uneo)
         `);
 
         res.json({ success: true, message: 'Новости успјешно додате.' });
@@ -1329,6 +1413,70 @@ app.get('/api/novosti', async (req, res) => {
     } catch (err) {
         console.error('Error fetching novosti:', err);
         res.status(500).json({ error: 'Грешка при добављању новости.' });
+    }
+});
+
+// GET /api/opste/stats (General statistics for Opste tab)
+app.get('/api/opste/stats', async (req, res) => {
+    try {
+        const pool = await poolPromise;
+
+        // 1. Basic counts
+        const novostiCount = await pool.request().query('SELECT COUNT(*) as count FROM novosti');
+        const temeCount = await pool.request().query('SELECT COUNT(*) as count FROM teme');
+        const dogadjajiCount = await pool.request().query('SELECT COUNT(*) as count FROM dogadjaji WHERE stanje = \'1\'');
+        const zapisiCount = await pool.request().query('SELECT COUNT(*) as count FROM zapisi WHERE stanje = \'1\'');
+        const korisnikCount = await pool.request().query('SELECT COUNT(*) as count FROM korisnik');
+
+        // 2. Sum of all Table_X records
+        const themesResult = await pool.request().query('SELECT id FROM teme');
+        const themes = themesResult.recordset;
+        let stavkiTotal = 0;
+
+        for (const theme of themes) {
+            const tableName = `Table_${theme.id}`;
+            try {
+                const stavkiResult = await pool.request().query(`SELECT COUNT(*) as count FROM ${tableName} WHERE stanje = '1'`);
+                stavkiTotal += stavkiResult.recordset[0].count;
+            } catch (err) {
+                // Ignore if table doesn't exist
+            }
+        }
+
+        // 3. Top 5 contributors
+        // Formula: (brojac_stavki * 10) + brojac_dogadjaja + brojac_zapisa
+        const topContributors = await pool.request().query(`
+            SELECT TOP 5 
+                korisnik, 
+                brojac_stavki, 
+                brojac_dogadjaja, 
+                brojac_zapisa,
+                (ISNULL(brojac_stavki, 0) * 10 + ISNULL(brojac_dogadjaja, 0) + ISNULL(brojac_zapisa, 0)) as points
+            FROM korisnik
+            ORDER BY points DESC
+        `);
+
+        res.json({
+            pregled: {
+                novosti: novostiCount.recordset[0].count,
+                tema: temeCount.recordset[0].count,
+                stavki: stavkiTotal,
+                dogadjaja: dogadjajiCount.recordset[0].count,
+                zapisa: zapisiCount.recordset[0].count,
+                korisnika: korisnikCount.recordset[0].count
+            },
+            izbor: topContributors.recordset.map(u => ({
+                username: u.korisnik,
+                stavki: u.brojac_stavki || 0,
+                dogadjaja: u.brojac_dogadjaja || 0,
+                zapisa: u.brojac_zapisa || 0,
+                points: u.points
+            }))
+        });
+
+    } catch (err) {
+        console.error('Error fetching opste stats:', err);
+        res.status(500).json({ error: 'Грешка при добављању статистике.' });
     }
 });
 

@@ -3,13 +3,19 @@
 // Function to format date
 function formatDate(dateString) {
     if (!dateString) return '-';
+    // Ensure date is treated as UTC from server
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
-    return `${day}.${month}.${year} ${hours}:${minutes}`;
+
+    // Get timezone offset in hours
+    const offset = -date.getTimezoneOffset() / 60;
+    const offsetStr = offset >= 0 ? `+${offset}` : `${offset}`;
+
+    return `${day}.${month}.${year} ${hours}:${minutes} (UTC${offsetStr})`;
 }
 
 // Store user data globally for persistence across panel switches
@@ -23,24 +29,44 @@ function loadUserInfo() {
         console.log('User info received:', data);
         if (data.user) {
             // Store globally for persistence
-            window.korisnikUserData = data.user;
+            window.korisnikUserData = data;
 
-            // Display username or email (prioritize username)
-            const displayName = data.user.username || data.user.email || 'Корисник';
-            console.log('Setting display name to:', displayName);
-            $('#user-display').text(displayName);
-
-            // Display statistics
-            $('#first-visit').text(formatDate(data.user.pristup0));
-            $('#last-visit').text(formatDate(data.user.pristup1));
-            $('#login-count').text(data.user.brojac_pristupa || 0);
-
-            // Populate form fields with existing data
-            populateEditForm(data.user);
+            displayUserData(data);
         }
     }).fail(function () {
         console.error('Failed to load user information');
     });
+}
+
+// Function to display user data and stats
+function displayUserData(data) {
+    const user = data.user;
+    const stats = data.stats;
+
+    // Display username or email (prioritize username)
+    const displayName = user.username || user.email || 'Корисник';
+    $('#user-display').text(displayName);
+
+    // Display statistics - Pregled
+    $('#first-visit').text(formatDate(user.pristup0));
+    $('#last-visit').text(formatDate(user.pristup1));
+    $('#login-count').text(user.brojac_pristupa || 0);
+
+    if (stats) {
+        $('#items-count').text(stats.total.stavki || 0);
+        $('#events-count').text(stats.total.dogadjaji || 0);
+        $('#records-count').text(stats.total.zapisi || 0);
+
+        // Display statistics - Od posljednje posjete
+        $('#news-since-last').text(stats.sinceLast.novosti || 0);
+        $('#topics-since-last').text(stats.sinceLast.teme || 0);
+        $('#items-since-last').text(stats.sinceLast.stavki || 0);
+        $('#events-since-last').text(stats.sinceLast.dogadjaji || 0);
+        $('#records-since-last').text(stats.sinceLast.zapisi || 0);
+    }
+
+    // Populate form fields with existing data
+    populateEditForm(user);
 }
 
 // Populate edit form with user data
@@ -124,12 +150,7 @@ function initKorisnikSection() {
 
     // Restore user display if data exists
     if (window.korisnikUserData) {
-        const displayName = window.korisnikUserData.username || window.korisnikUserData.email || 'Корисник';
-        $('#user-display').text(displayName);
-        $('#first-visit').text(formatDate(window.korisnikUserData.pristup0));
-        $('#last-visit').text(formatDate(window.korisnikUserData.pristup1));
-        $('#login-count').text(window.korisnikUserData.brojac_pristupa || 0);
-        populateEditForm(window.korisnikUserData);
+        displayUserData(window.korisnikUserData);
     } else {
         // Load fresh data if not in cache
         loadUserInfo();

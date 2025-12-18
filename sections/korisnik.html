@@ -69,47 +69,56 @@
         </div>
     </form>
 </div>
-<div style="margin-top: 15px; padding: 10px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
-    <div style="margin-bottom: 8px;">
-        <strong>Преглед:</strong>
+<div id="korisnik_pregled" class="mt-3"><strong>преглед</strong> <span class="bi bi-arrows-expand ml-2"
+        data-toggle="collapse" data-target="#korisnik_pregled_podaci"></span>
+</div>
+<div id="korisnik_pregled_podaci" class="collapse show">
+    <div style="margin-top: 5px; margin-bottom: 5px;">
+        <span style="color: #000;">Прва посјета:</span> <span id="first-visit">-</span>
     </div>
     <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Прва посјета:</span> <span id="first-visit">-</span>
+        <span style="color: #000;">Посљедња посјета:</span> <span id="last-visit">-</span>
     </div>
     <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Посљедња посјета:</span> <span id="last-visit">-</span>
+        <span style="color: #000;">Број пријава:</span> <span id="login-count">-</span>
     </div>
     <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Број пријава:</span> <span id="login-count">-</span>
+        <span style="color: #000;">Ставки:</span> <span id="items-count">-</span>
     </div>
     <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Ставки:</span> <span id="items-count">-</span>
+        <span style="color: #000;">Догађаја:</span> <span id="events-count">-</span>
     </div>
     <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Записа:</span> <span id="records-count">-</span>
-    </div>
-    <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Примједби:</span> <span id="comments-count">-</span>
+        <span style="color: #000;">Записа:</span> <span id="records-count">-</span>
     </div>
 </div>
-<div style="margin-top: 15px; padding: 10px; background-color: rgba(0,0,0,0.05); border-radius: 4px;">
-    <div style="margin-bottom: 8px;">
-        <strong>Од посљедње посјете:</strong>
+
+<div id="korisnik_posljednje" class="mt-3"><strong>од посљедње посјете</strong> <span class="bi bi-arrows-expand ml-2"
+        data-toggle="collapse" data-target="#korisnik_posljednje_podaci"></span>
+</div>
+<div id="korisnik_posljednje_podaci" class="collapse show">
+    <div style="margin-top: 5px; margin-bottom: 5px;">
+        <span style="color: #000;">Новости:</span> <span id="news-since-last">-</span>
     </div>
     <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Новости:</span> <span id="news-since-last">-</span>
+        <span style="color: #000;">Тема:</span> <span id="topics-since-last">-</span>
     </div>
     <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Тема:</span> <span id="topics-since-last">-</span>
+        <span style="color: #000;">Ставки:</span> <span id="items-since-last">-</span>
     </div>
     <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Ставки:</span> <span id="items-since-last">-</span>
+        <span style="color: #000;">Догађаја:</span> <span id="events-since-last">-</span>
     </div>
     <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Записа:</span> <span id="records-since-last">-</span>
-    </div>
-    <div style="margin-bottom: 5px;">
-        <span style="color: #666;">Примједби:</span> <span id="comments-since-last">-</span>
+        <span style="color: #000;">Записа:</span> <span id="records-since-last">-</span>
     </div>
 </div>
-<span style="margin-top: 15px; display: block;"><strong>додатни садржаји</strong></span>
+
+<div id="korisnik_dodatno" class="mt-3"><strong>додатни садржаји</strong> <span class="bi bi-arrows-expand ml-2"
+        data-toggle="collapse" data-target="#korisnik_dodatno_podaci"></span>
+</div>
+<div id="korisnik_dodatno_podaci" class="collapse">
+    <div class="mt-1" style="color: #000;">
+        Овдје би требале да се налазе везе за преузимање података које сте унијели.
+    </div>
+</div>
