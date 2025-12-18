@@ -1351,9 +1351,6 @@ app.post('/api/logout', (req, res) => {
     });
 });
 
-// Serve static files (MUST be after API routes to avoid conflicts)
-app.use(express.static(path.join(__dirname, '.')));
-
 // ============================================
 // Novosti (News) API Routes
 // ============================================
@@ -1479,6 +1476,9 @@ app.get('/api/opste/stats', async (req, res) => {
         res.status(500).json({ error: 'Грешка при добављању статистике.' });
     }
 });
+
+// Serve static files (MUST be after API routes to avoid conflicts)
+app.use(express.static(path.join(__dirname, '.')));
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);

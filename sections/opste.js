@@ -4,6 +4,7 @@
 $(document).ready(function () {
     console.log('Opste section loaded');
     ucitajNovosti();
+    ucitajStatistiku();
 });
 
 async function ucitajNovosti() {
@@ -45,5 +46,43 @@ async function ucitajNovosti() {
     }
 }
 
-// Ensure the function is checking on global scope if needed
+async function ucitajStatistiku() {
+    try {
+        const response = await fetch('/api/opste/stats');
+        if (!response.ok) throw new Error('Failed to fetch stats');
+
+        const data = await response.json();
+
+        // Populate Pregled section
+        const pregled = data.pregled;
+        document.getElementById('pregled-novosti').innerText = pregled.novosti;
+        document.getElementById('pregled-tema').innerText = pregled.tema;
+        document.getElementById('pregled-stavki').innerText = pregled.stavki;
+        document.getElementById('pregled-dogadjaja').innerText = pregled.dogadjaja;
+        document.getElementById('pregled-zapisa').innerText = pregled.zapisa;
+        document.getElementById('pregled-korisnika').innerText = pregled.korisnika;
+
+        // Populate Izbor Saradnika section
+        const lista = document.getElementById('opste_izbor_lista');
+        if (lista) {
+            lista.innerHTML = '';
+            data.izbor.forEach((u, index) => {
+                const div = document.createElement('div');
+                div.style.marginBottom = '5px';
+                // User requirement format: (total points for best contributor) followed by username
+                // (stavki:) with number of objects
+                // (događaja:) with number of records in dogadjaji
+                // (zapisa:) with number of records in zapisi
+                div.innerHTML = `${index + 1}. <strong>${u.points}</strong> ${u.username} (ставки: ${u.stavki}, догађаја: ${u.dogadjaja}, записа: ${u.zapisa})`;
+                lista.appendChild(div);
+            });
+        }
+
+    } catch (err) {
+        console.error('Error loading statistics:', err);
+    }
+}
+
+// Ensure the functions are checking on global scope if needed
 window.ucitajNovosti = ucitajNovosti;
+window.ucitajStatistiku = ucitajStatistiku;
