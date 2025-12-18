@@ -170,7 +170,7 @@ function handleDogadjajiInsert() {
         .then(data => {
             spinner.css('visibility', 'hidden');
             if (data.success) {
-                errorDiv.css('color', 'green').text('догађај је предложен').show();
+                errorDiv.css('color', 'green').text(data.message || 'догађај је додат').show();
                 $('#dogadjaji_unos_form')[0].reset();
                 $('#dogadjaji_unos_korisnik').val(sessionStorage.getItem('username') || 'TestUser');
 

@@ -452,9 +452,20 @@ app.post('/api/teme/insert', async (req, res) => {
 
         const pool = await poolPromise;
 
+        // Fetch user permission
+        const userCheck = await pool.request()
+            .input('userId', sql.Int, userId)
+            .query('SELECT moze_ucitati FROM korisnik WHERE id = @userId');
+
+        const mozeUcitati = userCheck.recordset[0]?.moze_ucitati === 1 || userCheck.recordset[0]?.moze_ucitati === true;
+        const stanje = mozeUcitati ? '1' : '0';
+        const message = mozeUcitati ? 'подаци су учитани' : 'подаци чекају на одобрење';
+
         // Loop through rows and insert
         for (const row of rows) {
             const request = pool.request();
+            // ... (rest of the logic inside loop remains same except the query)
+            // Need to repeat some logic because I'm replacing a block
 
             // Logic for tp and tv (1 if "одређено", 0 if "неодређено")
             const tp = row.dp === 'одређено' ? '1' : (row.prostorno === 'одређено' ? '1' : '0'); // Field name is prostorno in frontend
@@ -518,18 +529,20 @@ app.post('/api/teme/insert', async (req, res) => {
             request.input('zapis', sql.Int, row.zapis ? parseInt(row.zapis) : null);
             // stanje defaults to '0'
 
+            request.input('stanje', sql.NVarChar, stanje);
+
             // Note: We use query with specific parameter for WKT injection
             const query = `
                 INSERT INTO ${tableName} 
                 (vrsta, podvrsta, razred, prostorno, tp, vrijeme0, vrijeme1, tv, opis, izvor, dodao, dodao_vrijeme, zapis, stanje)
                 VALUES 
-                (@vrsta, @podvrsta, @razred, geometry::STGeomFromText('${wkt}', 4326), @tp, @vrijeme0, @vrijeme1, @tv, @opis, @izvor, @dodao, SYSDATETIME(), @zapis, '0')
+                (@vrsta, @podvrsta, @razred, geometry::STGeomFromText('${wkt}', 4326), @tp, @vrijeme0, @vrijeme1, @tv, @opis, @izvor, @dodao, SYSDATETIME(), @zapis, @stanje)
             `;
 
             await request.query(query);
         }
 
-        res.json({ success: true });
+        res.json({ success: true, message: message });
 
     } catch (err) {
         console.error('Error in teme insert:', err);
@@ -548,12 +561,10 @@ app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req,
         const userCheck = await pool.request()
             .input('id', sql.Int, req.session.user.id)
             .query('SELECT moze_ucitati FROM korisnik WHERE id = @id');
-        if (userCheck.recordset.length === 0 || !userCheck.recordset[0].moze_ucitati) {
-            if (req.file) fs.unlinkSync(req.file.path);
-            return res.status(403).json({
-                error: 'Немате дозволу за учитавање записа!'
-            });
-        }
+
+        const mozeUcitati = userCheck.recordset[0]?.moze_ucitati === 1 || userCheck.recordset[0]?.moze_ucitati === true;
+        const stanje = mozeUcitati ? '1' : '0';
+        const message = mozeUcitati ? 'подаци су учитани' : 'подаци чекају на одобрење';
         // 3. File presence check
         if (!req.file) {
             return res.status(400).json({ error: 'Фајл није изабран' });
@@ -609,15 +620,16 @@ app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req,
             .input('file_path', sql.NVarChar, req.file.path)
             .input('file_type', sql.NVarChar, path.extname(req.file.originalname).substring(1))
             .input('file_size', sql.Int, req.file.size)
+            .input('stanje', sql.NVarChar, stanje)
             .query(`
-                INSERT INTO zapisi (naziv, opis, tema_id, korisnik_id, tagovi, file_path, file_type, file_size)
+                INSERT INTO zapisi (naziv, opis, tema_id, korisnik_id, tagovi, file_path, file_type, file_size, stanje)
                 OUTPUT INSERTED.id
-                VALUES (@naziv, @opis, @tema_id, @korisnik_id, @tagovi, @file_path, @file_type, @file_size)
+                VALUES (@naziv, @opis, @tema_id, @korisnik_id, @tagovi, @file_path, @file_type, @file_size, @stanje)
             `);
         console.log(`✓ File uploaded by user ${korisnik_id}: ${naziv} (${fileTypeResult.mime}, ${req.file.size} bytes)`);
         res.json({
             success: true,
-            message: 'Фајл је успјешно додат',
+            message: message,
             id: result.recordset[0].id
         });
     } catch (err) {
@@ -739,15 +751,15 @@ app.post('/api/dogadjaji/insert', async (req, res) => {
             .query('SELECT moze_ucitati FROM korisnik WHERE id = @korisnik_id');
 
         console.log('Permission check result:', permissionCheck.recordset[0]);
-        const mozeUcitati = permissionCheck.recordset[0]?.moze_ucitati;
-        console.log('moze_ucitati value:', mozeUcitati, 'type:', typeof mozeUcitati);
+        const rawMozeUcitati = permissionCheck.recordset[0]?.moze_ucitati;
+        console.log('moze_ucitati value:', rawMozeUcitati, 'type:', typeof rawMozeUcitati);
 
         // Handle both bit (true/false) and int (1/0) types
-        if (!permissionCheck.recordset[0] || (mozeUcitati !== 1 && mozeUcitati !== true)) {
-            console.log('Permission denied: moze_ucitati =', mozeUcitati);
-            return res.status(403).json({ error: 'Тренутно вам није одобрен унос података, обратите се уредницима' });
-        }
-        console.log('Permission granted');
+        const mozeUcitati = rawMozeUcitati === 1 || rawMozeUcitati === true;
+        const stanje = mozeUcitati ? '1' : '0';
+        const message = mozeUcitati ? 'подаци су учитани' : 'подаци чекају на одобрење';
+
+        console.log('Permission status:', mozeUcitati ? 'can upload' : 'proposing only');
 
         // 2. Required fields validation
         if (!opis || !pocetak || !izvor) {
@@ -782,17 +794,18 @@ app.post('/api/dogadjaji/insert', async (req, res) => {
         request.input('korisnik_id', sql.Int, korisnik_id);
         request.input('zapis', sql.Int, zapis ? parseInt(zapis) : null);
         request.input('koordinate', sql.NVarChar, koordinate || null);
+        request.input('stanje', sql.NVarChar, stanje);
 
         console.log('Executing SQL insert...');
         await request.query(`
             INSERT INTO dogadjaji (opis, pocetak, kraj, izvor, korisnik_id, zapis, koordinate, stanje)
-            VALUES (@opis, @pocetak, @kraj, @izvor, @korisnik_id, @zapis, @koordinate, '0')
+            VALUES (@opis, @pocetak, @kraj, @izvor, @korisnik_id, @zapis, @koordinate, @stanje)
         `);
 
         console.log(`✓ Event created by user ${korisnik_id}: ${opis.substring(0, 50)}...`);
         res.json({
             success: true,
-            message: 'Догађај је успјешно додат'
+            message: message
         });
 
     } catch (err) {

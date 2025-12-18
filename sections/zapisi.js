@@ -127,7 +127,7 @@ function handleFileUpload() {
             spinner.css('visibility', 'hidden');
             if (data.success) {
                 // Show success message in the error div (styled green)
-                errorDiv.css('color', 'green').text('запис је учитан').show();
+                errorDiv.css('color', 'green').text(data.message || 'запис је учитан').show();
                 $('#zapisi_unos_form')[0].reset();
                 $('#unos_korisnik').val(sessionStorage.getItem('username') || 'TestUser');
                 $('.custom-file-label').html('запис није изабран');

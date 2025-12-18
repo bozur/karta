@@ -1074,8 +1074,8 @@ function handlePredloziSubmit() {
             // Success handling
 
             // 1. Show success message
-            const successMsg = $('<div class="alert alert-success mt-2" style="padding: 5px 10px; font-size: 0.9rem;">Подаци чекају на одобрење!</div>');
-            $('#teme_predlozi_row').prepend(successMsg);
+            const message = response.message || 'Подаци су послати';
+            $('#teme_novo_alert_area').css('color', 'green').text(message).show();
 
             // Close any open popup globally
             karta.closePopup();
@@ -1130,8 +1130,8 @@ function handlePredloziSubmit() {
 
             // 4. Fade out success message and restore UI state
             setTimeout(() => {
-                successMsg.fadeOut(function () {
-                    $(this).remove();
+                $('#teme_novo_alert_area').fadeOut(function () {
+                    $(this).css('color', 'orange').text('');
                     $('#teme_predlozi_row').hide();
                     $('#teme_predlozi_button').show().prop('disabled', false).text('предложи');
                 });
