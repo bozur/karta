@@ -80,6 +80,25 @@ html {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 1.5rem;
+  cursor: pointer;
+  color: #dddddd;
+  z-index: 10;
+  font-size: 1.1rem;
+}
+
+.password-toggle:hover {
+  color: #f5a615;
+}
+
 /* Karta page specific styles */
 #kartaid {
   height: 100%;

@@ -20,6 +20,16 @@ $(document).ready(function () {
         });
     }
 
+    // Password Visibility Toggle
+    $('#togglePassword').click(function () {
+        const passwordInput = $('#password');
+        const type = passwordInput.attr('type') === 'password' ? 'text' : 'password';
+        passwordInput.attr('type', type);
+
+        // Toggle the eye icon
+        $(this).toggleClass('bi-eye bi-eye-slash');
+    });
+
     $("#logging").show();
     $("#passwordchange").hide();
     $("#passwordforgotten").hide();
