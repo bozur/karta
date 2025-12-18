@@ -479,6 +479,26 @@ function initializeDrawingToolCheckbox() {
         const layer = e.layer;
         const layerType = e.layerType;
 
+        // Check zoom level - must be at least 13
+        const currentZoom = karta.getZoom();
+        const minZoom = 13;
+
+        if (currentZoom < minZoom) {
+            // Show error in the novo alert area
+            $('#teme_novo_alert_area').text('Приближите карту ради тачности уноса!').show();
+            console.log('Zoom level too low for teme:', currentZoom, '< minimum:', minZoom);
+
+            // Remove the temporary layer from the map
+            if (typeof drawnItems !== 'undefined') {
+                drawnItems.removeLayer(layer);
+            }
+            karta.removeLayer(layer);
+            return;
+        }
+
+        // Clear any previous error messages
+        $('#teme_novo_alert_area').hide().text('');
+
         // Get geometry in GeoJSON format
         let geometry = null;
         if (layerType === 'marker') {

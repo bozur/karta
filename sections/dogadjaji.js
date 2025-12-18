@@ -78,9 +78,9 @@ function initializeMarkerTool() {
     karta.off('draw:created.dogadjaji').on('draw:created.dogadjaji', function (e) {
         console.log('Dogadjaji marker created event received');
 
-        // Check zoom level - must be at least 15 (3 steps from max 18)
+        // Check zoom level - must be at least 13
         const currentZoom = karta.getZoom();
-        const minZoom = 15;
+        const minZoom = 13;
 
         if (currentZoom < minZoom) {
             // Show error in the form's error div

@@ -111,9 +111,9 @@ The dogadjaji tab allows users to insert, search, and view historical events on 
 ### Marker Placement
 
 #### Zoom Validation:
-- **Minimum Zoom Level:** 15 (3 steps from maximum zoom 18)
+- **Minimum Zoom Level:** 13
 - **Validation Trigger:** When user clicks to place marker
-- **If zoom < 15:**
+- **If zoom < 13:**
   - Error message: "Приближите карту ради тачности уноса!"
   - Error displays in `#dogadjaji_unos_error` div
   - Checkbox stays checked
@@ -121,7 +121,7 @@ The dogadjaji tab allows users to insert, search, and view historical events on 
   - User can zoom in and try again
   - No marker placed
 
-#### Successful Placement (zoom ≥ 15):
+#### Successful Placement (zoom ≥ 13):
 1. Marker coordinates captured
 2. Coordinates formatted as WKT: `POINT(lng lat)`
 3. Coordinates populated in `#dogadjaji_unos_koordinate` field
@@ -137,10 +137,10 @@ User checks "алат"
   → Drawing toolbar appears
   → User clicks marker tool
   → User clicks map location
-    → IF zoom < 15:
+    → IF zoom < 13:
         → Show error "Приближите карту ради тачности уноса!"
         → Keep tool active
-    → IF zoom ≥ 15:
+    → IF zoom ≥ 13:
         → Capture coordinates
         → Populate coordinate field
         → Clear errors
@@ -364,7 +364,7 @@ var currentDogadjajiMarker = null;
 
 ### ✅ DO:
 - Always remove previous dogadjaji marker before adding new one
-- Validate zoom level (≥15) before accepting marker placement
+- Validate zoom level (≥13) before accepting marker placement
 - Keep marker tool active when zoom validation fails
 - Show errors in form error div, not JS alerts
 - Pan to marker without changing zoom level
@@ -375,7 +375,7 @@ var currentDogadjajiMarker = null;
 - Don't use JS `alert()` for validation errors
 - Don't disable marker tool when zoom is insufficient
 - Don't change zoom level when centering on marker
-- Don't allow marker placement below zoom level 15
+- Don't allow marker placement below zoom level 13
 - Don't add dogadjaji markers to `drawnItems` layer
 
 ---
@@ -403,3 +403,4 @@ var currentDogadjajiMarker = null;
 |------|---------|-------------|
 | 2025-12-04 | Initial documentation created | AI Assistant |
 | 2025-12-04 | Fixed marker tool: zoom validation (15), inline errors, tool stays active | AI Assistant |
+| 2025-12-18 | Updated minimum zoom level to 13 for both dogadjaji and teme sections | AI Assistant |
