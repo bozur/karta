@@ -152,6 +152,14 @@ function handleDogadjajiInsert() {
         isValid = false;
     }
 
+    if (formData.pocetak && formData.kraj) {
+        if (new Date(formData.kraj) < new Date(formData.pocetak)) {
+            $('#dogadjaji_unos_kraj').css('border-color', 'red');
+            errorMessage = 'Вријеме краја мора бити послије почетка!';
+            isValid = false;
+        }
+    }
+
     if (!isValid) {
         errorDiv.text(errorMessage).show();
         return;
@@ -200,6 +208,14 @@ function handleDogadjajiSearch() {
 
     const errorDiv = $('#dogadjaji_trazi_error');
     const spinner = $('#dogadjaji_trazi_cekanje');
+
+    if (searchData.pocetak && searchData.kraj) {
+        if (new Date(searchData.kraj) < new Date(searchData.pocetak)) {
+            $('#dogadjaji_trazi_kraj').css('border-color', 'red');
+            errorDiv.text('Вријеме краја мора бити послије почетка!').show();
+            return;
+        }
+    }
 
     errorDiv.hide().text('');
     spinner.css('visibility', 'visible');

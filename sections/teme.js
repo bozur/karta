@@ -214,6 +214,14 @@ function handleTemeSearch(e) {
         do: $('#do').val()
     };
 
+    if (searchData.od && searchData.do) {
+        if (new Date(searchData.do) < new Date(searchData.od)) {
+            $('#do').css('border-color', 'red');
+            $('#teme_alert_area').text('Вријеме краја мора бити послије почетка!').show();
+            return;
+        }
+    }
+
     // Store time span for validation
     window.temeSearchTimeSpan = {
         od: $('#od').val(),
@@ -959,25 +967,25 @@ function validateInsertRow(rowIndex) {
         if (!errorMsg) errorMsg = "Унесите вријеме почетка.";
     }
 
+    // Helper to parse "YYYY-MM-DD HH:mm" or standard ISO
+    const parseDate = (dateStr) => {
+        if (!dateStr) return null;
+        // Try standard Date constructor first (ISO 8601)
+        let d = new Date(dateStr);
+        if (!isNaN(d.getTime())) return d;
+
+        // Try parsing "YYYY-MM-DD HH:mm" manually if Date() fails (e.g. cross-browser safety)
+        // Example: "2025-01-15 12:30"
+        const parts = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})\s(\d{2}):(\d{2})$/);
+        if (parts) {
+            return new Date(parts[1], parts[2] - 1, parts[3], parts[4], parts[5]);
+        }
+        return null;
+    };
+
     // 6. Validate Time Window
     // Ensure we have search parameters to validate against
     if (window.temeSearchTimeSpan && window.temeSearchTimeSpan.od && window.temeSearchTimeSpan.do) {
-        // Helper to parse "YYYY-MM-DD HH:mm" or standard ISO
-        const parseDate = (dateStr) => {
-            if (!dateStr) return null;
-            // Try standard Date constructor first (ISO 8601)
-            let d = new Date(dateStr);
-            if (!isNaN(d.getTime())) return d;
-
-            // Try parsing "YYYY-MM-DD HH:mm" manually if Date() fails (e.g. cross-browser safety)
-            // Example: "2025-01-15 12:30"
-            const parts = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})\s(\d{2}):(\d{2})$/);
-            if (parts) {
-                return new Date(parts[1], parts[2] - 1, parts[3], parts[4], parts[5]);
-            }
-            return null;
-        };
-
         const searchOd = parseDate(window.temeSearchTimeSpan.od);
         const searchDo = parseDate(window.temeSearchTimeSpan.do);
 
@@ -1011,10 +1019,17 @@ function validateInsertRow(rowIndex) {
                 errorMsg = "Временски распон мора бити унутар изабраног у претрази!";
             }
         }
-    } else {
-        // Should we alert if trying to insert without a valid search context? 
-        // For now, silently allow to prevent blocking unexpected workflows, 
-        // but strictly the req is "must be within search".
+    }
+
+    // 7. Validate kraj >= pocetak
+    if (data.pocetak && data.kraj) {
+        const pocetak = parseDate(data.pocetak);
+        const kraj = parseDate(data.kraj);
+        if (pocetak && kraj && kraj < pocetak) {
+            rowElement.find('input[data-field="kraj"]').css('border', '1px solid red');
+            isValid = false;
+            if (!errorMsg) errorMsg = "Вријеме краја мора бити послије почетка!";
+        }
     }
 
     return { isValid, errorMsg: errorMsg || "" };
