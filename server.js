@@ -130,7 +130,7 @@ app.get('/api/points/:id', async (req, res) => {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('uid', sql.Int, id)
-            .query(`select vrsta, podvrsta, razred, vrijeme0, vrijeme1, opis, izvor, tp, tv from ${tableName} WHERE ID = @uid`);
+            .query(`select vrsta, podvrsta, razred, vrijeme0, vrijeme1, opis, izvor, tp, tv, dodao_vrijeme, izmjenio_vrijeme from ${tableName} WHERE ID = @uid`);
 
         if (result.recordset.length === 0) {
             return res.status(404).json({ error: "Point not found" });
@@ -146,7 +146,9 @@ app.get('/api/points/:id', async (req, res) => {
             opi: row.opis,
             izv: row.izvor,
             prostorno: row.tp,
-            vremenski: row.tv
+            vremenski: row.tv,
+            dodao_vrijeme: row.dodao_vrijeme,
+            izmjenio_vrijeme: row.izmjenio_vrijeme
         });
     } catch (err) {
         res.status(500).send(err.message);

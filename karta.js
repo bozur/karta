@@ -134,26 +134,24 @@ $(document).ready(function () {
                     return parts[2] + '.' + parts[1] + '.' + parts[0] + '.';
                 }
 
-                var htmlContent = '';
                 // Use cached theme options if available, otherwise fallback to index or empty
                 // window.themeOptionsCache[tabela] = [razredArray, vrstaArray, podvrstaArray]
+                var htmlContent = '';
                 if (window.themeOptionsCache && window.themeOptionsCache[tabela]) {
-                    htmlContent += '<p><b>разред:</b> ' + (window.themeOptionsCache[tabela][0][data.raz] || data.raz) + '</p>';
-                    htmlContent += '<p><b>врста:</b> ' + (window.themeOptionsCache[tabela][1][data.vrs] || data.vrs) + '</p>';
-                    htmlContent += '<p><b>подврста:</b> ' + (window.themeOptionsCache[tabela][2][data.pod] || data.pod) + '</p>';
+                    htmlContent = '<div style="margin-bottom: 5px;"><b>ID:</b> ' + idpoint + ' &nbsp;&nbsp;<b>разред:</b> ' + (window.themeOptionsCache[tabela][0][data.raz] || data.raz) + '</div>';
+                    htmlContent += '<div style="margin-bottom: 5px;"><b>врста:</b> ' + (window.themeOptionsCache[tabela][1][data.vrs] || data.vrs) + ' &nbsp;&nbsp;<b>подврста:</b> ' + (window.themeOptionsCache[tabela][2][data.pod] || data.pod) + '</div>';
                 } else {
                     // Fallback to raw indices if cache not loaded (should not happen in normal flow)
-                    htmlContent += '<p><b>разред:</b> ' + data.raz + '</p>';
-                    htmlContent += '<p><b>врста:</b> ' + data.vrs + '</p>';
-                    htmlContent += '<p><b>подврста:</b> ' + data.pod + '</p>';
+                    htmlContent = '<div style="margin-bottom: 5px;"><b>ID:</b> ' + idpoint + ' &nbsp;&nbsp;<b>разред:</b> ' + data.raz + '</div>';
+                    htmlContent += '<div style="margin-bottom: 5px;"><b>врста:</b> ' + data.vrs + ' &nbsp;&nbsp;<b>подврста:</b> ' + data.pod + '</div>';
                 }
 
-                htmlContent += '<p><b>просторно:</b> ' + pros + '</p>' +
-                    '<p><b>временски:</b> ' + vrem + '</p>' +
-                    '<p><b>вријеме:</b> ' + formatDate(data.vri0) + ' - ' + formatDate(data.vri1) + ' (' + vrem + ')</p>' +
-                    '<p><b>опис:</b> ' + data.opi + '</p>' +
-                    '<p><b>извор:</b> ' + data.izv + '</p>' +
-                    '<p><b>запис:</b> ' + data.id + '</p>' +
+                htmlContent += '<div style="margin-bottom: 5px;"><b>просторно:</b> ' + pros + ' &nbsp;&nbsp;<b>временски:</b> ' + vrem + '</div>' +
+                    '<div style="margin-bottom: 5px;"><b>вријеме:</b> ' + formatDate(data.vri0) + ' - ' + formatDate(data.vri1) + ' (' + vrem + ')</div>' +
+                    '<div style="margin-bottom: 5px; background-color: #f0f0f0;"><b>опис:</b> ' + data.opi + '</div>' +
+                    '<div style="margin-bottom: 5px;"><b>извор:</b> ' + data.izv + '</div>' +
+                    '<div style="margin-bottom: 5px;"><b>запис:</b> ' + data.id + '</div>' +
+                    '<div style="margin-bottom: 5px;"><b>унето:</b> ' + formatDate(data.dodao_vrijeme) + ' &nbsp;&nbsp;<b>измјењено:</b> ' + formatDate(data.izmjenio_vrijeme) + '</div>' +
                     '<hr style="border-top: 1px solid #ccc; margin-top: 10px;">';
 
                 $('#sidebar').html(htmlContent);

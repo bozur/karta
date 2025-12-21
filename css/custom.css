@@ -372,3 +372,9 @@ div {
 #playback_close:hover {
   color: #ff8c00 !important;
 }
+
+/* Override sidebar padding to match tab width */
+.leaflet-sidebar>.leaflet-control {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
