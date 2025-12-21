@@ -1,3 +1,15 @@
+<style>
+    .zapis-link {
+        color: darkorange;
+        text-decoration: none;
+    }
+
+    .zapis-link:hover {
+        text-decoration: underline;
+        color: darkorange;
+    }
+</style>
+
 <span class="naslov">Уредник</span>
 
 <div id="urednik_content">
@@ -69,7 +81,44 @@
                 data-target="#urednik_odobravanje_zapisa_podaci"></span></span>
     </div>
     <div id="urednik_odobravanje_zapisa_podaci" class="collapse">
-        <p style="padding: 10px; margin: 5px 0;">Садржај за одобравање записа...</p>
+        <div style="margin-top: 10px;">
+            <!-- Alert/Message Area -->
+            <div id="zapisi_approval_alerts" style="color: orange; margin-bottom: 10px;"></div>
+
+            <!-- Results Table -->
+            <div id="zapisi_approval_results" style="display: none;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <th style="padding: 3px; text-align: left; width: 50px;">ID</th>
+                            <th style="padding: 3px; text-align: left; width: 150px;">назив</th>
+                            <th style="padding: 3px; text-align: left;">опис</th>
+                            <th style="padding: 3px; text-align: left; width: 120px;">тема</th>
+                            <th style="padding: 3px; text-align: left; width: 70px;">корисник</th>
+                            <th style="padding: 3px; text-align: center; width: 20px; background-color: #90EE90;">
+                                <input type="checkbox" id="zapisi_approve_all">
+                            </th>
+                            <th style="padding: 3px; text-align: center; width: 20px; background-color: #FFB6C6;">
+                                <input type="checkbox" id="zapisi_delete_all">
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="zapisi_approval_body">
+                        <!-- Results will be populated dynamically -->
+                    </tbody>
+                </table>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button id="btn_izvrsi_zapisi" class="btn btn-white border border-dark">изврши</button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="zapisi_approval_loading" style="display: none; text-align: center; padding: 20px;">
+                <div class="spinner-border text-secondary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Pokretanje Bekapa -->

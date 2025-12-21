@@ -1354,6 +1354,135 @@ app.post('/api/logout', (req, res) => {
 });
 
 // ============================================
+// Urednik (Editor) API Routes - Zapisi Approval
+// ============================================
+
+// GET /api/urednik/zapisi/pending - Fetch pending zapisi (stanje='0')
+app.get('/api/urednik/zapisi/pending', async (req, res) => {
+    try {
+        // 1. Authentication check
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+
+        // 2. Admin check
+        if (req.session.user.urednik != 1 && req.session.user.urednik != '1') {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const pool = await poolPromise;
+        const result = await pool.request().query(`
+            SELECT z.id, z.naziv, z.opis, t.naziv AS tema, k.korisnik, z.tagovi, z.created_at
+            FROM zapisi z
+            INNER JOIN teme t ON z.tema_id = t.id
+            INNER JOIN korisnik k ON z.korisnik_id = k.id
+            WHERE z.stanje = '0'
+            ORDER BY z.created_at DESC
+        `);
+
+        res.json({
+            success: true,
+            results: result.recordset.map(row => ({
+                id: row.id,
+                naziv: row.naziv,
+                opis: row.opis,
+                tema: row.tema,
+                korisnik: row.korisnik,
+                tagovi: row.tagovi,
+                created_at: row.created_at
+            }))
+        });
+
+    } catch (err) {
+        console.error('Error fetching pending zapisi:', err);
+        res.status(500).json({ error: 'Грешка при добављању записа' });
+    }
+});
+
+// POST /api/urednik/zapisi/process - Approve and/or delete zapisi
+app.post('/api/urednik/zapisi/process', async (req, res) => {
+    try {
+        // 1. Authentication check
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+
+        // 2. Admin check
+        if (req.session.user.urednik != 1 && req.session.user.urednik != '1') {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { approve, delete: deleteIds } = req.body;
+        const pool = await poolPromise;
+        let approvedCount = 0;
+        let deletedCount = 0;
+
+        // 3. Approve records (set stanje='1')
+        if (approve && approve.length > 0) {
+            const approveRequest = pool.request();
+            const placeholders = approve.map((_, i) => `@id${i}`).join(',');
+            approve.forEach((id, i) => {
+                approveRequest.input(`id${i}`, sql.Int, id);
+            });
+
+            const approveResult = await approveRequest.query(`
+                UPDATE zapisi 
+                SET stanje = '1' 
+                WHERE id IN (${placeholders}) AND stanje = '0'
+            `);
+            approvedCount = approveResult.rowsAffected[0];
+        }
+
+        // 4. Delete records and their files
+        if (deleteIds && deleteIds.length > 0) {
+            // First, get file paths for cleanup
+            const fileRequest = pool.request();
+            const filePlaceholders = deleteIds.map((_, i) => `@id${i}`).join(',');
+            deleteIds.forEach((id, i) => {
+                fileRequest.input(`id${i}`, sql.Int, id);
+            });
+
+            const fileResult = await fileRequest.query(`
+                SELECT id, file_path FROM zapisi WHERE id IN (${filePlaceholders}) AND stanje = '0'
+            `);
+
+            // Delete files from filesystem
+            for (const record of fileResult.recordset) {
+                if (record.file_path && fs.existsSync(record.file_path)) {
+                    try {
+                        fs.unlinkSync(record.file_path);
+                        console.log(`Deleted file: ${record.file_path}`);
+                    } catch (err) {
+                        console.error(`Error deleting file ${record.file_path}:`, err);
+                    }
+                }
+            }
+
+            // Delete records from database
+            const deleteRequest = pool.request();
+            deleteIds.forEach((id, i) => {
+                deleteRequest.input(`id${i}`, sql.Int, id);
+            });
+
+            const deleteResult = await deleteRequest.query(`
+                DELETE FROM zapisi WHERE id IN (${filePlaceholders}) AND stanje = '0'
+            `);
+            deletedCount = deleteResult.rowsAffected[0];
+        }
+
+        res.json({
+            success: true,
+            approved: approvedCount,
+            deleted: deletedCount
+        });
+
+    } catch (err) {
+        console.error('Error processing zapisi:', err);
+        res.status(500).json({ error: 'Грешка при обради записа' });
+    }
+});
+
+// ============================================
 // Novosti (News) API Routes
 // ============================================
 
