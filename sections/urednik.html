@@ -57,6 +57,15 @@
         <p style="padding: 10px; margin: 5px 0;">Садржај за претрагу корисника...</p>
     </div>
 
+    <!-- Pretraga Stavki -->
+    <div id="urednik_pretraga_stavki" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>претрага ставки</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_pretraga_stavki_podaci"></span></span>
+    </div>
+    <div id="urednik_pretraga_stavki_podaci" class="collapse">
+        <p style="padding: 10px; margin: 5px 0;">Садржај за претрагу ставки...</p>
+    </div>
+
     <!-- Odobravanje Stavki -->
     <div id="urednik_odobravanje_stavki" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
         <span><strong>одобравање ставки</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
@@ -72,7 +81,45 @@
                 data-target="#urednik_odobravanje_dogadjaja_podaci"></span></span>
     </div>
     <div id="urednik_odobravanje_dogadjaja_podaci" class="collapse">
-        <p style="padding: 10px; margin: 5px 0;">Садржај за одобравање догађаја...</p>
+        <div style="margin-top: 10px;">
+            <!-- Alert/Message Area -->
+            <div id="dogadjaji_approval_alerts" style="color: orange; margin-bottom: 10px;"></div>
+
+            <!-- Results Table -->
+            <div id="dogadjaji_approval_results" style="display: none;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <th style="padding: 3px; text-align: left; width: 50px;">ID</th>
+                            <th style="padding: 3px; text-align: left;">опис</th>
+                            <th style="padding: 3px; text-align: left; width: 140px;">почетак</th>
+                            <th style="padding: 3px; text-align: left; width: 140px;">крај</th>
+                            <th style="padding: 3px; text-align: left; width: 70px;">корисник</th>
+                            <th style="padding: 3px; text-align: center; width: 30px;"></th>
+                            <th style="padding: 3px; text-align: center; width: 20px; background-color: #90EE90;">
+                                <input type="checkbox" id="dogadjaji_approve_all">
+                            </th>
+                            <th style="padding: 3px; text-align: center; width: 20px; background-color: #FFB6C6;">
+                                <input type="checkbox" id="dogadjaji_delete_all">
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="dogadjaji_approval_body">
+                        <!-- Results will be populated dynamically -->
+                    </tbody>
+                </table>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button id="btn_izvrsi_dogadjaji" class="btn btn-white border border-dark">изврши</button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="dogadjaji_approval_loading" style="display: none; text-align: center; padding: 20px;">
+                <div class="spinner-border text-secondary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Odobravanje Zapisa -->
@@ -128,6 +175,30 @@
     </div>
     <div id="urednik_pokretanje_bekapa_podaci" class="collapse">
         <p style="padding: 10px; margin: 5px 0;">Садржај за покретање бекапа...</p>
+    </div>
+
+    <!-- Pokretanje Brojača -->
+    <div id="urednik_pokretanje_brojaca" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>покретање бројача</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_pokretanje_brojaca_podaci"></span></span>
+    </div>
+    <div id="urednik_pokretanje_brojaca_podaci" class="collapse">
+        <div style="margin-top: 10px;">
+            <!-- Alert/Message Area -->
+            <div id="brojaca_alerts" style="margin-bottom: 10px;"></div>
+
+            <!-- Sync Button -->
+            <div style="margin-bottom: 10px;">
+                <button id="btn_sync_counters" class="btn btn-white border border-dark">усклади бројаче</button>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="brojaca_loading" style="display: none; text-align: center; padding: 20px;">
+                <div class="spinner-border text-secondary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </div>
     </div>
 
 </div>

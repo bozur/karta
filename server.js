@@ -1483,6 +1483,112 @@ app.post('/api/urednik/zapisi/process', async (req, res) => {
 });
 
 // ============================================
+// Urednik (Editor) API Routes - Dogadjaji Approval
+// ============================================
+
+// GET /api/urednik/dogadjaji/pending - Fetch pending dogadjaji (stanje='0')
+app.get('/api/urednik/dogadjaji/pending', async (req, res) => {
+    try {
+        // 1. Authentication check
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+
+        // 2. Admin check
+        if (req.session.user.urednik != 1 && req.session.user.urednik != '1') {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const pool = await poolPromise;
+        const result = await pool.request().query(`
+            SELECT d.id, d.opis, d.pocetak, d.kraj, d.koordinate, d.izvor, d.unos, k.korisnik
+            FROM dogadjaji d
+            INNER JOIN korisnik k ON d.korisnik_id = k.id
+            WHERE d.stanje = '0'
+            ORDER BY d.unos DESC
+        `);
+
+        res.json({
+            success: true,
+            results: result.recordset.map(row => ({
+                id: row.id,
+                opis: row.opis,
+                pocetak: row.pocetak ? new Date(row.pocetak).toLocaleString('sr-RS') : '',
+                kraj: row.kraj ? new Date(row.kraj).toLocaleString('sr-RS') : '',
+                koordinate: row.koordinate,
+                izvor: row.izvor,
+                korisnik: row.korisnik,
+                unos: row.unos
+            }))
+        });
+
+    } catch (err) {
+        console.error('Error fetching pending dogadjaji:', err);
+        res.status(500).json({ error: 'Грешка при добављању догађаја' });
+    }
+});
+
+// POST /api/urednik/dogadjaji/process - Approve and/or delete dogadjaji
+app.post('/api/urednik/dogadjaji/process', async (req, res) => {
+    try {
+        // 1. Authentication check
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+
+        // 2. Admin check
+        if (req.session.user.urednik != 1 && req.session.user.urednik != '1') {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { approve, delete: deleteIds } = req.body;
+        const pool = await poolPromise;
+        let approvedCount = 0;
+        let deletedCount = 0;
+
+        // 3. Approve records (set stanje='1')
+        if (approve && approve.length > 0) {
+            const approveRequest = pool.request();
+            const placeholders = approve.map((_, i) => `@id${i}`).join(',');
+            approve.forEach((id, i) => {
+                approveRequest.input(`id${i}`, sql.Int, id);
+            });
+
+            const approveResult = await approveRequest.query(`
+                UPDATE dogadjaji 
+                SET stanje = '1' 
+                WHERE id IN (${placeholders}) AND stanje = '0'
+            `);
+            approvedCount = approveResult.rowsAffected[0];
+        }
+
+        // 4. Delete records
+        if (deleteIds && deleteIds.length > 0) {
+            const deleteRequest = pool.request();
+            const placeholders = deleteIds.map((_, i) => `@id${i}`).join(',');
+            deleteIds.forEach((id, i) => {
+                deleteRequest.input(`id${i}`, sql.Int, id);
+            });
+
+            const deleteResult = await deleteRequest.query(`
+                DELETE FROM dogadjaji WHERE id IN (${placeholders}) AND stanje = '0'
+            `);
+            deletedCount = deleteResult.rowsAffected[0];
+        }
+
+        res.json({
+            success: true,
+            approved: approvedCount,
+            deleted: deletedCount
+        });
+
+    } catch (err) {
+        console.error('Error processing dogadjaji:', err);
+        res.status(500).json({ error: 'Грешка при обради догађаја' });
+    }
+});
+
+// ============================================
 // Novosti (News) API Routes
 // ============================================
 
@@ -1605,6 +1711,90 @@ app.get('/api/opste/stats', async (req, res) => {
     } catch (err) {
         console.error('Error fetching opste stats:', err);
         res.status(500).json({ error: 'Грешка при добављању статистике.' });
+    }
+});
+
+// ============================================
+// Urednik (Editor) API Routes - Counter Sync
+// ============================================
+
+// POST /api/urednik/sync-counters - Manually trigger counter synchronization
+app.post('/api/urednik/sync-counters', async (req, res) => {
+    try {
+        // 1. Authentication check
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+
+        // 2. Admin check
+        if (req.session.user.urednik != 1 && req.session.user.urednik != '1') {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const pool = await poolPromise;
+
+        // Get all users
+        const usersResult = await pool.request().query('SELECT id, korisnik FROM korisnik');
+        const users = usersResult.recordset;
+
+        // Get all themes to know which Table_X to check
+        const themesResult = await pool.request().query('SELECT id FROM teme');
+        const themes = themesResult.recordset;
+
+        let updatedCount = 0;
+
+        for (const user of users) {
+            // a. Count Zapisi
+            const zapisiResult = await pool.request()
+                .input('userId', sql.Int, user.id)
+                .query("SELECT COUNT(*) as count FROM zapisi WHERE korisnik_id = @userId AND stanje IN ('0', '1')");
+            const zapisiCount = zapisiResult.recordset[0].count;
+
+            // b. Count Dogadjaji
+            const dogadjajiResult = await pool.request()
+                .input('userId', sql.Int, user.id)
+                .query("SELECT COUNT(*) as count FROM dogadjaji WHERE korisnik_id = @userId AND stanje IN ('0', '1')");
+            const dogadjajiCount = dogadjajiResult.recordset[0].count;
+
+            // c. Count Stavki (Iterate through all Table_X)
+            let stavkiCount = 0;
+            for (const theme of themes) {
+                const tableName = `Table_${theme.id}`;
+                try {
+                    const stavkiResult = await pool.request()
+                        .input('userId', sql.Int, user.id)
+                        .query(`SELECT COUNT(*) as count FROM ${tableName} WHERE dodao = @userId AND stanje IN ('0', '1')`);
+                    stavkiCount += stavkiResult.recordset[0].count;
+                } catch (err) {
+                    // Table might not exist yet for new themes
+                }
+            }
+
+            // d. Update korisnik table
+            await pool.request()
+                .input('userId', sql.Int, user.id)
+                .input('stavki', sql.Int, stavkiCount)
+                .input('zapisi', sql.Int, zapisiCount)
+                .input('dogadjaji', sql.Int, dogadjajiCount)
+                .query(`
+                    UPDATE korisnik 
+                    SET brojac_stavki = @stavki, 
+                        brojac_zapisa = @zapisi, 
+                        brojac_dogadjaja = @dogadjaji 
+                    WHERE id = @userId
+                `);
+
+            updatedCount++;
+        }
+
+        res.json({
+            success: true,
+            message: `Бројачи синхронизовани за ${updatedCount} корисника`
+        });
+
+    } catch (err) {
+        console.error('Error syncing counters:', err);
+        res.status(500).json({ error: 'Грешка при синхронизацији бројача' });
     }
 });
 
