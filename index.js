@@ -87,10 +87,15 @@ $(document).ready(function () {
                     window.location.href = response.redirect;
                 }
             }).fail(function (xhr) {
-                $('#loggingenter0').text('погрешно корисничко име/е-пошта или лозинка').css('color', '#f5a615');
+                let errorMsg = 'погрешно корисничко име/е-пошта или лозинка';
+                if (xhr.responseJSON && xhr.responseJSON.error) {
+                    errorMsg = xhr.responseJSON.error;
+                }
+                $('#loggingenter0').text(errorMsg).css('color', '#f5a615');
                 $('#username').css('border-color', 'red');
                 $('#password').css('border-color', 'red');
             });
+
         }
     });
 

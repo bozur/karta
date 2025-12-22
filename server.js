@@ -1217,16 +1217,22 @@ app.post('/api/login', async (req, res) => {
             .query('SELECT * FROM korisnik WHERE (korisnik = @username OR eposta = @username)');
 
         if (result.recordset.length === 0) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'неисправно корисничко име/е-пошта или лозинка' });
         }
 
         const user = result.recordset[0];
         const previousVisit = user.pristup1;
 
+        // Check if user is blocked
+        if (user.blokiran === 1 || user.blokiran === true) {
+            return res.status(403).json({ error: 'Ваш налог је блокиран. Обратите се уреднику,' });
+        }
+
         // Verify password
+
         const match = await bcrypt.compare(password, user.lozinka);
         if (!match) {
-            return res.status(401).json({ error: 'Invalid credentials' });
+            return res.status(401).json({ error: 'неисправно корисничко име/е-пошта или лозинка' });
         }
 
         // Update access stats
@@ -1900,8 +1906,100 @@ app.get('/api/opste/stats', async (req, res) => {
 });
 
 // ============================================
+// Urednik (Editor) API Routes - User Management
+// ============================================
+
+// GET /api/urednik/users/search - Search users by username or email
+app.get('/api/urednik/users/search', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { q } = req.query;
+        if (!q || q.length < 2) {
+            return res.json({ success: true, results: [] });
+        }
+
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('search', sql.NVarChar, `%${q}%`)
+            .query('SELECT id, korisnik, eposta FROM korisnik WHERE korisnik LIKE @search OR eposta LIKE @search');
+
+        res.json({ success: true, results: result.recordset });
+    } catch (err) {
+        console.error('Error searching users:', err);
+        res.status(500).json({ error: 'Грешка при претрази корисника' });
+    }
+});
+
+// GET /api/urednik/users/:id - Get detailed user info and stats
+app.get('/api/urednik/users/:id', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        const pool = await poolPromise;
+
+        // 1. Fetch user data including new administration fields
+        const userResult = await pool.request()
+            .input('id', sql.Int, id)
+            .query('SELECT id, ime, prezime, korisnik, eposta, slika_url, pristup0, pristup1, brojac_pristupa, brojac_stavki, brojac_zapisa, brojac_dogadjaja, moze_ucitati, urednik, blokiran, napomena FROM korisnik WHERE id = @id');
+
+        if (userResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'Корисник није пронађен' });
+        }
+
+        const user = userResult.recordset[0];
+        res.json({ success: true, user });
+    } catch (err) {
+        console.error('Error fetching user details:', err);
+        res.status(500).json({ error: 'Грешка при добављању података о кориснику' });
+    }
+});
+
+// POST /api/urednik/users/update - Update user status and permissions
+app.post('/api/urednik/users/update', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id, urednik, moze_ucitati, blokiran, napomena } = req.body;
+
+        if (!id) {
+            return res.status(400).json({ error: 'Недостаје ID корисника' });
+        }
+
+        const pool = await poolPromise;
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('urednik', sql.Bit, urednik ? 1 : 0)
+            .input('moze_ucitati', sql.Bit, moze_ucitati ? 1 : 0)
+            .input('blokiran', sql.Bit, blokiran ? 1 : 0)
+            .input('napomena', sql.NVarChar, napomena || null)
+            .query(`
+                UPDATE korisnik 
+                SET urednik = @urednik, 
+                    moze_ucitati = @moze_ucitati, 
+                    blokiran = @blokiran, 
+                    napomena = @napomena 
+                WHERE id = @id
+            `);
+
+        res.json({ success: true, message: 'Подаци успјешно ажурирани' });
+    } catch (err) {
+        console.error('Error updating user:', err);
+        res.status(500).json({ error: 'Грешка при ажурирању корисника' });
+    }
+});
+
+// ============================================
 // Urednik (Editor) API Routes - Counter Sync
 // ============================================
+
 
 // POST /api/urednik/sync-counters - Manually trigger counter synchronization
 app.post('/api/urednik/sync-counters', async (req, res) => {

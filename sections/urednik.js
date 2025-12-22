@@ -1253,4 +1253,171 @@ $(document).ready(function () {
     initDogadjajiApproval();
     initStavkeApproval();
     initCounterSync();
+    initUserManagement();
 });
+
+// ============================================
+// User Management functionality
+// ============================================
+
+function initUserManagement() {
+    // Search button click
+    $('#btn_user_search').on('click', function () {
+        searchUsers();
+    });
+
+    // Search on Enter key
+    $('#user_search_input').on('keypress', function (e) {
+        if (e.which === 13) {
+            searchUsers();
+        }
+    });
+
+    // Back to search list button
+    $('#btn_back_to_user_search').on('click', function () {
+        $('#user_detail_panel').hide();
+        $('#user_search_results').show();
+    });
+
+    // Update user button
+    $('#btn_update_user').on('click', function () {
+        updateUserStatus();
+    });
+}
+
+function searchUsers() {
+    const query = $('#user_search_input').val().trim();
+    if (query.length < 2) {
+        return;
+    }
+
+    const loadingDiv = $('#user_management_loading');
+    const resultsDiv = $('#user_search_results');
+    const detailPanel = $('#user_detail_panel');
+    const tbody = $('#user_search_body');
+
+    loadingDiv.show();
+    resultsDiv.hide();
+    detailPanel.hide();
+
+    fetch(`/api/urednik/users/search?q=${encodeURIComponent(query)}`)
+        .then(response => response.json())
+        .then(data => {
+            loadingDiv.hide();
+            if (data.success) {
+                renderUserResults(data.results);
+            } else {
+                console.error('User search error:', data.error);
+            }
+        })
+        .catch(error => {
+            loadingDiv.hide();
+            console.error('Error searching users:', error);
+        });
+}
+
+function renderUserResults(results) {
+    const resultsDiv = $('#user_search_results');
+    const tbody = $('#user_search_body');
+    tbody.empty();
+
+    if (results.length === 0) {
+        tbody.append('<tr><td colspan="3" style="text-align: center; padding: 10px;">Корисник није пронађен</td></tr>');
+    } else {
+        results.forEach(user => {
+            const row = $(`
+                <tr style="border-bottom: 1px solid #eee; cursor: pointer;">
+                    <td style="padding: 5px;">${user.id}</td>
+                    <td style="padding: 5px;">${user.korisnik}</td>
+                    <td style="padding: 5px;">${user.eposta}</td>
+                </tr>
+            `);
+            row.on('click', () => showUserDetails(user.id));
+            tbody.append(row);
+        });
+    }
+
+    resultsDiv.show();
+}
+
+async function showUserDetails(userId) {
+    const loadingDiv = $('#user_management_loading');
+    const resultsDiv = $('#user_search_results');
+    const detailPanel = $('#user_detail_panel');
+
+    loadingDiv.show();
+    resultsDiv.hide();
+
+    try {
+        const response = await fetch(`/api/urednik/users/${userId}`);
+        const data = await response.json();
+        loadingDiv.hide();
+
+        if (data.success) {
+            const u = data.user;
+
+            // Populate basic info
+            $('#u_detail_name').text(`${u.ime || ''} ${u.prezime || ''}`.trim() || 'Без имена');
+            $('#u_detail_username').text(u.korisnik);
+            $('#u_detail_email').text(u.eposta);
+            $('#u_detail_img').attr('src', u.slika_url || '');
+
+            // Populate stats
+            $('#u_detail_p0').text(u.pristup0 ? new Date(u.pristup0).toLocaleDateString('sr-RS') : '-');
+            $('#u_detail_p1').text(u.pristup1 ? new Date(u.pristup1).toLocaleDateString('sr-RS') : '-');
+            $('#u_detail_count').text(u.brojac_pristupa || 0);
+            $('#u_detail_stavki').text(u.brojac_stavki || 0);
+            $('#u_detail_dogadjaja').text(u.brojac_dogadjaja || 0);
+            $('#u_detail_zapisa').text(u.brojac_zapisa || 0);
+
+            // Populate editable fields
+            $('#u_detail_urednik').prop('checked', u.urednik == 1 || u.urednik == true);
+            $('#u_detail_moze_ucitati').prop('checked', u.moze_ucitati == 1 || u.moze_ucitati == true);
+            $('#u_detail_blokiran').prop('checked', u.blokiran == 1 || u.blokiran == true);
+            $('#u_detail_napomena').val(u.napomena || '');
+
+            // Store ID on the update button
+            $('#btn_update_user').data('userid', u.id);
+
+            detailPanel.show();
+        } else {
+            alert(data.error || 'Грешка при учитавању података');
+            resultsDiv.show();
+        }
+    } catch (error) {
+        loadingDiv.hide();
+        console.error('Error fetching user detail:', error);
+        resultsDiv.show();
+    }
+}
+
+async function updateUserStatus() {
+    const userId = $('#btn_update_user').data('userid');
+    const urednik = $('#u_detail_urednik').is(':checked');
+    const moze_ucitati = $('#u_detail_moze_ucitati').is(':checked');
+    const blokiran = $('#u_detail_blokiran').is(':checked');
+    const napomena = $('#u_detail_napomena').val().trim();
+    const alerts = $('#user_update_alerts');
+
+    alerts.css('color', 'orange').text('Чувам...');
+
+    try {
+        const response = await fetch('/api/urednik/users/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: userId, urednik, moze_ucitati, blokiran, napomena })
+        });
+
+        const data = await response.json();
+        if (data.success) {
+            alerts.css('color', 'green').text('Сачувано!');
+            setTimeout(() => alerts.text(''), 3000);
+        } else {
+            alerts.css('color', 'red').text(data.error || 'Грешка');
+        }
+    } catch (error) {
+        console.error('Error updating user:', error);
+        alerts.css('color', 'red').text('Грешка на серверу');
+    }
+}
+
