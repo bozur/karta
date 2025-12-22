@@ -72,7 +72,67 @@
                 data-target="#urednik_odobravanje_stavki_podaci"></span></span>
     </div>
     <div id="urednik_odobravanje_stavki_podaci" class="collapse">
-        <p style="padding: 10px; margin: 5px 0;">Садржај за одобравање ставки...</p>
+        <div style="margin-top: 10px;">
+            <!-- Alert/Message Area -->
+            <div id="stavke_approval_alerts" style="color: orange; margin-bottom: 10px;"></div>
+
+            <!-- 1. Summary View: List of themes with pending items -->
+            <div id="stavke_approval_summary">
+                <p id="stavke_summary_empty" style="padding: 10px; margin: 5px 0; display: none;">Нема ставки за
+                    одобрење.</p>
+                <div id="stavke_summary_list" class="list-group list-group-flush" style="font-size: 0.9rem;">
+                    <!-- Theme list will be populated here -->
+                </div>
+            </div>
+
+            <!-- 2. Detailed View: Table of items for a specific theme -->
+            <div id="stavke_approval_detail" style="display: none;">
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                    <span id="stavke_detail_theme_name" style="color: darkorange;"></span>
+                    <button class="btn btn-sm btn-link" id="btn_back_to_stavke_summary"
+                        style="color: grey; text-decoration: none;">&larr; назад на листу</button>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="table-hover-custom"
+                        style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #ddd; background-color: #f9f9f9;">
+                                <th style="padding: 3px; text-align: left;">опис</th>
+                                <th style="padding: 3px; text-align: left; width: 80px;">разред</th>
+                                <th style="padding: 3px; text-align: left; width: 100px;">врста</th>
+                                <th style="padding: 3px; text-align: left; width: 100px;">подврста</th>
+                                <th style="padding: 3px; text-align: left; width: 130px;">почетак</th>
+                                <th style="padding: 3px; text-align: left; width: 130px;">крај</th>
+                                <th style="padding: 3px; text-align: left; width: 60px;">корисник</th>
+                                <th style="padding: 3px; text-align: left; width: 100px;">извор</th>
+                                <th style="padding: 3px; text-align: left; width: 60px;">запис</th>
+                                <th style="padding: 3px; text-align: center; width: 20px; background-color: #90EE90;">
+                                    <input type="checkbox" id="stavke_approve_all">
+                                </th>
+                                <th style="padding: 3px; text-align: center; width: 20px; background-color: #FFB6C6;">
+                                    <input type="checkbox" id="stavke_delete_all">
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="stavke_approval_body">
+                            <!-- Items will be populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button id="btn_izvrsi_stavke" class="btn btn-white border border-dark">изврши</button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="stavke_approval_loading" style="display: none; text-align: center; padding: 20px;">
+                <div class="spinner-border text-secondary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Odobravanje Događaja -->

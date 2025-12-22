@@ -782,12 +782,475 @@ function syncCounters() {
 }
 
 
-// Ensure the function is checking on global scope if needed - though karta.js calls it directly from window
+// ============================================
+// Stavke Approval functionality
+// ============================================
+
+function initStavkeApproval() {
+    // Load pending summary when section is expanded or when returning from detail
+    $('#urednik_odobravanje_stavki_podaci').on('shown.bs.collapse', function () {
+        loadPendingStavkeSummary();
+    });
+
+    // Back to summary button
+    $('#btn_back_to_stavke_summary').on('click', function () {
+        loadPendingStavkeSummary();
+    });
+
+    // Header checkbox for "approve all"
+    $('#stavke_approve_all').on('change', function () {
+        const isChecked = $(this).is(':checked');
+        if (isChecked) {
+            $('#stavke_delete_all').prop('checked', false);
+            $('.stavke-delete-checkbox').prop('checked', false);
+        }
+        $('.stavke-approve-checkbox').prop('checked', isChecked);
+    });
+
+    // Header checkbox for "delete all"
+    $('#stavke_delete_all').on('change', function () {
+        const isChecked = $(this).is(':checked');
+        if (isChecked) {
+            $('#stavke_approve_all').prop('checked', false);
+            $('.stavke-approve-checkbox').prop('checked', false);
+        }
+        $('.stavke-delete-checkbox').prop('checked', isChecked);
+    });
+
+    // Execute button
+    $('#btn_izvrsi_stavke').on('click', function () {
+        processStavkeApproval();
+    });
+}
+
+function loadPendingStavkeSummary() {
+    const alertsDiv = $('#stavke_approval_alerts');
+    const loadingDiv = $('#stavke_approval_loading');
+    const summaryDiv = $('#stavke_approval_summary');
+    const detailDiv = $('#stavke_approval_detail');
+
+    alertsDiv.hide().text('');
+    loadingDiv.show();
+    summaryDiv.hide();
+    detailDiv.hide();
+
+    // Clear all existing map layers when entering approval section summary
+    if (typeof clearAllMapLayers === 'function') clearAllMapLayers();
+    if (typeof clearMapForStavkeApproval === 'function') clearMapForStavkeApproval();
+
+    fetch('/api/v2/urednik/stavke/pending-summary')
+        .then(response => response.json())
+        .then(data => {
+            loadingDiv.hide();
+            if (data.success) {
+                displayPendingStavkeSummary(data.results);
+            } else {
+                alertsDiv.text(data.error || 'Грешка при учитавању извјештаја').show();
+            }
+        })
+        .catch(error => {
+            loadingDiv.hide();
+            console.error('Error loading stavke summary:', error);
+            alertsDiv.text('Грешка при комуникацији са сервером').show();
+        });
+}
+
+function displayPendingStavkeSummary(results) {
+    const listGroup = $('#stavke_summary_list');
+    const emptyMsg = $('#stavke_summary_empty');
+    const summaryDiv = $('#stavke_approval_summary');
+
+    listGroup.empty();
+    if (!results || results.length === 0) {
+        emptyMsg.show();
+    } else {
+        emptyMsg.hide();
+        results.forEach(theme => {
+            const item = $(`
+                <a href="#" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-id="${theme.id}" data-name="${theme.naziv}">
+                    ${theme.naziv}
+                    <span class="badge badge-warning badge-pill">${theme.count}</span>
+                </a>
+            `);
+            item.on('click', function (e) {
+                e.preventDefault();
+                loadStavkeApprovalDetail($(this).data('id'), $(this).data('name'));
+            });
+            listGroup.append(item);
+        });
+    }
+    summaryDiv.show();
+}
+
+function loadStavkeApprovalDetail(temaId, themeName) {
+    const alertsDiv = $('#stavke_approval_alerts');
+    const loadingDiv = $('#stavke_approval_loading');
+    const summaryDiv = $('#stavke_approval_summary');
+    const detailDiv = $('#stavke_approval_detail');
+
+    alertsDiv.hide().text('');
+    loadingDiv.show();
+    summaryDiv.hide();
+    detailDiv.hide();
+
+    // Store current theme ID for processing
+    window.currentStavkeThemeId = temaId;
+
+    fetch(`/api/v2/urednik/stavke/pending/${temaId}`)
+        .then(response => response.json())
+        .then(data => {
+            loadingDiv.hide();
+            if (data.success) {
+                displayPendingStavke(data, temaId, themeName);
+            } else {
+                alertsDiv.text(data.error || 'Грешка при учитавању детаља').show();
+            }
+        })
+        .catch(error => {
+            loadingDiv.hide();
+            console.error('Error loading stavke details:', error);
+            alertsDiv.text('Грешка при комуникацији са сервером').show();
+        });
+}
+
+function displayPendingStavke(data, temaId, themeName) {
+    const tbody = $('#stavke_approval_body');
+    const detailDiv = $('#stavke_approval_detail');
+    const themeNameSpan = $('#stavke_detail_theme_name');
+
+    themeNameSpan.text(themeName);
+    tbody.empty();
+    $('#stavke_approve_all').prop('checked', false);
+    $('#stavke_delete_all').prop('checked', false);
+
+    // CRITICAL: Populate themeOptionsCache for the left sidebar in karta.js
+    // window.themeOptionsCache[tabela] = [razredArray, vrstaArray, podvrstaArray]
+    if (typeof window.themeOptionsCache === 'undefined') window.themeOptionsCache = {};
+    window.themeOptionsCache[temaId] = [
+        data.options.razred || {},
+        data.options.vrsta || {},
+        data.options.podvrsta || {}
+    ];
+
+    const pending = data.pending;
+    const options = data.options;
+
+    // Date formatting: Backend returns ISO, we want DD.MM.YYYY HH:mm
+    const formatDate = (isoStr) => {
+        if (!isoStr) return '';
+        const d = new Date(isoStr);
+        if (isNaN(d.getTime())) return isoStr;
+        return d.getDate().toString().padStart(2, '0') + '.' +
+            (d.getMonth() + 1).toString().padStart(2, '0') + '.' +
+            d.getFullYear() + ' ' +
+            d.getHours().toString().padStart(2, '0') + ':' +
+            d.getMinutes().toString().padStart(2, '0');
+    };
+
+    pending.forEach(record => {
+        const razredText = options.razred[record.razred] || record.razred || '';
+        const vrstaText = options.vrsta[record.vrsta] || record.vrsta || '';
+        const podvrstaText = options.podvrsta[record.podvrsta] || record.podvrsta || '';
+
+        record.vrijeme0_fmt = formatDate(record.vrijeme0);
+        record.vrijeme1_fmt = formatDate(record.vrijeme1);
+
+        const row = $(`
+            <tr style="border-bottom: 1px solid #eee; cursor: pointer;" data-id="${record.ID}">
+                <td style="padding: 3px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${record.opis || ''}</td>
+                <td style="padding: 3px;">${razredText}</td>
+                <td style="padding: 3px;">${vrstaText}</td>
+                <td style="padding: 3px;">${podvrstaText}</td>
+                <td style="padding: 3px;">${record.vrijeme0_fmt}</td>
+                <td style="padding: 3px;">${record.vrijeme1_fmt}</td>
+                <td style="padding: 3px;">${record.korisnik || ''}</td>
+                <td style="padding: 3px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${record.izvor || ''}</td>
+                <td style="padding: 3px;">
+                    ${record.zapis ? `<a href="/api/zapisi/${record.zapis}" target="_blank" class="zapis-link-table">${record.zapis_naziv || record.zapis}</a>` : ''}
+                </td>
+                <td style="padding: 3px; text-align: center;">
+                    <input type="checkbox" class="stavke-approve-checkbox" data-id="${record.ID}">
+                </td>
+                <td style="padding: 3px; text-align: center;">
+                    <input type="checkbox" class="stavke-delete-checkbox" data-id="${record.ID}">
+                </td>
+            </tr>
+        `);
+
+        row.on('click', function (e) {
+            if ($(e.target).is('input[type="checkbox"]')) return;
+            showPendingStavkaOnMap(record.ID);
+        });
+
+        tbody.append(row);
+    });
+
+    // Individual checkbox logic
+    $('.stavke-approve-checkbox').on('change', function () {
+        if ($(this).is(':checked')) {
+            $(`.stavke-delete-checkbox[data-id="${$(this).data('id')}"]`).prop('checked', false);
+        }
+    });
+    $('.stavke-delete-checkbox').on('change', function () {
+        if ($(this).is(':checked')) {
+            $(`.stavke-approve-checkbox[data-id="${$(this).data('id')}"]`).prop('checked', false);
+        }
+    });
+
+    detailDiv.show();
+
+    // Update markers on map
+    updateMapForStavkeApproval(data, temaId);
+}
+
+function showPendingStavkaOnMap(recordId) {
+    if (window.stavkeApprovalMarkers) {
+        const marker = window.stavkeApprovalMarkers.find(m => m.options && m.options.recordId === recordId && m.options.isPending);
+        if (marker) {
+            if (marker.getLatLng) {
+                // Point
+                karta.panTo(marker.getLatLng());
+                marker.openPopup();
+            } else if (marker.getBounds) {
+                // Polyline/Polygon GeoJSON layer group
+                const bounds = marker.getBounds();
+                if (bounds.isValid()) {
+                    karta.fitBounds(bounds);
+                    // For layers, we need to find a layer inside that has a popup or open at center
+                    const layers = marker.getLayers ? marker.getLayers() : [];
+                    if (layers.length > 0) {
+                        layers[0].openPopup();
+                    } else if (marker.openPopup) {
+                        marker.openPopup(bounds.getCenter());
+                    }
+                }
+            }
+        }
+    }
+}
+
+function updateMapForStavkeApproval(data, temaId) {
+    clearMapForStavkeApproval();
+    if (!window.stavkeApprovalMarkers) window.stavkeApprovalMarkers = [];
+
+    const pending = data.pending;
+    const existing = data.existing;
+    const options = data.options;
+
+    // Orange marker for pending
+    const orangeIcon = L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+        className: 'marker-orange'
+    });
+
+    const getLatLng = (tacke, tacke0) => {
+        try {
+            const coords = typeof tacke === 'string' ? JSON.parse(tacke) : tacke;
+            if (!coords) return null;
+            let lat, lng;
+            if (tacke0 === 'Point') {
+                lat = coords[1];
+                lng = coords[0];
+            } else if (tacke0 === 'LineString' && Array.isArray(coords[0])) {
+                lat = coords[0][1];
+                lng = coords[0][0];
+            } else if (tacke0 === 'Polygon' && Array.isArray(coords[0]) && Array.isArray(coords[0][0])) {
+                lat = coords[0][0][1];
+                lng = coords[0][0][0];
+            }
+            return (isNaN(lat) || isNaN(lng)) ? null : [lat, lng];
+        } catch (e) { return null; }
+    };
+
+    pending.forEach(record => {
+        if (record.tacke) {
+            try {
+                const razredText = options.razred[record.razred] || record.razred || '';
+                const vrstaText = options.vrsta[record.vrsta] || record.vrsta || '';
+                const podvrstaText = options.podvrsta[record.podvrsta] || record.podvrsta || '';
+
+                const popupContent = `
+                    <div style="min-width: 200px;">
+                        <div style="font-weight: bold; margin-bottom: 5px; color: #d35400;">Предлог ставке</div>
+                        <hr style="margin: 5px 0;">
+                        <div style="margin-bottom: 3px;"><b>Опис:</b> ${record.opis || ''}</div>
+                        <div style="margin-bottom: 3px;"><b>Разред:</b> ${razredText}</div>
+                        <div style="margin-bottom: 3px;"><b>Врста:</b> ${vrstaText}</div>
+                        <div style="margin-bottom: 3px;"><b>Подврста:</b> ${podvrstaText}</div>
+                        <div style="margin-bottom: 3px;"><b>Почетак:</b> ${record.vrijeme0_fmt || ''}</div>
+                        <div style="margin-bottom: 3px;"><b>Крај:</b> ${record.vrijeme1_fmt || ''}</div>
+                        <div style="margin-bottom: 3px;"><b>Корисник:</b> ${record.korisnik || ''}</div>
+                        <div style="margin-bottom: 3px;"><b>Извор:</b> ${record.izvor || ''}</div>
+                        <div style="margin-bottom: 3px;"><b>Запис:</b> ${record.zapis ? `<a href="/api/zapisi/${record.zapis}" target="_blank" style="color: darkorange;">${record.zapis_naziv || record.zapis}</a>` : ''}</div>
+                    </div>
+                `;
+
+                if (record.tacke0 === 'Point') {
+                    const pos = getLatLng(record.tacke, record.tacke0);
+                    if (pos) {
+                        const marker = L.marker(pos, { icon: orangeIcon, recordId: record.ID, isPending: true })
+                            .addTo(karta)
+                            .bindPopup(popupContent);
+                        window.stavkeApprovalMarkers.push(marker);
+                    }
+                } else {
+                    const coords = JSON.parse(record.tacke);
+                    const geojson = {
+                        type: "Feature",
+                        geometry: {
+                            type: record.tacke0,
+                            coordinates: coords
+                        },
+                        properties: {
+                            id: record.ID
+                        }
+                    };
+
+                    const layer = L.geoJSON(geojson, {
+                        style: { color: "#d35400", weight: 5, opacity: 0.8 },
+                        onEachFeature: function (feature, layer) {
+                            layer.bindPopup(popupContent);
+                        }
+                    }).addTo(karta);
+
+                    // Critical: Attach metadata to the group and each layer for identification
+                    layer.options = layer.options || {};
+                    layer.options.recordId = record.ID;
+                    layer.options.isPending = true;
+
+                    layer.eachLayer(l => {
+                        l.options = l.options || {};
+                        l.options.recordId = record.ID;
+                        l.options.isPending = true;
+                    });
+
+                    window.stavkeApprovalMarkers.push(layer);
+                }
+            } catch (e) {
+                console.error('Error rendering pending geometry', record.ID, e);
+            }
+        }
+    });
+
+    existing.forEach(record => {
+        const pos = getLatLng(record.tacke, record.tacke0);
+        if (pos) {
+            const icon = typeof window.createIcon === 'function' ? window.createIcon(record.razred, temaId) : new L.Icon.Default();
+            const popupLabel = options.vrsta[record.vrsta] || record.vrsta || '';
+            const popupContent = `<a href="#" class="detalji" pointinfo="${record.ID}"><i class="bi bi-book"></i></a> ${popupLabel}`;
+
+            const marker = L.marker(pos, { icon: icon, recordId: record.ID, isPending: false })
+                .addTo(karta)
+                .bindPopup(popupContent);
+
+            marker.on('popupopen', function () {
+                window.tabela = temaId;
+            });
+
+            window.stavkeApprovalMarkers.push(marker);
+        }
+    });
+
+    if (window.stavkeApprovalMarkers.length > 0) {
+        // filter for layers that can be added to featureGroup
+        const group = new L.featureGroup(window.stavkeApprovalMarkers.filter(m => m.addTo || m.getBounds));
+        try {
+            const bounds = group.getBounds();
+            if (bounds && bounds.isValid()) {
+                karta.fitBounds(bounds.pad(0.1));
+            }
+        } catch (e) {
+            console.warn('Could not fit bounds', e);
+        }
+    }
+}
+
+function openLeftSidebarForStavka(id, themeId) {
+    // Replicate logic from karta.js to open sidebar for an existing object
+    // We need to set window.tabela to themeId so the detail fetch knows which table to use
+    const oldTabela = window.tabela;
+    window.tabela = themeId;
+
+    // Use a temporary link trick to trigger the delegated click handler in karta.js
+    const tempLink = $(`<a href="#" class="detalji" pointinfo="${id}"></a>`).appendTo('body');
+    tempLink.click();
+    tempLink.remove();
+
+    // Note: window.tabela might need to stay themeId if the sidebar detail fetch is async
+    // In karta.js: $.getJSON('api/points/' + idpoint + '?table=' + tabela, ...)
+}
+
+function clearMapForStavkeApproval() {
+    if (window.stavkeApprovalMarkers) {
+        window.stavkeApprovalMarkers.forEach(m => karta.removeLayer(m));
+        window.stavkeApprovalMarkers = [];
+    }
+}
+
+function processStavkeApproval() {
+    const approveIds = [];
+    const deleteIds = [];
+
+    $('.stavke-approve-checkbox:checked').each(function () {
+        approveIds.push($(this).data('id'));
+    });
+    $('.stavke-delete-checkbox:checked').each(function () {
+        deleteIds.push($(this).data('id'));
+    });
+
+    if (approveIds.length === 0 && deleteIds.length === 0) {
+        const alertsDiv = $('#stavke_approval_alerts');
+        alertsDiv.css('color', 'orange').text('Изаберите ставке за обраду').show();
+        setTimeout(() => alertsDiv.hide(), 3000);
+        return;
+    }
+
+    const alertsDiv = $('#stavke_approval_alerts');
+    const loadingDiv = $('#stavke_approval_loading');
+    const detailDiv = $('#stavke_approval_detail');
+
+    alertsDiv.hide().text('');
+    loadingDiv.show();
+
+    fetch('/api/v2/urednik/stavke/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            tema_id: window.currentStavkeThemeId,
+            approve: approveIds,
+            delete: deleteIds
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            loadingDiv.hide();
+            if (data.success) {
+                const message = `Одобрено: ${data.approved}, Обрисано: ${data.deleted}`;
+                alertsDiv.css('color', 'green').text(message).show();
+                setTimeout(() => {
+                    loadPendingStavkeSummary();
+                }, 1500);
+            } else {
+                alertsDiv.css('color', 'orange').text(data.error || 'Грешка при обради').show();
+            }
+        })
+        .catch(error => {
+            loadingDiv.hide();
+            console.error('Error processing stavke:', error);
+            alertsDiv.css('color', 'orange').text('Грешка при комуникацији са сервером').show();
+        });
+}
 window.initUrednikSection = initUrednikSection;
 
 // Initialize approval systems when urednik section loads
 $(document).ready(function () {
     initZapisiApproval();
     initDogadjajiApproval();
+    initStavkeApproval();
     initCounterSync();
 });

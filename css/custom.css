@@ -383,3 +383,8 @@ div {
 .marker-orange {
   filter: hue-rotate(165deg) saturate(1.8) brightness(0.9);
 }
+
+/* Custom table hover effect for approval tables */
+.table-hover-custom tbody tr:hover {
+  background-color: #fff4e6 !important;
+}

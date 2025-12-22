@@ -137,6 +137,18 @@ app.get('/api/points/:id', async (req, res) => {
         }
 
         const row = result.recordset[0];
+
+        // Fetch zapis naziv if exists
+        let zapisNaziv = null;
+        if (row.zapis) {
+            const zapisResult = await pool.request()
+                .input('zid', sql.Int, row.zapis)
+                .query('SELECT naziv FROM zapisi WHERE id = @zid');
+            if (zapisResult.recordset.length > 0) {
+                zapisNaziv = zapisResult.recordset[0].naziv;
+            }
+        }
+
         res.json({
             vrs: row.vrsta,
             pod: row.podvrsta,
@@ -148,7 +160,9 @@ app.get('/api/points/:id', async (req, res) => {
             prostorno: row.tp,
             vremenski: row.tv,
             dodao_vrijeme: row.dodao_vrijeme,
-            izmjenio_vrijeme: row.izmjenio_vrijeme
+            izmjenio_vrijeme: row.izmjenio_vrijeme,
+            zapis: row.zapis,
+            zapis_naziv: zapisNaziv
         });
     } catch (err) {
         res.status(500).send(err.message);
@@ -532,13 +546,15 @@ app.post('/api/teme/insert', async (req, res) => {
             // stanje defaults to '0'
 
             request.input('stanje', sql.NVarChar, stanje);
+            request.input('tacke', sql.NVarChar, JSON.stringify(coords));
+            request.input('tacke0', sql.NVarChar, type === 'POINT' ? 'Point' : (type === 'LINESTRING' ? 'LineString' : 'Polygon'));
 
             // Note: We use query with specific parameter for WKT injection
             const query = `
                 INSERT INTO ${tableName} 
-                (vrsta, podvrsta, razred, prostorno, tp, vrijeme0, vrijeme1, tv, opis, izvor, dodao, dodao_vrijeme, zapis, stanje)
+                (vrsta, podvrsta, razred, prostorno, tp, vrijeme0, vrijeme1, tv, opis, izvor, dodao, dodao_vrijeme, zapis, stanje, tacke, tacke0)
                 VALUES 
-                (@vrsta, @podvrsta, @razred, geometry::STGeomFromText('${wkt}', 4326), @tp, @vrijeme0, @vrijeme1, @tv, @opis, @izvor, @dodao, GETUTCDATE(), @zapis, @stanje)
+                (@vrsta, @podvrsta, @razred, geometry::STGeomFromText('${wkt}', 4326), @tp, @vrijeme0, @vrijeme1, @tv, @opis, @izvor, @dodao, GETUTCDATE(), @zapis, @stanje, @tacke, @tacke0)
             `;
             await request.query(query);
         }
@@ -1585,6 +1601,175 @@ app.post('/api/urednik/dogadjaji/process', async (req, res) => {
     } catch (err) {
         console.error('Error processing dogadjaji:', err);
         res.status(500).json({ error: 'Грешка при обради догађаја' });
+    }
+});
+
+// ============================================
+// Stavke (Theme Items) Urednik API Routes
+// ============================================
+
+// GET /api/v2/urednik/stavke/pending-summary - List themes with pending counts
+app.get('/api/v2/urednik/stavke/pending-summary', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const pool = await poolPromise;
+        const themesResult = await pool.request().query('SELECT id, naziv FROM teme');
+        const themes = themesResult.recordset;
+        const summary = [];
+
+        for (const theme of themes) {
+            const tableName = `Table_${theme.id}`;
+            try {
+                const countResult = await pool.request().query(`SELECT COUNT(*) as count FROM ${tableName} WHERE stanje = '0'`);
+                const pendingCount = countResult.recordset[0].count;
+                if (pendingCount > 0) {
+                    summary.push({
+                        id: theme.id,
+                        naziv: theme.naziv,
+                        count: pendingCount
+                    });
+                }
+            } catch (err) {
+                // Table might not exist or other issues, skip
+            }
+        }
+
+        // Sort by count descending
+        summary.sort((a, b) => b.count - a.count);
+        res.json({ success: true, results: summary });
+
+    } catch (err) {
+        console.error('Error fetching stavke pending summary:', err);
+        res.status(500).json({ error: 'Грешка при добављању извјештаја' });
+    }
+});
+
+// GET /api/v2/urednik/stavke/pending/:tema_id - Detailed pending items for a theme
+app.get('/api/v2/urednik/stavke/pending/:tema_id', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { tema_id } = req.params;
+        if (!/^\d+$/.test(tema_id)) {
+            return res.status(400).json({ error: 'Неисправан ID теме' });
+        }
+
+        const tableName = `Table_${tema_id}`;
+        const pool = await poolPromise;
+
+        // 1. Fetch pending records - Join with zapisi for filename
+        const pendingResult = await pool.request().query(`
+            SELECT t.ID, t.vrsta, t.podvrsta, t.razred, t.vrijeme0, t.vrijeme1, 
+                   t.tacke, t.tacke0, t.opis, t.izvor, t.dodao, t.dodao_vrijeme, t.tv, t.tp, t.zapis,
+                   k.korisnik, z.naziv as zapis_naziv
+            FROM ${tableName} t
+            LEFT JOIN korisnik k ON t.dodao = k.id
+            LEFT JOIN zapisi z ON t.zapis = z.id
+            WHERE t.stanje = '0'
+            ORDER BY t.dodao_vrijeme DESC
+        `);
+        const pending = pendingResult.recordset;
+
+        if (pending.length === 0) {
+            return res.json({ success: true, pending: [], existing: [] });
+        }
+
+        // 2. Calculate time window
+        let minDate = null;
+        let maxDate = null;
+        pending.forEach(row => {
+            if (row.vrijeme0 && (!minDate || row.vrijeme0 < minDate)) minDate = row.vrijeme0;
+            if (row.vrijeme1 && (!maxDate || row.vrijeme1 > maxDate)) maxDate = row.vrijeme1;
+        });
+
+        // 3. Fetch existing records in window - Join with zapisi
+        let existing = [];
+        if (minDate && maxDate) {
+            const request = pool.request();
+            request.input('min', sql.DateTime2, minDate);
+            request.input('max', sql.DateTime2, maxDate);
+            const existingResult = await request.query(`
+                SELECT t.ID, t.vrsta, t.podvrsta, t.razred, t.vrijeme0, t.vrijeme1, t.tacke0, t.tacke, t.opis, t.izvor, t.dodao_vrijeme, t.izmjenio_vrijeme, t.tp, t.tv, t.zapis,
+                       z.naziv as zapis_naziv
+                FROM ${tableName} t
+                LEFT JOIN zapisi z ON t.zapis = z.id
+                WHERE t.stanje = '1' AND (
+                    (t.vrijeme0 <= @max AND t.vrijeme1 >= @min)
+                )
+            `);
+            existing = existingResult.recordset;
+        }
+
+        // 4. Fetch theme options for display mapping
+        const optionsResult = await pool.request()
+            .input('tema_id', sql.Int, tema_id)
+            .query('SELECT tip, redosled, vrednost FROM teme_opcije WHERE tema_id = @tema_id');
+
+        const options = { razred: {}, vrsta: {}, podvrsta: {} };
+        optionsResult.recordset.forEach(row => {
+            if (options[row.tip]) options[row.tip][row.redosled] = row.vrednost;
+        });
+
+        res.json({
+            success: true,
+            pending: pending.map(row => ({
+                ...row,
+                vrijeme0_fmt: row.vrijeme0 ? new Date(row.vrijeme0).toLocaleString('sr-RS') : '',
+                vrijeme1_fmt: row.vrijeme1 ? new Date(row.vrijeme1).toLocaleString('sr-RS') : ''
+            })),
+            existing: existing,
+            options: options
+        });
+
+    } catch (err) {
+        console.error('Error fetching stavke pending detail:', err);
+        res.status(500).json({ error: 'Грешка при добављању детаља' });
+    }
+});
+
+// POST /api/v2/urednik/stavke/process - Bulk approve/delete stavke
+app.post('/api/v2/urednik/stavke/process', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { tema_id, approve, delete: deleteIds } = req.body;
+        if (!/^\d+$/.test(tema_id)) {
+            return res.status(400).json({ error: 'Неисправан ID теме' });
+        }
+
+        const tableName = `Table_${tema_id}`;
+        const pool = await poolPromise;
+        let approvedCount = 0;
+        let deletedCount = 0;
+
+        if (approve && approve.length > 0) {
+            const request = pool.request();
+            const placeholders = approve.map((_, i) => `@id${i}`).join(',');
+            approve.forEach((id, i) => request.input(`id${i}`, sql.Int, id));
+            const result = await request.query(`UPDATE ${tableName} SET stanje = '1' WHERE ID IN (${placeholders}) AND stanje = '0'`);
+            approvedCount = result.rowsAffected[0];
+        }
+
+        if (deleteIds && deleteIds.length > 0) {
+            const request = pool.request();
+            const placeholders = deleteIds.map((_, i) => `@id${i}`).join(',');
+            deleteIds.forEach((id, i) => request.input(`id${i}`, sql.Int, id));
+            const result = await request.query(`DELETE FROM ${tableName} WHERE ID IN (${placeholders}) AND stanje = '0'`);
+            deletedCount = result.rowsAffected[0];
+        }
+
+        res.json({ success: true, approved: approvedCount, deleted: deletedCount });
+
+    } catch (err) {
+        console.error('Error processing stavke:', err);
+        res.status(500).json({ error: 'Грешка при обради' });
     }
 });
 
