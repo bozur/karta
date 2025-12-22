@@ -1254,6 +1254,7 @@ $(document).ready(function () {
     initStavkeApproval();
     initCounterSync();
     initUserManagement();
+    initUrednikStavkeSearch();
 });
 
 // ============================================
@@ -1421,3 +1422,319 @@ async function updateUserStatus() {
     }
 }
 
+// ============================================
+// Stavke Search and Edit functionality
+// ============================================
+
+function initUrednikStavkeSearch() {
+    console.log('Initializing urednik stavke search...');
+
+    // Load themes into dropdown
+    fetch('/api/v2/themes')
+        .then(response => response.json())
+        .then(data => {
+            const select = $('#stavka_tabela');
+            select.find('option:not(:first)').remove();
+            data.themes.forEach(theme => {
+                select.append(`<option value="${theme.id || theme.ID}">${theme.naziv || theme.NAZIV}</option>`);
+            });
+        });
+
+    // Load all zapisi for dropdown
+    fetch('/api/urednik/all-zapisi')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                window.allZapisiCache = data.results;
+            }
+        });
+
+    // Theme change handler
+    $('#stavka_tabela').on('change', function () {
+        const temaId = $(this).val();
+        if (temaId == "0") {
+            $('#stavka_razred, #stavka_vrsta, #stavka_podvrsta').find('option:not(:first)').remove();
+            return;
+        }
+
+        fetch(`/api/v2/theme-options/${temaId}`)
+            .then(response => response.json())
+            .then(data => {
+                const options = data.options;
+                const r = $('#stavka_razred').find('option:not(:first)').remove();
+                const v = $('#stavka_vrsta').find('option:not(:first)').remove();
+                const p = $('#stavka_podvrsta').find('option:not(:first)').remove();
+
+                options.razred.forEach((val, idx) => { if (val) r.append(`<option value="${idx}">${val}</option>`); });
+                options.vrsta.forEach((val, idx) => { if (val) v.append(`<option value="${idx}">${val}</option>`); });
+                options.podvrsta.forEach((val, idx) => { if (val) p.append(`<option value="${idx}">${val}</option>`); });
+
+                // Cache for onEachFeature
+                if (typeof window.themeOptionsCache === 'undefined') window.themeOptionsCache = {};
+                window.themeOptionsCache[temaId] = [options.razred, options.vrsta, options.podvrsta];
+            });
+    });
+
+    // Form submission
+    $('#form_pretraga_stavki').on('submit', handleStavkaSearch);
+
+    // Initialize Flatpickr
+    if (typeof flatpickr !== 'undefined') {
+        flatpickr('.flatpickr-datetime', {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            locale: "sr",
+            time_24hr: true
+        });
+    }
+}
+
+function handleStavkaSearch(e) {
+    if (e) e.preventDefault();
+
+    const temaId = $('#stavka_tabela').val();
+    if (temaId == "0") {
+        $('#stavka_alert_area').text('Тема није изабрана').show();
+        return;
+    }
+
+    const searchData = {
+        tabela: temaId,
+        id: $('#stavka_id').val(),
+        razred: $('#stavka_razred').val(),
+        vrsta: $('#stavka_vrsta').val(),
+        podvrsta: $('#stavka_podvrsta').val(),
+        od: $('#stavka_od').val(),
+        do: $('#stavka_do').val(),
+        prostorno: $('#stavka_prostorno').val(),
+        vremenski: $('#stavka_vremenski').val(),
+        izvor: $('#stavka_izvor').val(),
+        opis: $('#stavka_opis').val()
+    };
+
+    const spinner = $('#stavka_search_cekanje');
+    spinner.css('visibility', 'visible');
+    $('#stavka_alert_area').hide();
+
+    // Close sidebar to prevent editing records that might be removed
+    if (window.sidebarControl) window.sidebarControl.hide();
+
+    // Clear existing layers
+    if (typeof clearAllMapLayers === 'function') clearAllMapLayers();
+
+    $.ajax({
+        url: 'api/search',
+        type: 'post',
+        dataType: 'json',
+        data: searchData,
+        success: function (data) {
+            spinner.css('visibility', 'hidden');
+            window.tabela = temaId;
+
+            window.addedGeoJSON = L.geoJSON(data, {
+                pointToLayer: function (feature, latlng) {
+                    return L.marker(latlng, {
+                        icon: typeof window.createIcon === 'function'
+                            ? window.createIcon(feature.properties.r, temaId)
+                            : new L.Icon.Default()
+                    });
+                },
+                onEachFeature: function (feature, layer) {
+                    if (feature.properties && feature.properties.v) {
+                        const options = window.themeOptionsCache ? window.themeOptionsCache[temaId] : null;
+                        const label = (options && options[1]) ? (options[1][feature.properties.v] || feature.properties.v) : feature.properties.v;
+                        layer.bindPopup(`<a href="#" class="stavka-urednik-detalji" data-id="${feature.properties.id}" data-tabela="${temaId}"><i class="bi bi-book"></i></a> ${label}`);
+                    }
+                }
+            }).addTo(karta);
+
+            if (data.features && data.features.length > 0) {
+                karta.fitBounds(window.addedGeoJSON.getBounds());
+            } else {
+                $('#stavka_alert_area').text('Нема резултата').show();
+            }
+
+            // Click handler for book icon
+            $(document).off('click', '.stavka-urednik-detalji').on('click', '.stavka-urednik-detalji', function (e) {
+                e.preventDefault();
+                const id = $(this).data('id');
+                const tabela = $(this).data('tabela');
+                openStavkaEditForm(id, tabela);
+            });
+        },
+        error: function () {
+            spinner.css('visibility', 'hidden');
+            $('#stavka_alert_area').text('Грешка при претрази').show();
+        }
+    });
+}
+
+function openStavkaEditForm(id, tabela) {
+    if (typeof window.sidebarControl === 'undefined') return;
+
+    window.sidebarControl.show();
+    $('#sidebar').html('<div class="p-3">Учитавам...</div>');
+
+    $.getJSON(`api/points/${id}?table=${tabela}`, function (data) {
+        const options = window.themeOptionsCache ? window.themeOptionsCache[tabela] : [[], [], []];
+        const zapisi = window.allZapisiCache || [];
+
+        let html = `
+            <div class="p-2" style="font-size: 0.9rem;">
+                <div class="mb-2"><strong>Уреди ставку ID: ${id}</strong></div>
+                
+                <div class="form-group mb-1">
+                    <label class="mb-0">Опис:</label>
+                    <textarea class="form-control form-control-sm" id="edit_opis" rows="3">${data.opi || ''}</textarea>
+                </div>
+                <div class="form-group mb-1">
+                    <label class="mb-0">Разред:</label>
+                    <select class="form-control form-control-sm" id="edit_razred">
+                        <option value="">изабери</option>
+                        ${options[0].map((v, i) => v ? `<option value="${i}" ${i == data.raz ? 'selected' : ''}>${v}</option>` : '').join('')}
+                    </select>
+                </div>
+                <div class="form-row">
+                    <div class="col-6">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Врста:</label>
+                            <select class="form-control form-control-sm" id="edit_vrsta">
+                                <option value="">изабери</option>
+                                ${options[1].map((v, i) => v ? `<option value="${i}" ${i == data.vrs ? 'selected' : ''}>${v}</option>` : '').join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Подврста:</label>
+                            <select class="form-control form-control-sm" id="edit_podvrsta">
+                                <option value="">изабери</option>
+                                ${options[2].map((v, i) => v ? `<option value="${i}" ${i == data.pod ? 'selected' : ''}>${v}</option>` : '').join('')}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="col-6">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Просторно:</label>
+                            <select class="form-control form-control-sm" id="edit_prostorno">
+                                <option value="1" ${data.prostorno == '1' ? 'selected' : ''}>одређено</option>
+                                <option value="0" ${data.prostorno == '0' ? 'selected' : ''}>неодређено</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Временски:</label>
+                            <select class="form-control form-control-sm" id="edit_vremenski">
+                                <option value="1" ${data.vremenski == '1' ? 'selected' : ''}>одређено</option>
+                                <option value="0" ${data.vremenski == '0' ? 'selected' : ''}>неодређено</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="col-6">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Почетак:</label>
+                            <input type="text" class="form-control form-control-sm edit-flatpickr" id="edit_v0" value="${data.vri0 ? data.vri0.replace('T', ' ').substring(0, 16) : ''}">
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Крај:</label>
+                            <input type="text" class="form-control form-control-sm edit-flatpickr" id="edit_v1" value="${data.vri1 ? data.vri1.replace('T', ' ').substring(0, 16) : ''}">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group mb-1">
+                    <label class="mb-0">Извор:</label>
+                    <input type="text" class="form-control form-control-sm" id="edit_izvor" value="${data.izv || ''}">
+                </div>
+                <div class="form-group mb-2">
+                    <label class="mb-0">Запис:</label>
+                    <select class="form-control form-control-sm" id="edit_zapis">
+                        <option value="">изабери</option>
+                        ${zapisi.filter(z => String(z.tema_id) === String(tabela)).map(z => `<option value="${z.id}" ${z.id == data.zapis ? 'selected' : ''}>${z.naziv}</option>`).join('')}
+                    </select>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-3" style="min-height: 31px;">
+                    <button class="btn btn-sm btn-danger" onclick="deleteStavka(${id}, ${tabela})">Обриши</button>
+                    <div id="edit_stavka_msg" style="font-size: 0.8rem; flex-grow: 1; text-align: center; margin: 0 5px; line-height: 1.2;"></div>
+                    <button class="btn btn-sm btn-warning" onclick="updateStavka(${id}, ${tabela})">Измијени</button>
+                </div>
+                <hr>
+            </div>
+        `;
+
+        $('#sidebar').html(html);
+
+        if (typeof flatpickr !== 'undefined') {
+            flatpickr('.edit-flatpickr', {
+                enableTime: true,
+                dateFormat: "Y-m-d H:i",
+                locale: "sr",
+                time_24hr: true
+            });
+        }
+    });
+}
+
+function updateStavka(id, tabela) {
+    const data = {
+        opis: $('#edit_opis').val(),
+        razred: $('#edit_razred').val(),
+        vrsta: $('#edit_vrsta').val(),
+        podvrsta: $('#edit_podvrsta').val(),
+        prostorno: $('#edit_prostorno').val(),
+        vremenski: $('#edit_vremenski').val(),
+        vrijeme0: $('#edit_v0').val(),
+        vrijeme1: $('#edit_v1').val(),
+        izvor: $('#edit_izvor').val(),
+        zapis: $('#edit_zapis').val()
+    };
+
+    $('#edit_stavka_msg').css('color', 'orange').text('Чувам...');
+
+    fetch(`/api/urednik/stavke/${tabela}/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+        .then(response => response.json())
+        .then(res => {
+            if (res.success) {
+                $('#edit_stavka_msg').css('color', 'green').text(res.message);
+                // Refresh marker details if possibly needed, or just allow manual re-search
+                setTimeout(() => {
+                    handleStavkaSearch(); // Re-run search to see changes
+                }, 1500);
+            } else {
+                $('#edit_stavka_msg').css('color', 'red').text(res.error || 'Грешка');
+            }
+        });
+}
+
+function deleteStavka(id, tabela) {
+    if (!confirm('Да ли сте сигурни да желите да обришете овај податак?')) return;
+
+    $('#edit_stavka_msg').css('color', 'orange').text('Бришем...');
+
+    fetch(`/api/urednik/stavke/${tabela}/${id}`, {
+        method: 'DELETE'
+    })
+        .then(response => response.json())
+        .then(res => {
+            if (res.success) {
+                $('#edit_stavka_msg').css('color', 'green').text(res.message);
+                setTimeout(() => {
+                    window.sidebarControl.hide();
+                    handleStavkaSearch(); // Re-run search to remove marker
+                }, 1500);
+            } else {
+                $('#edit_stavka_msg').css('color', 'red').text(res.error || 'Грешка');
+            }
+        });
+}

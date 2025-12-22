@@ -154,7 +154,82 @@
                 data-target="#urednik_pretraga_stavki_podaci"></span></span>
     </div>
     <div id="urednik_pretraga_stavki_podaci" class="collapse">
-        <p style="padding: 10px; margin: 5px 0;">Садржај за претрагу ставки...</p>
+        <form id="form_pretraga_stavki" class="mt-2">
+            <div class="form-row mb-2">
+                <div class="col-3">
+                    <input type="number" id="stavka_id" class="form-control" placeholder="ID">
+                </div>
+                <div class="col-9">
+                    <select class="form-control" id="stavka_tabela">
+                        <option value="0">изабери тему:</option>
+                        <!-- Theme options will be loaded dynamically -->
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <select id="stavka_razred" class="form-control">
+                        <option value="">разред</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="stavka_vrsta" class="form-control">
+                        <option value="">врста</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="stavka_podvrsta" class="form-control">
+                        <option value="">подврста</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col-6">
+                    <input type="text" id="stavka_od" class="form-control flatpickr-datetime" placeholder="од">
+                </div>
+                <div class="col-6">
+                    <input type="text" id="stavka_do" class="form-control flatpickr-datetime" placeholder="до">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <select id="stavka_prostorno" class="form-control">
+                        <option value="">просторно</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="stavka_vremenski" class="form-control">
+                        <option value="">временски</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="stavka_izvor" class="form-control">
+                        <option value="-1">извор</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <input type="text" id="stavka_opis" class="form-control" placeholder="опис">
+                </div>
+            </div>
+            <div class="form-row mt-2">
+                <div class="col">
+                    <div id="stavka_alert_area" style="color: orange; display: none;"></div>
+                </div>
+                <button type="submit" class="btn btn-white border border-dark">тражи</button>
+                <div class="spinner-border text-secondary spinner-border-sm m-2" id="stavka_search_cekanje"
+                    role="status" style="visibility: hidden;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </form>
     </div>
 
     <!-- Odobravanje Stavki -->

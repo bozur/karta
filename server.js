@@ -191,6 +191,11 @@ app.post('/api/search', async (req, res) => {
         let query = `SELECT ID, vrsta, podvrsta, razred, vrijeme0, vrijeme1, tacke0, tacke FROM ${tableName}`;
         let conditions = [];
 
+        if (req.body.id) {
+            conditions.push("ID = @id");
+            request.input('id', sql.Int, req.body.id);
+        }
+
         if (vrsta) {
             conditions.push("vrsta LIKE @vrsta");
             request.input('vrsta', sql.NVarChar, `%${vrsta}%`);
@@ -572,6 +577,105 @@ app.post('/api/teme/insert', async (req, res) => {
         res.status(500).json({ error: 'Грешка при упису података: ' + err.message });
     }
 });
+
+// PUT /api/urednik/stavke/:tabela/:id (Update theme record)
+app.put('/api/urednik/stavke/:tabela/:id', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != "1")) {
+            return res.status(401).json({ error: 'Нисте овлашћени' });
+        }
+
+        const { tabela, id } = req.params;
+        const { vrsta, podvrsta, razred, prostorno, vremenski, vrijeme0, vrijeme1, opis, izvor, zapis } = req.body;
+        const userId = req.session.user.id;
+
+        if (!/^\d+$/.test(tabela) || !/^\d+$/.test(id)) {
+            return res.status(400).json({ error: "Invalid parameters" });
+        }
+
+        const tableName = `Table_${tabela}`;
+        const pool = await poolPromise;
+
+        // Logic for tp and tv
+        const tp = prostorno === '1' || prostorno === 'одређено' ? '1' : '0';
+        const tv = vremenski === '1' || vremenski === 'одређено' ? '1' : '0';
+
+        let v0 = vrijeme0;
+        let v1 = vrijeme1 || v0;
+
+        if (v0 && v0.length === 16) v0 += ':00';
+        if (v1 && v1.length === 16) v1 += ':00';
+
+        await pool.request()
+            .input('vrsta', sql.NVarChar, vrsta || null)
+            .input('podvrsta', sql.NVarChar, podvrsta || null)
+            .input('razred', sql.NVarChar, razred || null)
+            .input('tp', sql.NVarChar, tp)
+            .input('v0', sql.DateTime2, v0)
+            .input('v1', sql.DateTime2, v1)
+            .input('tv', sql.NVarChar, tv)
+            .input('opis', sql.NVarChar, opis)
+            .input('izvor', sql.NVarChar, izvor || null)
+            .input('zapis', sql.Int, zapis ? parseInt(zapis) : null)
+            .input('userId', sql.Int, userId)
+            .input('id', sql.Int, id)
+            .query(`
+                UPDATE ${tableName}
+                SET vrsta = @vrsta, podvrsta = @podvrsta, razred = @razred,
+                    tp = @tp, vrijeme0 = @v0, vrijeme1 = @v1, tv = @tv,
+                    opis = @opis, izvor = @izvor, zapis = @zapis,
+                    izmjenio = @userId, izmjenio_vrijeme = GETUTCDATE()
+                WHERE ID = @id
+            `);
+
+        res.json({ success: true, message: 'Подаци успјешно измијењени' });
+    } catch (err) {
+        console.error('Error updating record:', err);
+        res.status(500).json({ error: 'Грешка при измјени података' });
+    }
+});
+
+// DELETE /api/urednik/stavke/:tabela/:id (Delete theme record)
+app.delete('/api/urednik/stavke/:tabela/:id', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != "1")) {
+            return res.status(401).json({ error: 'Нисте овлашћени' });
+        }
+
+        const { tabela, id } = req.params;
+
+        if (!/^\d+$/.test(tabela) || !/^\d+$/.test(id)) {
+            return res.status(400).json({ error: "Invalid parameters" });
+        }
+
+        const tableName = `Table_${tabela}`;
+        const pool = await poolPromise;
+
+        await pool.request()
+            .input('id', sql.Int, id)
+            .query(`DELETE FROM ${tableName} WHERE ID = @id`);
+
+        res.json({ success: true, message: 'Податак успјешно обрисан' });
+    } catch (err) {
+        console.error('Error deleting record:', err);
+        res.status(500).json({ error: 'Грешка при брисању података' });
+    }
+});
+// GET /api/urednik/all-zapisi (List all zapisi for dropdowns)
+app.get('/api/urednik/all-zapisi', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != "1")) {
+            return res.status(401).json({ error: 'Нисте овлашћени' });
+        }
+        const pool = await poolPromise;
+        const result = await pool.request().query('SELECT id, naziv, tema_id FROM zapisi ORDER BY naziv');
+        res.json({ success: true, results: result.recordset });
+    } catch (err) {
+        console.error('Error fetching all zapisi:', err);
+        res.status(500).json({ error: 'Грешка при учитавању записа' });
+    }
+});
+
 app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req, res) => {
     try {
         // 1. Authentication check
