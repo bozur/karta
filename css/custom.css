@@ -378,3 +378,8 @@ div {
   padding-left: 10px !important;
   padding-right: 10px !important;
 }
+
+/* Orange filter for standard Leaflet markers - dark orange */
+.marker-orange {
+  filter: hue-rotate(165deg) saturate(1.8) brightness(0.9);
+}

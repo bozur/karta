@@ -588,11 +588,15 @@ function updateMapForDogadjajiApproval(pendingDogadjaji) {
                 const lng = parseFloat(coordMatch[1]);
                 const lat = parseFloat(coordMatch[2]);
 
-                const predlogIcon = L.icon({
-                    iconUrl: '/ikone/dogadjaj-predlog.png',
-                    iconSize: [32, 37],
-                    iconAnchor: [16, 37],
-                    popupAnchor: [0, -30]
+                // Use standard marker assets with orange filter
+                const orangeIcon = L.icon({
+                    iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+                    shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41],
+                    className: 'marker-orange'
                 });
 
                 // Create detailed popup content
@@ -607,7 +611,7 @@ function updateMapForDogadjajiApproval(pendingDogadjaji) {
                     </div>
                 `;
 
-                const marker = L.marker([lat, lng], { icon: predlogIcon })
+                const marker = L.marker([lat, lng], { icon: orangeIcon })
                     .addTo(karta)
                     .bindPopup(popupContent);
 
