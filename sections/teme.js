@@ -64,15 +64,6 @@ function loadTemeContent(valueSelected, isRestoring = false) {
             }
         }
         clearInsertRows();
-        if (typeof karta !== 'undefined' && typeof drawnItems !== 'undefined' && typeof drawnControl !== 'undefined') {
-            if (karta.hasLayer(drawnItems)) {
-                karta.removeLayer(drawnItems);
-            }
-            if (karta._controlContainer.querySelector('.leaflet-draw')) {
-                karta.removeControl(drawnControl);
-            }
-        }
-        clearInsertRows();
         $('#teme_dogadjaji_podaci').hide();
         $('#teme_objasnjenje_content').text("тема није изабрана");
 
@@ -232,7 +223,61 @@ function handleTemeSearch(e) {
     spinner.css('visibility', 'visible');
 
     // Clear alert area
+    // Clear alert area
     $('#teme_alert_area').hide().text('');
+
+    // Stop playback if running first (prevents it from restoring old markers later)
+    if (window.playbackState && window.playbackState.isRunning) {
+        if (typeof stopPlayback === 'function') {
+            stopPlayback();
+        } else {
+            if (window.playbackState.intervalId) clearInterval(window.playbackState.intervalId);
+            window.playbackState.isRunning = false;
+            $('#playback_start_btn').removeClass('bi-stop-btn-fill').addClass('bi-play-btn-fill');
+        }
+    }
+
+    // Clear search results state to prevent any async restoration
+    if (typeof window.temeState !== 'undefined') {
+        window.temeState.searchResults = null;
+        window.temeState.dogadjajiResults = null;
+    }
+
+    // Clear any playback alerts
+    $('#playback_alert_row').hide();
+    $('#playback_alert_msg').text('');
+
+    // Clear all existing map objects (Requirement 1)
+    if (typeof window.addedGeoJSON !== 'undefined' && window.addedGeoJSON) {
+        karta.removeLayer(window.addedGeoJSON);
+        window.addedGeoJSON = null;
+    }
+    if (typeof window.temeClusterLayer !== 'undefined' && window.temeClusterLayer) {
+        karta.removeLayer(window.temeClusterLayer);
+        window.temeClusterLayer = null;
+    }
+    if (typeof window.submittedObjectsLayer !== 'undefined' && window.submittedObjectsLayer) {
+        karta.removeLayer(window.submittedObjectsLayer);
+        window.submittedObjectsLayer = null;
+    }
+    if (typeof window.currentDogadjajiMarker !== 'undefined' && window.currentDogadjajiMarker) {
+        karta.removeLayer(window.currentDogadjajiMarker);
+        window.currentDogadjajiMarker = null;
+    }
+    if (typeof closeDogadjajLayer === 'function') {
+        closeDogadjajLayer();
+    }
+    if (typeof drawnItems !== 'undefined') {
+        drawnItems.clearLayers();
+    }
+    if (typeof window.dogadjajiApprovalMarkers !== 'undefined' && window.dogadjajiApprovalMarkers) {
+        window.dogadjajiApprovalMarkers.forEach(m => karta.removeLayer(m));
+        window.dogadjajiApprovalMarkers = [];
+    }
+    if (typeof window.stavkeApprovalMarkers !== 'undefined' && window.stavkeApprovalMarkers) {
+        window.stavkeApprovalMarkers.forEach(m => karta.removeLayer(m));
+        window.stavkeApprovalMarkers = [];
+    }
 
     // Update Clarification Section
     if (window.temeMetadata && window.temeMetadata[window.lastSelectedTeme] && window.temeMetadata[window.lastSelectedTeme].opis) {
@@ -257,17 +302,7 @@ function handleTemeSearch(e) {
             window.temeState.timeSpan = window.temeSearchTimeSpan;
 
 
-            // Remove previous layers
-            if (typeof window.addedGeoJSON !== 'undefined' && window.addedGeoJSON) {
-                karta.removeLayer(window.addedGeoJSON);
-                window.addedGeoJSON = null;
-            }
-            if (typeof window.temeClusterLayer !== 'undefined' && window.temeClusterLayer) {
-                karta.removeLayer(window.temeClusterLayer);
-                window.temeClusterLayer = null;
-            }
-
-            // Remove submitted objects layer from previous sessions
+            // Remove submitted objects layer from previous sessions (redundant but kept for safety)
             if (typeof window.submittedObjectsLayer !== 'undefined' && window.submittedObjectsLayer) {
                 karta.removeLayer(window.submittedObjectsLayer);
                 window.submittedObjectsLayer = null;
@@ -324,6 +359,11 @@ function handleTemeSearch(e) {
 
             // Show the алат checkbox after successful search
             $('#teme_alat_container').show();
+
+            // Novo section should only expand if alat is checked (Requirement changed)
+            if ($('#teme_alat_checkbox').is(':checked')) {
+                $('#teme_novo_podaci').collapse('show');
+            }
 
             // Search for događaji regardless of time span
             const od = $('#od').val();
@@ -445,6 +485,43 @@ function viewDogadjajFromTeme(id) {
 function initializeDrawingToolCheckbox() {
     console.log('Initializing teme drawing tool checkbox...');
 
+    // Check if we have search results (Requirement: Drawing only allowed after search)
+    const hasResults = (window.temeState && window.temeState.searchResults);
+
+    if (hasResults) {
+        // Show container if we have results
+        $('#teme_alat_container').show();
+
+        // Synchronize checkbox state with current drawing control state
+        const isDrawingControlVisible = (typeof karta !== 'undefined' && karta._controlContainer && karta._controlContainer.querySelector('.leaflet-draw') !== null);
+        $('#teme_alat_checkbox').prop('checked', isDrawingControlVisible);
+        console.log('Teme drawing control visible on init (with results):', isDrawingControlVisible);
+
+        // If control is visible, ensure section is expanded
+        if (isDrawingControlVisible) {
+            $('#teme_novo_podaci').collapse('show');
+        }
+    } else {
+        // NO RESULTS: User should NOT be able to draw (Requirement)
+        console.log('No search results in Teme tab - removing drawing tool if active');
+
+        // Hide container
+        $('#teme_alat_container').hide();
+
+        // Uncheck
+        $('#teme_alat_checkbox').prop('checked', false);
+
+        // DEACTIVATE TOOL (Removes from map if it was active from another tab)
+        if (typeof karta !== 'undefined' && karta._controlContainer && karta._controlContainer.querySelector('.leaflet-draw')) {
+            if (typeof drawnControl !== 'undefined') {
+                karta.removeControl(drawnControl);
+            }
+        }
+
+        // Ensure novo section is collapsed
+        $('#teme_novo_podaci').collapse('hide');
+    }
+
     // Handle checkbox toggle
     $('#teme_alat_checkbox').off('change').on('change', function () {
         const isChecked = $(this).is(':checked');
@@ -462,12 +539,14 @@ function initializeDrawingToolCheckbox() {
             if (!karta._controlContainer.querySelector('.leaflet-draw')) {
                 drawnControl.addTo(karta);
             }
+            $('#teme_novo_podaci').collapse('show');
             console.log('Drawing control enabled from teme');
         } else {
             // Disable drawing control
             if (karta._controlContainer.querySelector('.leaflet-draw')) {
                 karta.removeControl(drawnControl);
             }
+            $('#teme_novo_podaci').collapse('hide');
             console.log('Drawing control disabled from teme');
         }
     });
@@ -1552,9 +1631,11 @@ function initPlaybackUI() {
 
 function calculatePlaybackRange() {
     if (!window.temeState || !window.temeState.searchResults || !window.temeState.searchResults.features) {
-        // No search results - show empty state
-        $('#playback_empty_state').show();
-        $('#playback_controls_container').hide();
+        // No search results - show empty state labels
+        $('#playback_min_val').text('-');
+        $('#playback_max_val').text('-');
+        window.playbackState.minDate = null;
+        window.playbackState.maxDate = null;
         return;
     }
 
@@ -1562,9 +1643,10 @@ function calculatePlaybackRange() {
 
     // Check if there are any features
     if (features.length === 0) {
-        // No features - show empty state
-        $('#playback_empty_state').show();
-        $('#playback_controls_container').hide();
+        $('#playback_min_val').text('-');
+        $('#playback_max_val').text('-');
+        window.playbackState.minDate = null;
+        window.playbackState.maxDate = null;
         return;
     }
 
@@ -1593,7 +1675,7 @@ function calculatePlaybackRange() {
 
     if (minTime !== null && maxTime !== null) {
         // We have valid time data - show controls
-        $('#playback_empty_state').hide();
+        $('#playback_alert_row').hide();
         $('#playback_controls_container').show();
 
         window.playbackState.minDate = minTime;
@@ -1606,9 +1688,8 @@ function calculatePlaybackRange() {
         $('#playback_min_val').text(formatDateForDisplay(minDateObj));
         $('#playback_max_val').text(formatDateForDisplay(maxDateObj));
     } else {
-        // No valid time data - show empty state
-        $('#playback_empty_state').show();
-        $('#playback_controls_container').hide();
+        $('#playback_min_val').text('-');
+        $('#playback_max_val').text('-');
         window.playbackState.minDate = null;
         window.playbackState.maxDate = null;
     }
@@ -1630,21 +1711,27 @@ function startPlayback() {
     // Recalculate to be sure
     calculatePlaybackRange();
 
-    if (window.playbackState.minDate === null || window.playbackState.maxDate === null) {
-        alert('Нема валидних временских података за приказ (недостају вријеме0/вријеме1).');
+    if (window.playbackState.minDate === null || window.playbackState.maxDate === null || !window.temeState || !window.temeState.searchResults || !window.temeState.searchResults.features || window.temeState.searchResults.features.length === 0) {
+        $('#playback_alert_msg').text("Нема ставки за приказ!");
+        $('#playback_alert_row').show();
         return;
     }
 
     if (window.playbackState.minDate === window.playbackState.maxDate) {
-        alert('Минимално и максимално вријеме су исти, анимација није могућа.');
+        $('#playback_alert_msg').text("Вријеме почетка и краја је исто!");
+        $('#playback_alert_row').show();
         return;
     }
 
     // Check for searchData availability (needed for icons)
     if (!window.temeState || !window.temeState.searchData) {
-        alert('Подаци о претрази недостају. Молимо поновите претрагу.');
+        $('#playback_alert_msg').text('Подаци о претрази недостају. Молимо поновите претрагу.');
+        $('#playback_alert_row').show();
         return;
     }
+
+    // Clear any previous alerts
+    $('#playback_alert_row').hide();
 
     // Prepare state
     window.playbackState.isRunning = true;
@@ -1851,21 +1938,19 @@ function isFeatureInWindow(feature, start, end) {
     // If the "vrijme0" or "vrijeme1" of particular object are inside one of the calculated time windows
     // "vrijme0" or "vrijeme1" ... equal or higher of time when specific time window starts and less than end
 
-    const v0Val = feature.properties.v0;
-    const v1Val = feature.properties.v1;
+    const v0 = feature.properties.v0 ? new Date(feature.properties.v0).getTime() : null;
+    const v1 = feature.properties.v1 ? new Date(feature.properties.v1).getTime() : null;
 
-    const v0 = v0Val ? new Date(v0Val).getTime() : null;
-    const v1 = v1Val ? new Date(v1Val).getTime() : null;
+    if (!v0 && !v1) return false;
 
-    if (v0 !== null && !isNaN(v0)) {
-        if (v0 >= start && v0 < end) return true;
-    }
+    // Determine the feature's full span
+    const featStart = v0 || v1;
+    const featEnd = v1 || v0;
 
-    if (v1 !== null && !isNaN(v1)) {
-        if (v1 >= start && v1 < end) return true;
-    }
-
-    return false;
+    // Requirement: Object should be visible throughout all time windows until playback stops
+    // This means we show it if there is ANY overlap between the feature span and the current window
+    // Overlap condition: (featStart < end) && (featEnd >= start)
+    return (featStart < end) && (featEnd >= start);
 }
 
 function stopPlayback() {
