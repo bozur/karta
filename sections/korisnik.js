@@ -77,6 +77,13 @@ function populateEditForm(user) {
     $('#edit_korisnik').val(user.username || user.korisnik || '');
     $('#edit_eposta').val(user.email || user.eposta || '');
     $('#edit_slika_url').val(user.slika_url || '');
+    if (user.slika_url) {
+        // Extract filename from URL for display
+        const filename = user.slika_url.split('/').pop();
+        $('#edit_slika_label').text(filename);
+    } else {
+        $('#edit_slika_label').text('Слика профила (max 100KB)');
+    }
     // Password fields remain empty
     $('#edit_lozinka').val('');
     $('#edit_nova_lozinka').val('');
@@ -231,6 +238,65 @@ function initKorisnikSection() {
         clearError('edit_potvrdi_lozinka');
         $('#potvrdi_lozinka_error').hide();
         $('#nova_lozinka_error').hide();
+    });
+
+    // File Upload Handling
+    $('#edit_slika_file').off('change').on('change', function () {
+        const file = this.files[0];
+        const label = $('#edit_slika_label');
+        const hiddenInput = $('#edit_slika_url');
+        const errorDiv = $('#form_error');
+
+        // Reset
+        errorDiv.hide();
+
+        if (file) {
+            // Validate size (100KB = 102400 bytes)
+            if (file.size > 102400) {
+                alert('Фајл је превелик! Максимална величина је 100KB.');
+                this.value = ''; // Clear selection
+                label.text('Слика профила (max 100KB)');
+                return;
+            }
+
+            // Update label
+            label.text(file.name);
+
+            // Create FormData
+            const formData = new FormData();
+            formData.append('profile_picture', file);
+
+            // Show uploading state (optional, or just disable submit)
+            $('#submit_izmjeni').prop('disabled', true).text('Отпремање...');
+
+            // Upload
+            $.ajax({
+                url: '/api/upload-profile-picture',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function (response) {
+                    if (response.url) {
+                        hiddenInput.val(response.url);
+                        // Optional: Show success indicator
+                        label.text(file.name + ' (Успјешно)');
+                        $('#submit_izmjeni').prop('disabled', false).text('измјени');
+                    }
+                },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    console.error('Upload failed:', textStatus, errorThrown);
+                    const msg = jqXHR.responseJSON && jqXHR.responseJSON.error ? jqXHR.responseJSON.error : 'Грешка при отпремању слике.';
+                    alert(msg);
+                    $('#submit_izmjeni').prop('disabled', false).text('измјени');
+                    // Clear input on error
+                    $('#edit_slika_file').val('');
+                    label.text('Слика профила (max 100KB)');
+                }
+            });
+        } else {
+            label.text('Слика профила (max 100KB)');
+        }
     });
 
     // Form submission

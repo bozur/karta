@@ -1666,6 +1666,7 @@ function openStavkaEditForm(id, tabela) {
                     <button class="btn btn-sm btn-warning" onclick="updateStavka(${id}, ${tabela})">Измијени</button>
                 </div>
                 <hr>
+                <div id="urednik_comments_container"></div>
             </div>
         `;
 
@@ -1679,6 +1680,110 @@ function openStavkaEditForm(id, tabela) {
                 time_24hr: true
             });
         }
+
+        // Initialize comments
+        $('#urednik_comments_container').comments({
+            profilePictureURL: 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png',
+            currentUserId: window.currentUserId || 0,
+            roundProfilePictures: true,
+            textareaRows: 1,
+            enableAttachments: false,
+            enableHashtags: true,
+            enablePinging: true,
+            scrollContainer: $('.leaflet-sidebar-content'),
+            searchUsers: function (term, success, error) {
+                $.ajax({
+                    type: 'get',
+                    dataType: 'json',
+                    url: '/api/users',
+                    success: function (usersArray) {
+                        success(usersArray.filter(function (user) {
+                            var containsSearchTerm = user.fullname.toLowerCase().indexOf(term.toLowerCase()) != -1;
+                            var isNotSelf = user.id != window.currentUserId;
+                            return containsSearchTerm && isNotSelf;
+                        }));
+                    },
+                    error: error
+                });
+            },
+            getComments: function (success, error) {
+                $.ajax({
+                    type: 'get',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    url: '/api/comments',
+                    data: { table: tabela, id: id },
+                    success: function (commentsArray) {
+                        success(commentsArray)
+                    },
+                    error: error
+                });
+            },
+            postComment: function (data, success, error) {
+                data.table = tabela;
+                data.id = id;
+                $.ajax({
+                    type: 'post',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    url: '/api/comments',
+                    data: JSON.stringify(data),
+                    success: function (comment) {
+                        success(comment);
+                    },
+                    error: error
+                });
+            },
+            putComment: function (data, success, error) {
+                $.ajax({
+                    type: 'put',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    url: '/api/comments/' + data.id,
+                    data: JSON.stringify(data),
+                    success: function (comment) {
+                        success(comment);
+                    },
+                    error: error
+                });
+            },
+            deleteComment: function (data, success, error) {
+                $.ajax({
+                    type: 'delete',
+                    url: '/api/comments/' + data.id,
+                    success: function () {
+                        success();
+                    },
+                    error: error
+                });
+            },
+            upvoteComment: function (data, success, error) {
+                $.ajax({
+                    type: 'post',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    url: '/api/comments/' + data.id + '/upvote',
+                    data: JSON.stringify(data),
+                    success: function (comment) {
+                        success(comment);
+                    },
+                    error: error
+                });
+            },
+            downvoteComment: function (data, success, error) {
+                $.ajax({
+                    type: 'post',
+                    dataType: 'json',
+                    contentType: 'application/json',
+                    url: '/api/comments/' + data.id + '/downvote',
+                    data: JSON.stringify(data),
+                    success: function (comment) {
+                        success(comment);
+                    },
+                    error: error
+                });
+            }
+        });
     });
 }
 

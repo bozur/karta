@@ -20,6 +20,9 @@ $(document).ready(function () {
             if (data.is_admin) {
                 $('#urednik_tab_icon').show();
             }
+            if (data.id) {
+                window.currentUserId = data.id;
+            }
         })
         .fail(function () {
             window.location.href = 'index.html';
@@ -152,11 +155,116 @@ $(document).ready(function () {
                     '<div style="margin-bottom: 5px;"><b>извор:</b> ' + data.izv + '</div>' +
                     '<div style="margin-bottom: 5px;"><b>запис:</b> ' + (data.zapis ? '<a href="/api/zapisi/' + data.zapis + '" target="_blank" style="color: darkorange;">' + (data.zapis_naziv || data.zapis) + '</a>' : '') + '</div>' +
                     '<div style="margin-bottom: 5px;"><b>унето:</b> ' + formatDate(data.dodao_vrijeme) + ' &nbsp;&nbsp;<b>измјењено:</b> ' + formatDate(data.izmjenio_vrijeme) + '</div>' +
-                    '<hr style="border-top: 1px solid #ccc; margin-top: 10px;">';
+                    '<hr style="border-top: 1px solid #ccc; margin-top: 10px;">' +
+                    '<div id="teme_comments_container"></div>';
 
                 $('#sidebar').html(htmlContent);
                 if (!sidebar.isVisible()) { sidebar.show(); }
                 idpointinfo = idpoint;
+
+                // Initialize comments plugin
+                $('#teme_comments_container').comments({
+                    profilePictureURL: 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png',
+                    currentUserId: window.currentUserId || 0, // Need to ensure this is set in check-auth
+                    roundProfilePictures: true,
+                    textareaRows: 1,
+                    enableAttachments: false,
+                    enableHashtags: true,
+                    enablePinging: true,
+                    scrollContainer: $('.leaflet-sidebar-content'), // Important for scroll handling
+                    searchUsers: function (term, success, error) {
+                        $.ajax({
+                            type: 'get',
+                            dataType: 'json',
+                            url: '/api/users',
+                            success: function (usersArray) {
+                                success(usersArray.filter(function (user) {
+                                    var containsSearchTerm = user.fullname.toLowerCase().indexOf(term.toLowerCase()) != -1;
+                                    var isNotSelf = user.id != window.currentUserId;
+                                    return containsSearchTerm && isNotSelf;
+                                }));
+                            },
+                            error: error
+                        });
+                    },
+                    getComments: function (success, error) {
+                        $.ajax({
+                            type: 'get',
+                            dataType: 'json',
+                            contentType: 'application/json',
+                            url: '/api/comments',
+                            data: { table: tabela, id: idpoint },
+                            success: function (commentsArray) {
+                                success(commentsArray)
+                            },
+                            error: error
+                        });
+                    },
+                    postComment: function (data, success, error) {
+                        data.table = tabela;
+                        data.id = idpoint;
+                        $.ajax({
+                            type: 'post',
+                            dataType: 'json',
+                            contentType: 'application/json',
+                            url: '/api/comments',
+                            data: JSON.stringify(data),
+                            success: function (comment) {
+                                success(comment);
+                            },
+                            error: error
+                        });
+                    },
+                    putComment: function (data, success, error) {
+                        $.ajax({
+                            type: 'put',
+                            dataType: 'json',
+                            contentType: 'application/json',
+                            url: '/api/comments/' + data.id,
+                            data: JSON.stringify(data),
+                            success: function (comment) {
+                                success(comment);
+                            },
+                            error: error
+                        });
+                    },
+                    deleteComment: function (data, success, error) {
+                        $.ajax({
+                            type: 'delete',
+                            url: '/api/comments/' + data.id,
+                            success: function () {
+                                success();
+                            },
+                            error: error
+                        });
+                    },
+                    upvoteComment: function (data, success, error) {
+                        $.ajax({
+                            type: 'post',
+                            dataType: 'json',
+                            contentType: 'application/json',
+                            url: '/api/comments/' + data.id + '/upvote',
+                            data: JSON.stringify(data),
+                            success: function (comment) {
+                                success(comment);
+                            },
+                            error: error
+                        });
+                    },
+                    downvoteComment: function (data, success, error) {
+                        $.ajax({
+                            type: 'post',
+                            dataType: 'json',
+                            contentType: 'application/json',
+                            url: '/api/comments/' + data.id + '/downvote',
+                            data: JSON.stringify(data),
+                            success: function (comment) {
+                                success(comment);
+                            },
+                            error: error
+                        });
+                    }
+                });
             });
         }
     });

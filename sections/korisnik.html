@@ -27,8 +27,16 @@
                     minlength="7" maxlength="50">
             </div>
             <div class="col">
-                <input type="text" class="form-control" id="edit_slika_url" name="slika_url"
-                    placeholder="слика УРЛ (мин 5)" minlength="5" maxlength="255">
+                <!-- Hidden input to store the actual URL -->
+                <input type="hidden" id="edit_slika_url" name="slika_url">
+
+                <!-- File input for upload -->
+                <div class="custom-file">
+                    <input type="file" class="custom-file-input" id="edit_slika_file" accept=".jpg,.jpeg,.png,.gif">
+                    <label class="custom-file-label" for="edit_slika_file" id="edit_slika_label"
+                        style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">Слика профила (max
+                        100KB)</label>
+                </div>
             </div>
         </div>
         <div class="form-row">

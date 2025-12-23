@@ -407,6 +407,115 @@ function showDogadjajLayer(dogadjaj) {
     const izvorText = dogadjaj.izvor || 'Није наведено';
     $('#dogadjaj_izvor').html('<b>Извор:</b> ' + izvorText);
 
+    // Add comments container if not exists
+    if ($('#dogadjaji_comments_container').length === 0) {
+        $('.dogadjaj_content').append('<hr><div id="dogadjaji_comments_container"></div>');
+    }
+
+    // Initialize comments
+    $('#dogadjaji_comments_container').comments({
+        profilePictureURL: 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png',
+        currentUserId: window.currentUserId || 0,
+        roundProfilePictures: true,
+        textareaRows: 1,
+        enableAttachments: false,
+        enableHashtags: true,
+        enablePinging: true,
+        scrollContainer: $('#dogadjaj_layer'), // Scroll within the layer
+        searchUsers: function (term, success, error) {
+            $.ajax({
+                type: 'get',
+                dataType: 'json',
+                url: '/api/users',
+                success: function (usersArray) {
+                    success(usersArray.filter(function (user) {
+                        var containsSearchTerm = user.fullname.toLowerCase().indexOf(term.toLowerCase()) != -1;
+                        var isNotSelf = user.id != window.currentUserId;
+                        return containsSearchTerm && isNotSelf;
+                    }));
+                },
+                error: error
+            });
+        },
+        getComments: function (success, error) {
+            $.ajax({
+                type: 'get',
+                dataType: 'json',
+                contentType: 'application/json',
+                url: '/api/comments',
+                data: { table: 'dogadjaji', id: dogadjaj.id },
+                success: function (commentsArray) {
+                    success(commentsArray)
+                },
+                error: error
+            });
+        },
+        postComment: function (data, success, error) {
+            data.table = 'dogadjaji';
+            data.id = dogadjaj.id;
+            $.ajax({
+                type: 'post',
+                dataType: 'json',
+                contentType: 'application/json',
+                url: '/api/comments',
+                data: JSON.stringify(data),
+                success: function (comment) {
+                    success(comment);
+                },
+                error: error
+            });
+        },
+        putComment: function (data, success, error) {
+            $.ajax({
+                type: 'put',
+                dataType: 'json',
+                contentType: 'application/json',
+                url: '/api/comments/' + data.id,
+                data: JSON.stringify(data),
+                success: function (comment) {
+                    success(comment);
+                },
+                error: error
+            });
+        },
+        deleteComment: function (data, success, error) {
+            $.ajax({
+                type: 'delete',
+                url: '/api/comments/' + data.id,
+                success: function () {
+                    success();
+                },
+                error: error
+            });
+        },
+        upvoteComment: function (data, success, error) {
+            $.ajax({
+                type: 'post',
+                dataType: 'json',
+                contentType: 'application/json',
+                url: '/api/comments/' + data.id + '/upvote',
+                data: JSON.stringify(data),
+                success: function (comment) {
+                    success(comment);
+                },
+                error: error
+            });
+        },
+        downvoteComment: function (data, success, error) {
+            $.ajax({
+                type: 'post',
+                dataType: 'json',
+                contentType: 'application/json',
+                url: '/api/comments/' + data.id + '/downvote',
+                data: JSON.stringify(data),
+                success: function (comment) {
+                    success(comment);
+                },
+                error: error
+            });
+        }
+    });
+
     $('#dogadjaj_layer').addClass('show');
 }
 

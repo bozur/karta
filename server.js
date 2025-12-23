@@ -91,28 +91,51 @@ app.use(session({
 
 // API Routes
 
-// GET /api/comments (Replaces back/comments-get.asp)
+// GET /api/comments (Modified to support filtering by target)
 app.get('/api/comments', async (req, res) => {
+    const { table, id } = req.query; // table = target_type, id = target_id
 
     try {
         const pool = await poolPromise;
-        const result = await pool.request().query('select * from CTable_1 where ID=1');
+        const userId = req.session.user ? req.session.user.id : 0;
+
+        let query = `
+            SELECT 
+                c.*, 
+                CASE WHEN cu.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_upvoted,
+                CASE WHEN cd.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_downvoted
+            FROM comments c
+            LEFT JOIN comment_upvotes cu ON c.id = cu.comment_id AND cu.user_id = @userId
+            LEFT JOIN comment_downvotes cd ON c.id = cd.comment_id AND cd.user_id = @userId
+        `;
+
+        if (table && id) {
+            query += ` WHERE c.target_type = @target_type AND c.target_id = @target_id`;
+        }
+
+        query += ` ORDER BY c.created ASC`;
+
+        const request = pool.request()
+            .input('userId', sql.Int, userId);
+
+        if (table && id) {
+            request.input('target_type', sql.NVarChar, table)
+                .input('target_id', sql.Int, id);
+        }
+
+        const result = await request.query(query);
+
+        // Transform for plugin compatibility if needed (renaming conventions etc)
+        // The plugin expects: id, parent, created, modified, content, fullname, ...
+        // Our table matches mostly.
+
         res.json(result.recordset);
     } catch (err) {
+        console.error(err);
         res.status(500).send(err.message);
     }
 });
 
-// GET /api/users (Replaces back/users-get.asp)
-app.get('/api/users', async (req, res) => {
-    try {
-        const pool = await poolPromise;
-        const result = await pool.request().query('select ID, ime AS fullname, slika_url AS profile_picture_url from korisnik');
-        res.json(result.recordset);
-    } catch (err) {
-        res.status(500).send(err.message);
-    }
-});
 
 // GET /api/points/:id (Replaces back/test4.asp)
 app.get('/api/points/:id', async (req, res) => {
@@ -130,7 +153,7 @@ app.get('/api/points/:id', async (req, res) => {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('uid', sql.Int, id)
-            .query(`select vrsta, podvrsta, razred, vrijeme0, vrijeme1, opis, izvor, tp, tv, dodao_vrijeme, izmjenio_vrijeme from ${tableName} WHERE ID = @uid`);
+            .query(`select vrsta, podvrsta, razred, vrijeme0, vrijeme1, opis, izvor, tp, tv, dodao_vrijeme, izmjenio_vrijeme, zapis from ${tableName} WHERE ID = @uid`);
 
         if (result.recordset.length === 0) {
             return res.status(404).json({ error: "Point not found" });
@@ -172,10 +195,6 @@ app.get('/api/points/:id', async (req, res) => {
 // POST /api/search (Replaces back/test5.asp)
 app.post('/api/search', async (req, res) => {
     const { tabela, vrsta, podvrsta, razred, prostorno, vremenski, izvor, opis, od, do: doDate } = req.body;
-
-    console.log('--- Search Request ---');
-    console.log('Tabela:', tabela);
-    console.log('OD:', od, 'DO:', doDate);
 
     // Basic validation for table name
     if (!/^\d+$/.test(tabela)) {
@@ -228,23 +247,17 @@ app.post('/api/search', async (req, res) => {
             request.input('opis', sql.NVarChar, `%${opis}%`);
         }
 
-        // Time span filtering - Direct DateTime2
-        // User confirmed column is datetime2. Input is YYYY-MM-DD HH:mm from Flatpickr.
-        // We just append seconds if missing to be safe for SQL parsing.
-
         // Filter to only show objects with stanje '1'
         conditions.push("stanje = '1'");
 
         if (od) {
             conditions.push("vrijeme0 >= @od");
-            // Flatpickr sends "YYYY-MM-DD HH:mm". SQL DateTime2 prefers "YYYY-MM-DD HH:mm:ss" or just date.
-            // We append ':00' if it looks like it lacks seconds (length 16).
             const odVal = od.length === 16 ? od + ':00' : od;
             request.input('od', sql.DateTime2, odVal);
         }
         if (doDate) {
             conditions.push("vrijeme1 <= @do");
-            const doVal = doDate.length === 16 ? doDate + ':59' : doDate; // End of range inclusive
+            const doVal = doDate.length === 16 ? doDate + ':59' : doDate;
             request.input('do', sql.DateTime2, doVal);
         }
 
@@ -281,27 +294,48 @@ app.post('/api/search', async (req, res) => {
     }
 });
 
+
 // POST /api/comments (Create new comment)
 app.post('/api/comments', async (req, res) => {
-    const { parent, content, pings, creator, fullname, profile_picture_url, created_by_admin, created_by_current_user } = req.body;
+    const { parent, content, pings, table, id } = req.body;
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Morate biti prijavljeni' });
+    }
+
+    const creator = req.session.user.id;
+    const fullname = req.session.user.fullname || req.session.user.ime; // Adjust based on user session structure
+    const profile_picture_url = req.session.user.slika_url || 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png';
+    const created_by_admin = (req.session.user.admin || req.session.user.urednik) ? 1 : 0;
+
+    // Validate target
+    if (!table || !id) {
+        return res.status(400).json({ error: "Missing target parameters" });
+    }
 
     try {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('parent', sql.Int, parent)
+            .input('target_type', sql.NVarChar, table)
+            .input('target_id', sql.Int, id)
             .input('content', sql.NVarChar, content)
             .input('creator', sql.Int, creator)
             .input('fullname', sql.NVarChar, fullname)
             .input('profile_picture_url', sql.NVarChar, profile_picture_url)
             .input('created_by_admin', sql.Bit, created_by_admin)
-            .input('created_by_current_user', sql.Bit, created_by_current_user)
             .query(`
-                INSERT INTO comments (parent, created, modified, content, creator, fullname, profile_picture_url, created_by_admin, created_by_current_user, upvote_count, user_has_upvoted, is_new)
+                INSERT INTO comments (parent, target_type, target_id, created, modified, content, creator, fullname, profile_picture_url, created_by_admin, upvote_count, is_new)
                 OUTPUT INSERTED.*
-                VALUES (@parent, GETUTCDATE(), GETUTCDATE(), @content, @creator, @fullname, @profile_picture_url, @created_by_admin, @created_by_current_user, 0, 0, 1)
+                VALUES (@parent, @target_type, @target_id, GETUTCDATE(), GETUTCDATE(), @content, @creator, @fullname, @profile_picture_url, @created_by_admin, 0, 1)
             `);
 
-        res.json(result.recordset[0]);
+        // Add 'user_has_upvoted' = false for the response since the creator hasn't upvoted yet
+        const newComment = result.recordset[0];
+        newComment.user_has_upvoted = false;
+        newComment.created_by_current_user = true;
+
+        res.json(newComment);
     } catch (err) {
         console.error(err);
         res.status(500).send(err.message);
@@ -313,8 +347,23 @@ app.put('/api/comments/:id', async (req, res) => {
     const { id } = req.params;
     const { content } = req.body;
 
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Morate biti prijavljeni' });
+    }
+
     try {
         const pool = await poolPromise;
+
+        // Verifikacija da je korisnik vlasnik komentara
+        const check = await pool.request()
+            .input('id', sql.Int, id)
+            .query('SELECT creator FROM comments WHERE id = @id');
+
+        if (check.recordset.length === 0) return res.status(404).json({ error: "Comment not found" });
+        if (check.recordset[0].creator !== req.session.user.id && !req.session.user.admin) {
+            return res.status(403).json({ error: "Not authorized" });
+        }
+
         const result = await pool.request()
             .input('id', sql.Int, id)
             .input('content', sql.NVarChar, content)
@@ -325,10 +374,6 @@ app.put('/api/comments/:id', async (req, res) => {
                 WHERE id = @id
             `);
 
-        if (result.recordset.length === 0) {
-            return res.status(404).json({ error: "Comment not found" });
-        }
-
         res.json(result.recordset[0]);
     } catch (err) {
         console.error(err);
@@ -336,15 +381,59 @@ app.put('/api/comments/:id', async (req, res) => {
     }
 });
 
-// DELETE /api/comments/:id (Delete comment)
+// DELETE /api/comments/:id (Delete comment RECURSIVELY)
 app.delete('/api/comments/:id', async (req, res) => {
     const { id } = req.params;
 
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Morate biti prijavljeni' });
+    }
+
     try {
         const pool = await poolPromise;
-        await pool.request()
+
+        // Verifikacija da je korisnik vlasnik komentara ILI admin
+        const check = await pool.request()
             .input('id', sql.Int, id)
-            .query('DELETE FROM comments WHERE id = @id');
+            .query('SELECT creator FROM comments WHERE id = @id');
+
+        if (check.recordset.length === 0) return res.status(404).json({ error: "Comment not found" });
+
+        const isOwner = check.recordset[0].creator === req.session.user.id;
+        const isAdmin = req.session.user.admin || req.session.user.urednik;
+
+        if (!isOwner && !isAdmin) {
+            return res.status(403).json({ error: "Not authorized" });
+        }
+
+        // Recursive delete using CTE
+        // 1. Find all descendant IDs
+        // 2. Delete upvotes for all those IDs
+        // 3. Delete the comments
+
+        await pool.request()
+            .input('rootId', sql.Int, id)
+            .query(`
+                WITH Descendants AS (
+                    SELECT id FROM comments WHERE id = @rootId
+                    UNION ALL
+                    SELECT c.id FROM comments c
+                    INNER JOIN Descendants d ON c.parent = d.id
+                )
+                DELETE FROM comment_upvotes WHERE comment_id IN (SELECT id FROM Descendants);
+            `);
+
+        await pool.request()
+            .input('rootId', sql.Int, id)
+            .query(`
+                WITH Descendants AS (
+                    SELECT id FROM comments WHERE id = @rootId
+                    UNION ALL
+                    SELECT c.id FROM comments c
+                    INNER JOIN Descendants d ON c.parent = d.id
+                )
+                DELETE FROM comments WHERE id IN (SELECT id FROM Descendants);
+            `);
 
         res.sendStatus(200);
     } catch (err) {
@@ -356,30 +445,160 @@ app.delete('/api/comments/:id', async (req, res) => {
 // POST /api/comments/:id/upvote (Upvote comment)
 app.post('/api/comments/:id/upvote', async (req, res) => {
     const { id } = req.params;
-    const { user_has_upvoted } = req.body; // New state
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Morate biti prijavljeni' });
+    }
+
+    const userId = req.session.user.id;
 
     try {
         const pool = await poolPromise;
-        // Toggle logic: if user_has_upvoted is true, we increment, else decrement
-        // Ideally this should be per-user in a separate table, but following the existing schema/logic
-        const increment = user_has_upvoted ? 1 : -1;
+
+        // Check current state
+        const upvoteCheck = await pool.request()
+            .input('cid', sql.Int, id)
+            .input('uid', sql.Int, userId)
+            .query('SELECT id FROM comment_upvotes WHERE comment_id = @cid AND user_id = @uid');
+        const hasUpvoted = upvoteCheck.recordset.length > 0;
+
+        const downvoteCheck = await pool.request()
+            .input('cid', sql.Int, id)
+            .input('uid', sql.Int, userId)
+            .query('SELECT id FROM comment_downvotes WHERE comment_id = @cid AND user_id = @uid');
+        const hasDownvoted = downvoteCheck.recordset.length > 0;
+
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        const request = new sql.Request(transaction);
+
+        try {
+            // If already upvoted, remove upvote (toggle off)
+            if (hasUpvoted) {
+                await request.query(`
+                    DELETE FROM comment_upvotes WHERE comment_id = ${id} AND user_id = ${userId};
+                    UPDATE comments SET upvote_count = ISNULL(upvote_count, 0) - 1 WHERE id = ${id};
+               `);
+            } else {
+                // If downvoted, remove downvote first
+                if (hasDownvoted) {
+                    await request.query(`
+                        DELETE FROM comment_downvotes WHERE comment_id = ${id} AND user_id = ${userId};
+                        UPDATE comments SET downvote_count = ISNULL(downvote_count, 0) - 1 WHERE id = ${id};
+                    `);
+                }
+                // Add upvote
+                await request.query(`
+                    INSERT INTO comment_upvotes (comment_id, user_id) VALUES (${id}, ${userId});
+                    UPDATE comments SET upvote_count = ISNULL(upvote_count, 0) + 1 WHERE id = ${id};
+               `);
+            }
+
+            await transaction.commit();
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+
+        // Return updated comment state
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .input('userId', sql.Int, userId) // Use param here safe
+            .query(`
+                SELECT c.*, 
+                CASE WHEN cu.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_upvoted,
+                CASE WHEN cd.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_downvoted
+                FROM comments c
+                LEFT JOIN comment_upvotes cu ON c.id = cu.comment_id AND cu.user_id = @userId
+                LEFT JOIN comment_downvotes cd ON c.id = cd.comment_id AND cd.user_id = @userId
+                WHERE c.id = @id
+             `);
+
+        const updatedComment = result.recordset[0];
+        // Ensure boolean conversion if driver doesn't do it (it returns 1/0 for calculated fields sometimes)
+        updatedComment.user_has_upvoted = !!updatedComment.user_has_upvoted;
+        updatedComment.user_has_downvoted = !!updatedComment.user_has_downvoted;
+
+        res.json(updatedComment);
+    } catch (err) {
+        console.error(err);
+        res.status(500).send(err.message);
+    }
+});
+
+// POST /api/comments/:id/downvote (Downvote comment)
+app.post('/api/comments/:id/downvote', async (req, res) => {
+    const { id } = req.params;
+
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Morate biti prijavljeni' });
+    }
+
+    const userId = req.session.user.id;
+
+    try {
+        const pool = await poolPromise;
+
+        const upvoteCheck = await pool.request()
+            .input('cid', sql.Int, id)
+            .input('uid', sql.Int, userId)
+            .query('SELECT id FROM comment_upvotes WHERE comment_id = @cid AND user_id = @uid');
+        const hasUpvoted = upvoteCheck.recordset.length > 0;
+
+        const downvoteCheck = await pool.request()
+            .input('cid', sql.Int, id)
+            .input('uid', sql.Int, userId)
+            .query('SELECT id FROM comment_downvotes WHERE comment_id = @cid AND user_id = @uid');
+        const hasDownvoted = downvoteCheck.recordset.length > 0;
+
+        const transaction = new sql.Transaction(pool);
+        await transaction.begin();
+        const request = new sql.Request(transaction);
+
+        try {
+            if (hasDownvoted) {
+                // Toggle off
+                await request.query(`
+                    DELETE FROM comment_downvotes WHERE comment_id = ${id} AND user_id = ${userId};
+                    UPDATE comments SET downvote_count = ISNULL(downvote_count, 0) - 1 WHERE id = ${id};
+               `);
+            } else {
+                if (hasUpvoted) {
+                    await request.query(`
+                        DELETE FROM comment_upvotes WHERE comment_id = ${id} AND user_id = ${userId};
+                        UPDATE comments SET upvote_count = ISNULL(upvote_count, 0) - 1 WHERE id = ${id};
+                    `);
+                }
+                await request.query(`
+                    INSERT INTO comment_downvotes (comment_id, user_id) VALUES (${id}, ${userId});
+                    UPDATE comments SET downvote_count = ISNULL(downvote_count, 0) + 1 WHERE id = ${id};
+               `);
+            }
+            await transaction.commit();
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
 
         const result = await pool.request()
             .input('id', sql.Int, id)
-            .input('increment', sql.Int, increment)
-            .input('user_has_upvoted', sql.Bit, user_has_upvoted)
+            .input('userId', sql.Int, userId) // Use param here safe
             .query(`
-                UPDATE comments
-                SET upvote_count = upvote_count + @increment, user_has_upvoted = @user_has_upvoted
-                OUTPUT INSERTED.*
-            WHERE id = @id
-                `);
+                SELECT c.*, 
+                CASE WHEN cu.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_upvoted,
+                CASE WHEN cd.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_downvoted
+                FROM comments c
+                LEFT JOIN comment_upvotes cu ON c.id = cu.comment_id AND cu.user_id = @userId
+                LEFT JOIN comment_downvotes cd ON c.id = cd.comment_id AND cd.user_id = @userId
+                WHERE c.id = @id
+             `);
 
-        if (result.recordset.length === 0) {
-            return res.status(404).json({ error: "Comment not found" });
-        }
+        const updatedComment = result.recordset[0];
+        updatedComment.user_has_upvoted = !!updatedComment.user_has_upvoted;
+        updatedComment.user_has_downvoted = !!updatedComment.user_has_downvoted;
 
-        res.json(result.recordset[0]);
+        res.json(updatedComment);
+
     } catch (err) {
         console.error(err);
         res.status(500).send(err.message);
@@ -2183,6 +2402,53 @@ app.post('/api/urednik/sync-counters', async (req, res) => {
         console.error('Error syncing counters:', err);
         res.status(500).json({ error: 'Грешка при синхронизацији бројача' });
     }
+});
+
+// POST /api/upload-profile-picture
+app.post('/api/upload-profile-picture', (req, res) => {
+    // Check for upload directory existence
+    const uploadDir = 'c:/karta/slike/users';
+    if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+    }
+
+    // Use a specific storage config for profile pictures to ensure correct path
+    const profileStorage = multer.diskStorage({
+        destination: function (req, file, cb) {
+            cb(null, uploadDir);
+        },
+        filename: function (req, file, cb) {
+            const cleanName = file.originalname.replace(/[^a-zA-Z0-9.]/g, "_");
+            cb(null, Date.now() + '-' + cleanName);
+        }
+    });
+
+    const profileUpload = multer({
+        storage: profileStorage,
+        limits: { fileSize: 100 * 1024 }, // 100KB limit
+        fileFilter: (req, file, cb) => {
+            if (file.mimetype.startsWith('image/')) {
+                cb(null, true);
+            } else {
+                cb(new Error('Није дозвољен формат фајла. Само слике су дозвољене.'));
+            }
+        }
+    }).single('profile_picture');
+
+    profileUpload(req, res, async function (err) {
+        if (err instanceof multer.MulterError) {
+            return res.status(400).json({ error: 'Грешка при отпремању: ' + err.message });
+        } else if (err) {
+            return res.status(400).json({ error: err.message });
+        }
+
+        if (!req.file) {
+            return res.status(400).json({ error: 'Нисте изабрали фајл.' });
+        }
+
+        const fileUrl = '/slike/users/' + req.file.filename;
+        res.json({ url: fileUrl });
+    });
 });
 
 // Serve static files (MUST be after API routes to avoid conflicts)
