@@ -413,8 +413,32 @@ function showDogadjajLayer(dogadjaj) {
     }
 
     // Initialize comments
+    const userProfilePic = window.currentUserProfilePic || 'slike/user-icon.png';
+
     $('#dogadjaji_comments_container').comments({
-        profilePictureURL: 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png',
+        profilePictureURL: userProfilePic,
+        fieldMappings: {
+            id: 'id',
+            parent: 'parent',
+            created: 'created',
+            modified: 'modified',
+            content: 'content',
+            file_url: 'file_url',
+            file_mime_type: 'file_mime_type',
+            creator: 'creator',
+            fullname: 'fullname',
+            profilePictureURL: 'profile_picture_url', // Map server response field
+            is_new: 'is_new',
+            createdByAdmin: 'created_by_admin',
+            createdByCurrentUser: 'created_by_current_user',
+            upvoteCount: 'upvote_count',
+            userHasUpvoted: 'user_has_upvoted',
+            downvoteCount: 'downvote_count', // Custom
+            userHasDownvoted: 'user_has_downvoted' // Custom
+        },
+        timeFormatter: function (time) {
+            return new Date(time).toLocaleDateString('sr-RS').replace(/\/$/, '') + '.';
+        },
         currentUserId: window.currentUserId || 0,
         roundProfilePictures: true,
         textareaRows: 1,
@@ -445,7 +469,12 @@ function showDogadjajLayer(dogadjaj) {
                 url: '/api/comments',
                 data: { table: 'dogadjaji', id: dogadjaj.id },
                 success: function (commentsArray) {
-                    success(commentsArray)
+                    // Manual mapping to ensure profile picture works
+                    var mapped = commentsArray.map(function (c) {
+                        c.profilePictureURL = c.profile_picture_url;
+                        return c;
+                    });
+                    success(mapped);
                 },
                 error: error
             });

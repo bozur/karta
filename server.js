@@ -103,8 +103,10 @@ app.get('/api/comments', async (req, res) => {
             SELECT 
                 c.*, 
                 CASE WHEN cu.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_upvoted,
-                CASE WHEN cd.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_downvoted
+                CASE WHEN cd.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_downvoted,
+                k.slika_url AS author_picture_url
             FROM comments c
+            LEFT JOIN korisnik k ON c.creator = k.id
             LEFT JOIN comment_upvotes cu ON c.id = cu.comment_id AND cu.user_id = @userId
             LEFT JOIN comment_downvotes cd ON c.id = cd.comment_id AND cd.user_id = @userId
         `;
@@ -305,7 +307,26 @@ app.post('/api/comments', async (req, res) => {
 
     const creator = req.session.user.id;
     const fullname = req.session.user.fullname || req.session.user.ime; // Adjust based on user session structure
-    const profile_picture_url = req.session.user.slika_url || 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png';
+
+    // Fetch fresh profile picture from DB in case it was just updated
+    let profile_picture_url;
+    try {
+        const pool = await poolPromise;
+        const userRes = await pool.request()
+            .input('uid', sql.Int, creator)
+            .query('SELECT slika_url FROM korisnik WHERE id = @uid');
+
+        if (userRes.recordset.length > 0) {
+            profile_picture_url = userRes.recordset[0].slika_url;
+        }
+    } catch (e) {
+        console.error('Error fetching fresh profile pic for comment:', e);
+    }
+
+    if (!profile_picture_url) {
+        profile_picture_url = req.session.user.slika_url || 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png';
+    }
+
     const created_by_admin = (req.session.user.admin || req.session.user.urednik) ? 1 : 0;
 
     // Validate target
@@ -1266,10 +1287,23 @@ app.post('/api/dogadjaji/search', async (req, res) => {
 // Authentication Routes
 
 // POST /api/login
-app.get('/api/check-auth', (req, res) => {
+// POST /api/login
+app.get('/api/check-auth', async (req, res) => {
     if (req.session.user) {
-        // Refresh privileges from DB to be sure (optional but safer)
-        // or just rely on session if we update it at login
+        try {
+            // Fetch latest profile picture URL needed for global UI
+            const pool = await poolPromise;
+            const result = await pool.request()
+                .input('id', sql.Int, req.session.user.id)
+                .query('SELECT slika_url FROM korisnik WHERE id = @id');
+
+            if (result.recordset.length > 0) {
+                req.session.user.slika_url = result.recordset[0].slika_url;
+            }
+        } catch (err) {
+            console.error('Error fetching latest user details in check-auth:', err);
+        }
+
         res.json({
             user: req.session.user,
             is_admin: req.session.user.urednik == 1 || req.session.user.urednik == "1"

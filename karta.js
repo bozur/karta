@@ -20,8 +20,9 @@ $(document).ready(function () {
             if (data.is_admin) {
                 $('#urednik_tab_icon').show();
             }
-            if (data.id) {
-                window.currentUserId = data.id;
+            if (data.user) {
+                window.currentUserId = data.user.id;
+                window.currentUserProfilePic = data.user.slika_url; // Global storage
             }
         })
         .fail(function () {
@@ -163,8 +164,32 @@ $(document).ready(function () {
                 idpointinfo = idpoint;
 
                 // Initialize comments plugin
+                const userProfilePic = window.currentUserProfilePic || 'slike/user-icon.png';
+
                 $('#teme_comments_container').comments({
-                    profilePictureURL: 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png',
+                    profilePictureURL: userProfilePic,
+                    fieldMappings: {
+                        id: 'id',
+                        parent: 'parent',
+                        created: 'created',
+                        modified: 'modified',
+                        content: 'content',
+                        file_url: 'file_url',
+                        file_mime_type: 'file_mime_type',
+                        creator: 'creator',
+                        fullname: 'fullname',
+                        profilePictureURL: 'profile_picture_url', // Map server response field
+                        is_new: 'is_new',
+                        createdByAdmin: 'created_by_admin',
+                        createdByCurrentUser: 'created_by_current_user',
+                        upvoteCount: 'upvote_count',
+                        userHasUpvoted: 'user_has_upvoted',
+                        downvoteCount: 'downvote_count', // Custom
+                        userHasDownvoted: 'user_has_downvoted' // Custom
+                    },
+                    timeFormatter: function (time) {
+                        return new Date(time).toLocaleDateString('sr-RS').replace(/\/$/, '') + '.';
+                    },
                     currentUserId: window.currentUserId || 0, // Need to ensure this is set in check-auth
                     roundProfilePictures: true,
                     textareaRows: 1,
@@ -195,7 +220,12 @@ $(document).ready(function () {
                             url: '/api/comments',
                             data: { table: tabela, id: idpoint },
                             success: function (commentsArray) {
-                                success(commentsArray)
+                                // Manual mapping to ensure profile picture works
+                                var mapped = commentsArray.map(function (c) {
+                                    c.profilePictureURL = c.profile_picture_url;
+                                    return c;
+                                });
+                                success(mapped);
                             },
                             error: error
                         });

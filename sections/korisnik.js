@@ -47,6 +47,13 @@ function displayUserData(data) {
     const displayName = user.username || user.email || 'Корисник';
     $('#user-display').text(displayName);
 
+    // Display profile picture
+    if (user.slika_url) {
+        $('#user-profile-img').attr('src', user.slika_url).show();
+    } else {
+        $('#user-profile-img').hide();
+    }
+
     // Display statistics - Pregled
     $('#first-visit').text(formatDate(user.pristup0));
     $('#last-visit').text(formatDate(user.pristup1));
@@ -82,7 +89,7 @@ function populateEditForm(user) {
         const filename = user.slika_url.split('/').pop();
         $('#edit_slika_label').text(filename);
     } else {
-        $('#edit_slika_label').text('Слика профила (max 100KB)');
+        $('#edit_slika_label').text('Слика (max 100KB)');
     }
     // Password fields remain empty
     $('#edit_lozinka').val('');
@@ -253,9 +260,10 @@ function initKorisnikSection() {
         if (file) {
             // Validate size (100KB = 102400 bytes)
             if (file.size > 102400) {
-                alert('Фајл је превелик! Максимална величина је 100KB.');
+                // Inline error instead of alert
+                errorDiv.text('Слика је превелика, највише 100KB!').show();
                 this.value = ''; // Clear selection
-                label.text('Слика профила (max 100KB)');
+                label.text('Слика (max 100KB)');
                 return;
             }
 
@@ -286,16 +294,22 @@ function initKorisnikSection() {
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
                     console.error('Upload failed:', textStatus, errorThrown);
-                    const msg = jqXHR.responseJSON && jqXHR.responseJSON.error ? jqXHR.responseJSON.error : 'Грешка при отпремању слике.';
-                    alert(msg);
+                    // Override specific error message if it matches server output
+                    let msg = jqXHR.responseJSON && jqXHR.responseJSON.error ? jqXHR.responseJSON.error : 'Грешка при отпремању слике.';
+                    if (msg.includes('Није дозвољен формат фајла')) {
+                        msg = 'Само слике су дозвољене.';
+                    }
+                    // Inline error instead of alert
+                    errorDiv.text(msg).show();
+
                     $('#submit_izmjeni').prop('disabled', false).text('измјени');
                     // Clear input on error
                     $('#edit_slika_file').val('');
-                    label.text('Слика профила (max 100KB)');
+                    label.text('Слика (max 100KB)');
                 }
             });
         } else {
-            label.text('Слика профила (max 100KB)');
+            label.text('Слика (max 100KB)');
         }
     });
 
