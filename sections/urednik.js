@@ -2,6 +2,7 @@
 
 function initUrednikSection() {
     console.log('Urednik section initialized');
+    initReportedComments();
 
     // Novosti insertion logic
     const btnUnesi = document.getElementById('btn_unesi_novosti');
@@ -67,6 +68,134 @@ function showAlert(container, message, type) {
         // Reset color to default just in case
         container.style.color = 'orange';
     }, 3000);
+}
+
+// Reported Comments (Primjedbe) functionality
+function initReportedComments() {
+    // Load reported comments when section is expanded
+    $('#urednik_primedbe_podaci').on('shown.bs.collapse', function () {
+        loadReportedComments();
+    });
+}
+
+function loadReportedComments() {
+    const alertsDiv = $('#primedbe_alerts');
+    const loadingDiv = $('#primedbe_loading');
+    const resultsDiv = $('#primedbe_results');
+
+    alertsDiv.hide().text('');
+    loadingDiv.show();
+    resultsDiv.hide();
+
+    fetch('/api/urednik/comments/reported')
+        .then(response => response.json())
+        .then(data => {
+            loadingDiv.hide();
+            if (data.success) {
+                displayReportedComments(data.results);
+            } else {
+                alertsDiv.text(data.error || 'Грешка при учитавању').show();
+            }
+        })
+        .catch(error => {
+            loadingDiv.hide();
+            console.error('Error loading reported comments:', error);
+            alertsDiv.text('Грешка при комуникацији са сервером').show();
+        });
+}
+
+function displayReportedComments(results) {
+    const tbody = $('#primedbe_body');
+    const resultsDiv = $('#primedbe_results');
+    const alertsDiv = $('#primedbe_alerts');
+
+    tbody.empty();
+
+    if (results.length === 0) {
+        alertsDiv.css('color', 'green').text('Нема пријављених примједби.').show();
+        resultsDiv.hide();
+        return;
+    }
+
+    results.forEach(record => {
+        // Calculate display name (fullname fallback)
+        const fullname = record.korisnik || (record.ime ? (record.ime + (record.prezime ? ' ' + record.prezime : '')) : (record.eposta ? record.eposta.split('@')[0] : 'Anonymous'));
+        const profilePicture = record.author_picture_url || 'slike/user-icon.png';
+        const formattedDate = new Date(record.created).toLocaleDateString('sr-RS').replace(/\/$/, '') + '.';
+
+        // Metadata row (Row 1)
+        const metadataRow = $(`
+            <tr style="background-color: #f5f5f5; border-top: 1px solid #ddd;">
+                <td style="padding: 5px; font-size: 0.8rem; color: #666;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <div>
+                            <b>ID:</b> ${record.id} | 
+                            <b>запис ID:</b> ${record.target_id} | 
+                            <b>тема:</b> ${record.theme_name || record.target_type}
+                        </div>
+                        <i class="bi bi-trash text-danger" style="cursor: pointer; font-size: 1.1rem; padding: 0 5px;" onclick="deleteReportedComment(${record.id})" title="обриши"></i>
+                    </div>
+                </td>
+            </tr>
+        `);
+
+        // Comment row (Row 2) - Styled to match jquery-comments but simplified
+        const commentRow = $(`
+            <tr style="border-bottom: 1px solid #eee;">
+                <td style="padding: 10px;">
+                    <div style="display: flex; gap: 10px;">
+                        <img src="${profilePicture}" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <div style="font-weight: bold; font-size: 0.9rem;">${fullname}</div>
+                                <div style="font-size: 0.8rem; color: #999; display: flex; align-items: center; gap: 12px;">
+                                    <span>${formattedDate}</span>
+                                    <span style="display: flex; align-items: center; gap: 3px;">
+                                        <i class="bi bi-hand-thumbs-up" style="color: green;"></i> ${record.upvote_count || 0}
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 3px;">
+                                        <i class="bi bi-hand-thumbs-down" style="color: red;"></i> ${record.downvote_count || 0}
+                                    </span>
+                                </div>
+                            </div>
+                            <div style="font-size: 0.9rem; white-space: pre-wrap;">${record.content}</div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `);
+
+        tbody.append(metadataRow);
+        tbody.append(commentRow);
+    });
+
+    resultsDiv.show();
+}
+
+function deleteReportedComment(id) {
+    // Confirmation removed as per user request
+    const alertsDiv = $('#primedbe_alerts');
+    alertsDiv.hide().text('');
+
+    fetch(`/api/comments/${id}`, {
+        method: 'DELETE'
+    })
+        .then(response => {
+            if (response.ok) {
+                alertsDiv.css('color', 'green').text('Коментар је успјешно обрисан.').show();
+                setTimeout(() => {
+                    loadReportedComments();
+                }, 1000);
+            } else {
+                return response.json().then(data => {
+                    throw new Error(data.error || 'Грешка при брисању');
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error deleting comment:', error);
+            alertsDiv.css('color', 'orange').text(error.message).show();
+        });
 }
 
 // Zapisi Approval functionality

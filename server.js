@@ -2529,3 +2529,45 @@ app.use(express.static(path.join(__dirname, '.')));
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
+// GET /api/urednik/comments/reported - Fetch comments with downvotes > 0
+app.get('/api/urednik/comments/reported', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const pool = await poolPromise;
+
+        // Query to get reported comments (downvote_count > 5)
+        // Join with teme for theme name, join with korisnik for author info
+        const result = await pool.request().query(`
+            SELECT 
+                c.id, 
+                c.content, 
+                c.upvote_count, 
+                c.downvote_count, 
+                c.target_type, 
+                c.target_id,
+                c.created,
+                k.slika_url AS author_picture_url,
+                k.korisnik,
+                k.eposta,
+                k.ime,
+                k.prezime,
+                CASE 
+                    WHEN c.target_type = 'dogadjaj' THEN 'догађаји'
+                    ELSE t.naziv 
+                END as theme_name
+            FROM comments c
+            LEFT JOIN teme t ON c.target_type = CAST(t.id AS NVARCHAR)
+            LEFT JOIN korisnik k ON c.creator = k.id
+            WHERE c.downvote_count > 0
+            ORDER BY c.downvote_count DESC, c.created DESC
+        `);
+
+        res.json({ success: true, results: result.recordset });
+    } catch (err) {
+        console.error('Error fetching reported comments:', err);
+        res.status(500).json({ error: 'Грешка при добављању примедби' });
+    }
+});

@@ -41,11 +41,23 @@
 
     <!-- Prijavljene Primedbe -->
     <div id="urednik_primedbe" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
-        <span><strong>пријављене примедбе</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+        <span><strong>пријављене примједбе</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_primedbe_podaci"></span></span>
     </div>
     <div id="urednik_primedbe_podaci" class="collapse">
-        <p style="padding: 10px; margin: 5px 0;">Садржај за пријављене примедбе...</p>
+        <div style="margin-top: 10px;">
+            <div id="primedbe_alerts" style="color: orange; margin-bottom: 10px;"></div>
+            <div id="primedbe_results" style="display: none;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <tbody id="primedbe_body">
+                        <!-- Reported comments will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="primedbe_loading" style="display: none; text-align: center; padding: 10px;">
+                <div class="spinner-border text-secondary spinner-border-sm" role="status"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Pretraga Korisnika -->
