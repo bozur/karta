@@ -247,6 +247,11 @@ function handleTemeSearch(e) {
     $('#playback_alert_row').hide();
     $('#playback_alert_msg').text('');
 
+    // Close the left sidebar if opened (Requirement)
+    if (typeof window.sidebarControl !== 'undefined') {
+        window.sidebarControl.hide();
+    }
+
     // Clear all existing map objects (Requirement 1)
     if (typeof window.addedGeoJSON !== 'undefined' && window.addedGeoJSON) {
         karta.removeLayer(window.addedGeoJSON);

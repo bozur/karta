@@ -2226,8 +2226,8 @@ app.post('/api/novosti', async (req, res) => {
 app.get('/api/novosti', async (req, res) => {
     try {
         const pool = await poolPromise;
-        // Fetch top 50, ordered by time DESC
-        const result = await pool.request().query('SELECT TOP 50 vrijeme, opis FROM novosti ORDER BY vrijeme DESC');
+        // Fetch top 25, ordered by time DESC
+        const result = await pool.request().query('SELECT TOP 25 vrijeme, opis FROM novosti ORDER BY vrijeme DESC');
 
         res.json(result.recordset);
     } catch (err) {
