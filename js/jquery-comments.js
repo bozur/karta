@@ -1208,7 +1208,7 @@
 
         reRenderUpvotes: function (commentId) {
             var commentEl = this.$el.find('li.comment[data-id="' + commentId + '"]');
-            var upvoteEl = commentEl.find('.action.upvote');
+            var upvoteEl = commentEl.children('.comment-wrapper').find('.action.upvote');
             var commentModel = this.commentsById[commentId];
 
             upvoteEl.toggleClass('highlight-font', commentModel.userHasUpvoted);
@@ -1224,7 +1224,7 @@
 
         reRenderDownvotes: function (commentId) {
             var commentEl = this.$el.find('li.comment[data-id="' + commentId + '"]');
-            var downvoteEl = commentEl.find('.action.downvote');
+            var downvoteEl = commentEl.children('.comment-wrapper').find('.action.downvote');
             var commentModel = this.commentsById[commentId];
 
             console.log('reRenderDownvotes for ID:', commentId, 'Model:', commentModel);

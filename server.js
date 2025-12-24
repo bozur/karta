@@ -104,7 +104,11 @@ app.get('/api/comments', async (req, res) => {
                 c.*, 
                 CASE WHEN cu.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_upvoted,
                 CASE WHEN cd.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_downvoted,
-                k.slika_url AS author_picture_url
+                k.slika_url AS author_picture_url,
+                k.korisnik,
+                k.eposta,
+                k.ime,
+                k.prezime
             FROM comments c
             LEFT JOIN korisnik k ON c.creator = k.id
             LEFT JOIN comment_upvotes cu ON c.id = cu.comment_id AND cu.user_id = @userId
@@ -127,11 +131,26 @@ app.get('/api/comments', async (req, res) => {
 
         const result = await request.query(query);
 
-        // Transform for plugin compatibility if needed (renaming conventions etc)
-        // The plugin expects: id, parent, created, modified, content, fullname, ...
-        // Our table matches mostly.
+        // Process results to handle dynamic fullname/username
+        const processedResults = result.recordset.map(row => {
+            let displayName = row.fullname; // Default to stored fullname
 
-        res.json(result.recordset);
+            // Fallback logic for username/email
+            if (row.korisnik) {
+                displayName = row.korisnik;
+            } else if (row.ime) {
+                displayName = row.ime + (row.prezime ? ' ' + row.prezime : '');
+            } else if (row.eposta) {
+                displayName = row.eposta.split('@')[0];
+            }
+
+            return {
+                ...row,
+                fullname: displayName
+            };
+        });
+
+        res.json(processedResults);
     } catch (err) {
         console.error(err);
         res.status(500).send(err.message);
@@ -354,7 +373,16 @@ app.post('/api/comments', async (req, res) => {
         // Add 'user_has_upvoted' = false for the response since the creator hasn't upvoted yet
         const newComment = result.recordset[0];
         newComment.user_has_upvoted = false;
+        newComment.user_has_downvoted = false;
         newComment.created_by_current_user = true;
+
+        // Apply fallback logic for session user fields (since INSERTED.* only has stored comment fields)
+        newComment.korisnik = req.session.user.korisnik;
+        newComment.eposta = req.session.user.eposta;
+        newComment.ime = req.session.user.ime;
+        newComment.prezime = req.session.user.prezime;
+
+        newComment.fullname = newComment.korisnik || (newComment.ime ? (newComment.ime + (newComment.prezime ? ' ' + newComment.prezime : '')) : (newComment.eposta ? newComment.eposta.split('@')[0] : (newComment.fullname || 'Anonymous')));
 
         res.json(newComment);
     } catch (err) {
@@ -528,8 +556,10 @@ app.post('/api/comments/:id/upvote', async (req, res) => {
             .query(`
                 SELECT c.*, 
                 CASE WHEN cu.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_upvoted,
-                CASE WHEN cd.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_downvoted
+                CASE WHEN cd.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_downvoted,
+                k.slika_url AS author_picture_url, k.korisnik, k.eposta, k.ime, k.prezime
                 FROM comments c
+                LEFT JOIN korisnik k ON c.creator = k.id
                 LEFT JOIN comment_upvotes cu ON c.id = cu.comment_id AND cu.user_id = @userId
                 LEFT JOIN comment_downvotes cd ON c.id = cd.comment_id AND cd.user_id = @userId
                 WHERE c.id = @id
@@ -539,6 +569,9 @@ app.post('/api/comments/:id/upvote', async (req, res) => {
         // Ensure boolean conversion if driver doesn't do it (it returns 1/0 for calculated fields sometimes)
         updatedComment.user_has_upvoted = !!updatedComment.user_has_upvoted;
         updatedComment.user_has_downvoted = !!updatedComment.user_has_downvoted;
+
+        // Apply dynamic display name (fallback logic)
+        updatedComment.fullname = updatedComment.korisnik || (updatedComment.ime ? (updatedComment.ime + (updatedComment.prezime ? ' ' + updatedComment.prezime : '')) : (updatedComment.eposta ? updatedComment.eposta.split('@')[0] : updatedComment.fullname));
 
         res.json(updatedComment);
     } catch (err) {
@@ -607,8 +640,10 @@ app.post('/api/comments/:id/downvote', async (req, res) => {
             .query(`
                 SELECT c.*, 
                 CASE WHEN cu.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_upvoted,
-                CASE WHEN cd.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_downvoted
+                CASE WHEN cd.user_id IS NOT NULL THEN 1 ELSE 0 END AS user_has_downvoted,
+                k.slika_url AS author_picture_url, k.korisnik, k.eposta, k.ime, k.prezime
                 FROM comments c
+                LEFT JOIN korisnik k ON c.creator = k.id
                 LEFT JOIN comment_upvotes cu ON c.id = cu.comment_id AND cu.user_id = @userId
                 LEFT JOIN comment_downvotes cd ON c.id = cd.comment_id AND cd.user_id = @userId
                 WHERE c.id = @id
@@ -617,6 +652,9 @@ app.post('/api/comments/:id/downvote', async (req, res) => {
         const updatedComment = result.recordset[0];
         updatedComment.user_has_upvoted = !!updatedComment.user_has_upvoted;
         updatedComment.user_has_downvoted = !!updatedComment.user_has_downvoted;
+
+        // Apply dynamic display name (fallback logic)
+        updatedComment.fullname = updatedComment.korisnik || (updatedComment.ime ? (updatedComment.ime + (updatedComment.prezime ? ' ' + updatedComment.prezime : '')) : (updatedComment.eposta ? updatedComment.eposta.split('@')[0] : updatedComment.fullname));
 
         res.json(updatedComment);
 
