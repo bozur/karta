@@ -1676,6 +1676,142 @@ app.put('/api/user/update', async (req, res) => {
 });
 
 
+// GET /api/user/contributed-themes - Get themes where user has contributed
+app.get('/api/user/contributed-themes', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    try {
+        const userId = req.session.user.id;
+        const pool = await poolPromise;
+
+        // Fetch all themes
+        const themesResult = await pool.request().query('SELECT id, naziv FROM teme');
+        const themes = themesResult.recordset;
+        const contributedThemes = [];
+
+        // For each theme, check if user has records in its Table_X
+        for (const theme of themes) {
+            const tableName = `Table_${theme.id}`;
+            try {
+                const checkResult = await pool.request()
+                    .input('userId', sql.Int, userId)
+                    .query(`SELECT TOP 1 id FROM ${tableName} WHERE dodao = @userId`);
+
+                if (checkResult.recordset.length > 0) {
+                    contributedThemes.push(theme);
+                }
+            } catch (err) {
+                // Table might not exist yet
+                console.warn(`Table ${tableName} check failed:`, err.message);
+            }
+        }
+
+        res.json({ themes: contributedThemes });
+    } catch (err) {
+        console.error('Error fetching contributed themes:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// GET /api/user/download-geojson/:temaId - Download user records for a theme as GeoJSON
+app.get('/api/user/download-geojson/:temaId', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+
+    const { temaId } = req.params;
+    if (!/^\d+$/.test(temaId)) {
+        return res.status(400).json({ error: 'Invalid theme ID' });
+    }
+
+    try {
+        const userId = req.session.user.id;
+        const pool = await poolPromise;
+
+        // Fetch theme name for filename
+        const themeResult = await pool.request()
+            .input('id', sql.Int, temaId)
+            .query('SELECT naziv FROM teme WHERE id = @id');
+
+        if (themeResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'Theme not found' });
+        }
+        const themeName = themeResult.recordset[0].naziv;
+
+        // Fetch theme options for mapping numeric IDs to text
+        const optionsResult = await pool.request()
+            .input('tema_id', sql.Int, temaId)
+            .query('SELECT tip, redosled, vrednost FROM teme_opcije WHERE tema_id = @tema_id');
+
+        const optionsMap = {
+            razred: {},
+            vrsta: {},
+            podvrsta: {}
+        };
+        optionsResult.recordset.forEach(row => {
+            if (optionsMap[row.tip]) {
+                optionsMap[row.tip][row.redosled] = row.vrednost;
+            }
+        });
+
+        const tableName = `Table_${temaId}`;
+        const recordsResult = await pool.request()
+            .input('userId', sql.Int, userId)
+            .query(`
+                SELECT t.*, z.naziv as zapis_naziv, z.opis as zapis_opis
+                FROM ${tableName} t
+                LEFT JOIN zapisi z ON t.zapis = z.id
+                WHERE t.dodao = @userId
+            `);
+
+        const records = recordsResult.recordset;
+
+        // Construct GeoJSON
+        const geojson = {
+            type: 'FeatureCollection',
+            features: records.map(record => {
+                let coords = [];
+                try {
+                    coords = JSON.parse(record.tacke);
+                } catch (e) {
+                    console.error('Error parsing coordinates for record', record.id);
+                }
+
+                return {
+                    type: 'Feature',
+                    geometry: {
+                        type: record.tacke0 || 'Point',
+                        coordinates: coords
+                    },
+                    properties: {
+                        id: record.id,
+                        opis: record.opis,
+                        vrsta: optionsMap.vrsta[record.vrsta] || record.vrsta,
+                        podvrsta: optionsMap.podvrsta[record.podvrsta] || record.podvrsta,
+                        razred: optionsMap.razred[record.razred] || record.razred,
+                        vrijeme0: record.vrijeme0,
+                        vrijeme1: record.vrijeme1,
+                        izvor: record.izvor,
+                        izmjena: record.izmjena,
+                        zapis: record.zapis_naziv || record.zapis_opis || (record.zapis ? `Запис ID: ${record.zapis}` : null)
+                    }
+                };
+            })
+        };
+
+        const filename = `${themeName}_vasi_podaci.geojson`.replace(/[/\\?%*:|"<>]/g, '-');
+        res.setHeader('Content-Type', 'application/json');
+        res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(filename)}"`);
+        res.send(JSON.stringify(geojson, null, 2));
+
+    } catch (err) {
+        console.error('Error generating GeoJSON:', err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 app.post('/api/login', async (req, res) => {
     const { username, password, remember } = req.body;
 

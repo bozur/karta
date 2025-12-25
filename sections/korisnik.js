@@ -201,6 +201,9 @@ function initKorisnikSection() {
         loadUserInfo();
     }
 
+    // Load user's contributed themes for download
+    loadUserContributedThemes();
+
     // Password visibility toggle handlers
     $('#toggle_lozinka').off('click').on('click', function () {
         const passwordField = $('#edit_lozinka');
@@ -501,6 +504,32 @@ function initKorisnikSection() {
             });
         });
         return false;
+    });
+}
+
+// Function to load themes where the user has contributed
+function loadUserContributedThemes() {
+    console.log('Loading user contributed themes...');
+    const listContainer = $('#user_themes_list');
+    listContainer.empty().append('<div class="spinner-border spinner-border-sm text-secondary" role="status"><span class="sr-only">Loading...</span></div>');
+
+    $.get('/api/user/contributed-themes', function (data) {
+        listContainer.empty();
+        if (data && data.themes && data.themes.length > 0) {
+            const list = $('<ul class="list-unstyled mb-0"></ul>');
+            data.themes.forEach(theme => {
+                const li = $('<li class="mb-1"></li>');
+                const link = $(` <a href="/api/user/download-geojson/${theme.id}" class="text-primary"><i class="bi bi-download mr-1"></i>${theme.naziv}</a>`);
+                li.append(link);
+                list.append(li);
+            });
+            listContainer.append(list);
+        } else {
+            listContainer.append('<div class="text-muted small">Нисте пронашли своје уносе у темама.</div>');
+        }
+    }).fail(function () {
+        console.error('Failed to load contributed themes');
+        listContainer.empty().append('<div class="text-danger small">Грешка при учитавању листа тема.</div>');
     });
 }
 
