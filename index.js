@@ -120,7 +120,8 @@ $(document).ready(function () {
             }
         }).fail(function (xhr) {
             if (xhr.status === 409) {
-                $('#newuserenter0').text('предложена адреса већ постоји').css('color', '#f5a615');
+                const errorMsg = xhr.responseJSON && xhr.responseJSON.error ? xhr.responseJSON.error : 'Адреса е-поште се већ користи';
+                $('#newuserenter0').text(errorMsg).css('color', '#f5a615');
                 $('#asign').css('border-color', 'red');
             } else {
                 $('#newuserenter0').text('Грешка на серверу').css('color', '#f5a615');

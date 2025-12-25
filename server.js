@@ -1479,6 +1479,36 @@ app.post('/api/user/check-username', async (req, res) => {
     }
 });
 
+// POST /api/user/check-email - Check if email is available
+app.post('/api/user/check-email', async (req, res) => {
+    const { email } = req.body;
+
+    if (!email) {
+        return res.status(400).json({ error: 'Email is required' });
+    }
+
+    try {
+        const pool = await poolPromise;
+        // Check if email exists, excluding current user if logged in
+        let query = 'SELECT id FROM korisnik WHERE eposta = @email';
+
+        const request = pool.request()
+            .input('email', sql.NVarChar, email);
+
+        if (req.session.user) {
+            query += ' AND id != @id';
+            request.input('id', sql.Int, req.session.user.id);
+        }
+
+        const result = await request.query(query);
+
+        res.json({ available: result.recordset.length === 0 });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
 // PUT /api/user/update - Update user profile
 app.put('/api/user/update', async (req, res) => {
     if (!req.session.user) {
@@ -1556,7 +1586,7 @@ app.put('/api/user/update', async (req, res) => {
                 .query('SELECT id FROM korisnik WHERE eposta = @eposta AND id != @id');
 
             if (emailCheck.recordset.length > 0) {
-                return res.status(409).json({ error: 'Е-пошта је већ у употреби' });
+                return res.status(409).json({ error: 'Адреса е-поште се већ користи' });
             }
 
             updateFields.push('eposta = @eposta');
@@ -1687,7 +1717,7 @@ app.post('/api/register', async (req, res) => {
             .query('SELECT id FROM korisnik WHERE eposta = @email');
 
         if (checkResult.recordset.length > 0) {
-            return res.status(409).json({ error: 'Email already exists' });
+            return res.status(409).json({ error: 'Адреса е-поште се већ користи' });
         }
 
         // Generate random password

@@ -148,6 +148,37 @@ function checkUsernameAvailability(username, callback) {
         });
 }
 
+// Check email availability
+function checkEmailAvailability(email, callback) {
+    if (!email || !validateEmail(email)) {
+        if (callback) callback(true);
+        return;
+    }
+
+    // Don't check if email hasn't changed from current user data
+    if (window.korisnikUserData && window.korisnikUserData.user && window.korisnikUserData.user.email === email) {
+        if (callback) callback(true);
+        return;
+    }
+
+    $.post('/api/user/check-email', { email: email })
+        .done(function (response) {
+            if (response.available) {
+                clearError('edit_eposta');
+                $('#form_error').hide();
+                if (callback) callback(true);
+            } else {
+                showError('edit_eposta');
+                $('#form_error').text('Адреса е-поште се већ користи').show();
+                if (callback) callback(false);
+            }
+        })
+        .fail(function () {
+            console.error('Failed to check email availability');
+            if (callback) callback(true);
+        });
+}
+
 // Clear error styling
 function clearError(fieldId) {
     $(`#${fieldId}`).css('border-color', '');
@@ -208,10 +239,9 @@ function initKorisnikSection() {
         const email = $(this).val().trim();
         if (email && !validateEmail(email)) {
             showError('edit_eposta');
-            $('#eposta_error').show();
+            $('#form_error').text('неисправна е-пошта').show();
         } else {
-            clearError('edit_eposta');
-            $('#eposta_error').hide();
+            checkEmailAvailability(email);
         }
     });
 
@@ -385,79 +415,91 @@ function initKorisnikSection() {
         }
 
         // Check username availability before final submission
-        checkUsernameAvailability(korisnik, function (isAvailable) {
-            if (!isAvailable) {
+        checkUsernameAvailability(korisnik, function (isUserAvailable) {
+            if (!isUserAvailable) {
                 showError('edit_korisnik');
                 $('#form_error').text('Корисничко име је већ у употреби').show();
                 return;
             }
 
-            // Show loading spinner
-            $('#form_izmjeni_cekanje').css('visibility', 'visible');
-            $('#submit_izmjeni').prop('disabled', true);
-
-            // Prepare data for submission
-            const formData = {
-                ime: ime || null,
-                prezime: prezime || null,
-                korisnik: korisnik || null,
-                eposta: eposta,
-                slika_url: slika_url || null,
-                lozinka: lozinka,
-                nova_lozinka: nova_lozinka || null
-            };
-
-            // Submit to server
-            $.ajax({
-                url: '/api/user/update',
-                method: 'PUT',
-                contentType: 'application/json',
-                data: JSON.stringify(formData),
-                success: function (response) {
-                    console.log('User updated successfully:', response);
-
-                    // Hide loading spinner
-                    $('#form_izmjeni_cekanje').css('visibility', 'hidden');
-                    $('#submit_izmjeni').prop('disabled', false);
-
-                    // Show success message
-                    $('#form_error').css('color', 'green').text('Подаци су успјешно ажурирани').show();
-
-                    // Clear password fields
-                    $('#edit_lozinka').val('');
-                    $('#edit_nova_lozinka').val('');
-                    $('#edit_potvrdi_lozinka').val('');
-
-                    // Reload user info
-                    loadUserInfo();
-
-                    // Hide success message after 3 seconds
-                    setTimeout(function () {
-                        $('#form_error').hide().css('color', 'orange');
-                    }, 3000);
-                },
-                error: function (xhr) {
-                    console.error('Error updating user:', xhr);
-
-                    // Hide loading spinner
-                    $('#form_izmjeni_cekanje').css('visibility', 'hidden');
-                    $('#submit_izmjeni').prop('disabled', false);
-
-                    // Show error message
-                    let errorMessage = 'Грешка при ажурирању података';
-                    if (xhr.responseJSON && xhr.responseJSON.error) {
-                        errorMessage = xhr.responseJSON.error;
-                    }
-                    $('#form_error').text(errorMessage).show();
-
-                    // Highlight username field if that was the error (409 Conflict)
-                    if (xhr.status === 409 && errorMessage.includes('Корисничко')) {
-                        showError('edit_korisnik');
-                    }
+            // Check email availability before final submission
+            checkEmailAvailability(eposta, function (isEmailAvailable) {
+                if (!isEmailAvailable) {
+                    showError('edit_eposta');
+                    $('#form_error').text('Адреса е-поште се већ користи').show();
+                    return;
                 }
+
+                // Show loading spinner
+                $('#form_izmjeni_cekanje').css('visibility', 'visible');
+                $('#submit_izmjeni').prop('disabled', true);
+
+                // Prepare data for submission
+                const formData = {
+                    ime: ime || null,
+                    prezime: prezime || null,
+                    korisnik: korisnik || null,
+                    eposta: eposta,
+                    slika_url: slika_url || null,
+                    lozinka: lozinka,
+                    nova_lozinka: nova_lozinka || null
+                };
+
+                // Submit to server
+                $.ajax({
+                    url: '/api/user/update',
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify(formData),
+                    success: function (response) {
+                        console.log('User updated successfully:', response);
+
+                        // Hide loading spinner
+                        $('#form_izmjeni_cekanje').css('visibility', 'hidden');
+                        $('#submit_izmjeni').prop('disabled', false);
+
+                        // Show success message
+                        $('#form_error').css('color', 'green').text('Подаци су успјешно ажурирани').show();
+
+                        // Clear password fields
+                        $('#edit_lozinka').val('');
+                        $('#edit_nova_lozinka').val('');
+                        $('#edit_potvrdi_lozinka').val('');
+
+                        // Reload user info
+                        loadUserInfo();
+
+                        // Hide success message after 3 seconds
+                        setTimeout(function () {
+                            $('#form_error').hide().css('color', 'orange');
+                        }, 3000);
+                    },
+                    error: function (xhr) {
+                        console.error('Error updating user:', xhr);
+
+                        // Hide loading spinner
+                        $('#form_izmjeni_cekanje').css('visibility', 'hidden');
+                        $('#submit_izmjeni').prop('disabled', false);
+
+                        // Show error message
+                        let errorMessage = 'Грешка при ажурирању података';
+                        if (xhr.responseJSON && xhr.responseJSON.error) {
+                            errorMessage = xhr.responseJSON.error;
+                        }
+                        $('#form_error').text(errorMessage).show();
+
+                        // Highlight username field if that was the error (409 Conflict)
+                        if (xhr.status === 409) {
+                            if (errorMessage.includes('Корисничко')) {
+                                showError('edit_korisnik');
+                            } else if (errorMessage.includes('е-поште')) {
+                                showError('edit_eposta');
+                            }
+                        }
+                    }
+                });
             });
         });
-
         return false;
     });
 }
