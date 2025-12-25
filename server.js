@@ -10,6 +10,7 @@ const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const fs = require('fs');
 const NodeClam = require('clamscan');
+const axios = require('axios');
 
 // Dynamic import for file-type (ESM module)
 let FileType;
@@ -90,6 +91,50 @@ app.use(session({
 
 
 // API Routes
+
+// POST /api/kontakt (Contact form submission via Resend)
+app.post('/api/kontakt', async (req, res) => {
+    const { subject, message } = req.body;
+
+    if (!subject || !message) {
+        return res.status(400).json({ error: 'Наслов и порука су обавезни.' });
+    }
+
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+        console.error('RESEND_API_KEY is missing in .env file');
+        return res.status(500).json({ error: 'Грешка на серверу: API кључ није подешен.' });
+    }
+
+    // Get user info from session if available
+    const userEmail = req.session.user ? (req.session.user.email || req.session.user.eposta || 'anonymous@karta.rs') : 'anonymous@karta.rs';
+    const userName = req.session.user ? (req.session.user.username || req.session.user.korisnik || req.session.user.ime || 'Anonymous User') : 'Anonymous User';
+
+    try {
+        const response = await axios.post('https://api.resend.com/emails', {
+            from: 'Kontakt Form <kontakt@1.xn--80aa2azak.xn--90a3ac>',
+            to: ['bozur.vujicic@gmail.com'], // Updated recipient
+            subject: `Kontakt Form: ${subject}`,
+            html: `
+                <p><strong>Od:</strong> ${userName} (${userEmail})</p>
+                <p><strong>Naslov:</strong> ${subject}</p>
+                <p><strong>Poruka:</strong></p>
+                <p>${message.replace(/\n/g, '<br>')}</p>
+            `
+        }, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            }
+        });
+
+        res.json({ success: true, data: response.data });
+    } catch (error) {
+        const errorData = error.response ? error.response.data : error.message;
+        console.error('Resend API error details:', JSON.stringify(errorData, null, 2));
+        res.status(500).json({ error: 'Грешка при слању е-поште.', details: errorData });
+    }
+});
 
 // GET /api/comments (Modified to support filtering by target)
 app.get('/api/comments', async (req, res) => {

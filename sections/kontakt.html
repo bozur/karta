@@ -1,10 +1,10 @@
 <span style="display: block">
     <span class="naslov">Контакт</span>
 </span>
-<form>
+<form id="kontakt-form">
     <div class="form-group">
         <label for="kontakt_izbor"><strong>наслов</strong></label>
-        <select class="form-control" id="kontakt_izbor">
+        <select class="form-control" id="kontakt_izbor" required>
             <option value="0">изабери наслов</option>
             <option value="1">грешка на странама</option>
             <option value="2">приједлог за нову тему</option>
@@ -14,9 +14,10 @@
         </select>
     </div>
     <div class="form-group">
-        <label for="exampleFormControlTextarea1"><strong>напис</strong></label>
-        <textarea class="form-control" id="exampleFormControlTextarea1" rows="5"></textarea>
+        <label for="kontakt_poruka"><strong>напис</strong></label>
+        <textarea class="form-control" id="kontakt_poruka" rows="5" required></textarea>
     </div>
+    <div id="kontakt-status" class="mt-2" style="display: none;"></div>
     <button type="submit" class="btn btn-white border border-dark">пошаљи</button>
 </form>
 <div class="form-group mt-2" id="kontakt_opis">
