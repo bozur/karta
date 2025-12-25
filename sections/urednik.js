@@ -3,6 +3,7 @@
 function initUrednikSection() {
     console.log('Urednik section initialized');
     initReportedComments();
+    initThemeLocking();
 
     // Novosti insertion logic
     const btnUnesi = document.getElementById('btn_unesi_novosti');
@@ -196,6 +197,109 @@ function deleteReportedComment(id) {
             console.error('Error deleting comment:', error);
             alertsDiv.css('color', 'orange').text(error.message).show();
         });
+}
+
+// Theme Locking functionality
+function initThemeLocking() {
+    // Load themes when section is expanded
+    $('#urednik_zakljucavanje_tema_podaci').on('shown.bs.collapse', function () {
+        loadThemesForLocking();
+    });
+}
+
+function loadThemesForLocking() {
+    const alertsDiv = $('#theme_lock_alerts');
+    const loadingDiv = $('#theme_lock_loading');
+    const listDiv = $('#theme_lock_list');
+
+    alertsDiv.hide().text('');
+    loadingDiv.show();
+    listDiv.empty();
+
+    fetch('/api/v2/themes')
+        .then(response => response.json())
+        .then(data => {
+            loadingDiv.hide();
+            if (data.themes) {
+                displayThemesForLocking(data.themes);
+            } else {
+                alertsDiv.text(data.error || 'Грешка при учитавању').show();
+            }
+        })
+        .catch(error => {
+            loadingDiv.hide();
+            console.error('Error loading themes for locking:', error);
+            alertsDiv.text('Грешка при комуникацији са сервером').show();
+        });
+}
+
+function displayThemesForLocking(themes) {
+    const listDiv = $('#theme_lock_list');
+
+    themes.forEach(theme => {
+        const isLocked = theme.zakljucano === 1 || theme.zakljucano === true;
+        const iconClass = isLocked ? 'bi-lock-fill text-danger' : 'bi-unlock-fill text-success';
+        const titleText = isLocked ? 'откључај' : 'закључај';
+
+        const item = $(`
+            <div class="list-group-item d-flex justify-content-between align-items-center theme-lock-row" style="padding: 3px 15px; border: none; background: transparent;">
+                <span style="font-size: 0.9rem;">${theme.naziv}</span>
+                <i class="bi ${iconClass} btn-toggle-lock" data-id="${theme.id}" style="font-size: 1.2rem; cursor: pointer;" title="${titleText}"></i>
+            </div>
+        `);
+
+        item.find('.btn-toggle-lock').on('click', function () {
+            toggleThemeLock(theme.id, $(this));
+        });
+
+        listDiv.append(item);
+    });
+}
+
+async function toggleThemeLock(temaId, icon) {
+    const alertsDiv = $('#theme_lock_alerts');
+    alertsDiv.hide().text('');
+
+    // Immediate visual feedback (opacity)
+    icon.css('opacity', '0.5').css('pointer-events', 'none');
+
+    try {
+        const response = await fetch('/api/urednik/teme/toggle-lock', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tema_id: temaId })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.success) {
+            const isLocked = data.zakljucano === 1;
+
+            if (isLocked) {
+                icon.removeClass('bi-unlock-fill text-success').addClass('bi-lock-fill text-danger');
+                icon.attr('title', 'откључај');
+            } else {
+                icon.removeClass('bi-lock-fill text-danger').addClass('bi-unlock-fill text-success');
+                icon.attr('title', 'закључај');
+            }
+
+            // Sync with global metadata if it exists
+            if (window.temeMetadata && window.temeMetadata[temaId]) {
+                window.temeMetadata[temaId].zakljucano = isLocked;
+            }
+
+            // Re-fetch themes in dropdowns to update labels (with 🔒 icon)
+            if (typeof loadThemesDropdown === 'function') {
+                loadThemesDropdown();
+            }
+        } else {
+            alertsDiv.text(data.error || 'Грешка при измјени статуса.').show();
+        }
+    } catch (error) {
+        console.error('Error toggling theme lock:', error);
+        alertsDiv.text('Грешка на серверу.').show();
+    } finally {
+        icon.css('opacity', '1').css('pointer-events', 'auto');
+    }
 }
 
 // Zapisi Approval functionality

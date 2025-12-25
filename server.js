@@ -716,7 +716,7 @@ app.post('/api/comments/:id/downvote', async (req, res) => {
 app.get('/api/v2/themes', async (req, res) => {
     try {
         const pool = await poolPromise;
-        const result = await pool.request().query('SELECT id, naziv, opis FROM teme ORDER BY id');
+        const result = await pool.request().query('SELECT id, naziv, opis, zakljucano FROM teme ORDER BY id');
         console.log('Themes fetched:', result.recordset);
         res.json({ themes: result.recordset });
     } catch (err) {
@@ -773,6 +773,34 @@ app.get('/api/v2/theme-options/:tema_id', async (req, res) => {
     }
 });
 
+// POST /api/urednik/teme/toggle-lock (Toggle theme lock status)
+app.post('/api/urednik/teme/toggle-lock', async (req, res) => {
+    try {
+        if (!req.session.user || (!req.session.user.admin && !req.session.user.urednik)) {
+            return res.status(403).json({ error: 'Немате овлашћење за ову акцију.' });
+        }
+
+        const { tema_id } = req.body;
+        if (!tema_id) {
+            return res.status(400).json({ error: 'Недостаје ID теме.' });
+        }
+
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('tema_id', sql.Int, tema_id)
+            .query('UPDATE teme SET zakljucano = CASE WHEN ISNULL(zakljucano, 0) = 1 THEN 0 ELSE 1 END OUTPUT INSERTED.zakljucano WHERE id = @tema_id');
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Тема није пронађена.' });
+        }
+
+        res.json({ success: true, zakljucano: result.recordset[0].zakljucano });
+    } catch (err) {
+        console.error('Error toggling theme lock:', err);
+        res.status(500).json({ error: 'Грешка на серверу.' });
+    }
+});
+
 // POST /api/teme/insert (Insert new theme data)
 app.post('/api/teme/insert', async (req, res) => {
     try {
@@ -795,6 +823,15 @@ app.post('/api/teme/insert', async (req, res) => {
         }
 
         const pool = await poolPromise;
+
+        // Check if theme is locked
+        const lockCheck = await pool.request()
+            .input('temaId', sql.Int, temaId)
+            .query('SELECT zakljucano FROM teme WHERE id = @temaId');
+
+        if (lockCheck.recordset.length > 0 && lockCheck.recordset[0].zakljucano === 1) {
+            return res.status(403).json({ error: 'Тема је тренутно закључана!' });
+        }
 
         // Fetch user permission
         const userCheck = await pool.request()

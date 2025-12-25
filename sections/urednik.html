@@ -8,6 +8,10 @@
         text-decoration: underline;
         color: darkorange;
     }
+
+    .theme-lock-row:hover {
+        background-color: #f0f0f0 !important;
+    }
 </style>
 
 <span class="naslov">Уредник</span>
@@ -37,6 +41,23 @@
     </div>
     <div id="urednik_nova_tema_podaci" class="collapse">
         <p style="padding: 10px; margin: 5px 0;">Садржај за нову тему...</p>
+    </div>
+
+    <!-- Zaključavanje Tema -->
+    <div id="urednik_zakljucavanje_tema" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>закључавање тема</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_zakljucavanje_tema_podaci"></span></span>
+    </div>
+    <div id="urednik_zakljucavanje_tema_podaci" class="collapse">
+        <div style="margin-top: 10px;">
+            <div id="theme_lock_alerts" style="color: orange; margin-bottom: 10px;"></div>
+            <div id="theme_lock_list" class="list-group list-group-flush" style="font-size: 0.9rem;">
+                <!-- Themes will be populated here -->
+            </div>
+            <div id="theme_lock_loading" style="display: none; text-align: center; padding: 10px;">
+                <div class="spinner-border text-secondary spinner-border-sm" role="status"></div>
+            </div>
+        </div>
     </div>
 
     <!-- Prijavljene Primedbe -->

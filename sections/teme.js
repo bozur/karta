@@ -152,10 +152,13 @@ function loadThemesDropdown() {
                 const id = theme.id || theme.ID;
                 const naziv = theme.naziv || theme.NAZIV;
                 const opis = theme.opis || theme.OPIS || "";
+                const zakljucano = theme.zakljucano === 1 || theme.zakljucano === true;
+
                 if (id && naziv) {
-                    select.append(`<option value="${id}">${naziv}</option>`);
+                    const label = zakljucano ? `🔒 ${naziv}` : naziv;
+                    select.append(`<option value="${id}">${label}</option>`);
                     // Store metadata
-                    window.temeMetadata[id] = { naziv: naziv, opis: opis };
+                    window.temeMetadata[id] = { naziv: naziv, opis: opis, zakljucano: zakljucano };
                 }
             });
 
@@ -1145,6 +1148,13 @@ function handlePredloziSubmit() {
 
     // Clear previous alerts
     $('#teme_novo_alert_area').hide().text('');
+
+    // Check if theme is locked
+    const currentThemeId = window.tabela || window.lastSelectedTeme;
+    if (currentThemeId && window.temeMetadata[currentThemeId] && window.temeMetadata[currentThemeId].zakljucano) {
+        $('#teme_novo_alert_area').text("Тема је тренутно закључана!").show();
+        return;
+    }
 
     if (!window.temeInsertRows || window.temeInsertRows.length === 0) {
         return;
