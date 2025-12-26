@@ -112,9 +112,9 @@ app.post('/api/kontakt', async (req, res) => {
 
     try {
         const response = await axios.post('https://api.resend.com/emails', {
-            from: 'Kontakt Form <kontakt@1.xn--80aa2azak.xn--90a3ac>',
+            from: 'Kontakt obrazac <kontakt@1.xn--80aa2azak.xn--90a3ac>',
             to: ['bozur.vujicic@gmail.com'], // Updated recipient
-            subject: `Kontakt Form: ${subject}`,
+            subject: `Kontakt obrazac: ${subject}`,
             html: `
                 <p><strong>Od:</strong> ${userName} (${userEmail})</p>
                 <p><strong>Naslov:</strong> ${subject}</p>
