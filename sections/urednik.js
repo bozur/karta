@@ -272,7 +272,7 @@ async function toggleThemeLock(temaId, icon) {
 
         const data = await response.json();
         if (response.ok && data.success) {
-            const isLocked = data.zakljucano === 1;
+            const isLocked = data.zakljucano === 1 || data.zakljucano === true;
 
             if (isLocked) {
                 icon.removeClass('bi-unlock-fill text-success').addClass('bi-lock-fill text-danger');
