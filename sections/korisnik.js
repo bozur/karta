@@ -91,6 +91,9 @@ function populateEditForm(user) {
     } else {
         $('#edit_slika_label').text('Слика (max 100KB)');
     }
+    // Set notifications checkbox
+    $('#edit_obavjestenja').prop('checked', user.obavjestenja == 1);
+
     // Password fields remain empty
     $('#edit_lozinka').val('');
     $('#edit_nova_lozinka').val('');
@@ -203,6 +206,10 @@ function initKorisnikSection() {
 
     // Load user's contributed themes for download
     loadUserContributedThemes();
+
+    $('#edit_obavjestenja').off('change').on('change', function () {
+        // Alert messages removed per user request
+    });
 
     // Password visibility toggle handlers
     $('#toggle_lozinka').off('click').on('click', function () {
@@ -369,6 +376,7 @@ function initKorisnikSection() {
         const lozinka = $('#edit_lozinka').val();
         const nova_lozinka = $('#edit_nova_lozinka').val();
         const potvrdi_lozinka = $('#edit_potvrdi_lozinka').val();
+        const obavjestenja = $('#edit_obavjestenja').is(':checked') ? 1 : 0;
 
         let hasError = false;
 
@@ -445,7 +453,8 @@ function initKorisnikSection() {
                     eposta: eposta,
                     slika_url: slika_url || null,
                     lozinka: lozinka,
-                    nova_lozinka: nova_lozinka || null
+                    nova_lozinka: nova_lozinka || null,
+                    obavjestenja: obavjestenja
                 };
 
                 // Submit to server

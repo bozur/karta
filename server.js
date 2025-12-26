@@ -1447,7 +1447,7 @@ app.get('/api/user-info', async (req, res) => {
         // 1. Fetch user profile
         const userResult = await pool.request()
             .input('id', sql.Int, userId)
-            .query('SELECT id, ime, prezime, korisnik, eposta, slika_url, pristup0, pristup1, brojac_pristupa FROM korisnik WHERE id = @id');
+            .query('SELECT id, ime, prezime, korisnik, eposta, slika_url, pristup0, pristup1, brojac_pristupa, obavjestenja FROM korisnik WHERE id = @id');
 
         if (userResult.recordset.length === 0) {
             return res.status(404).json({ error: 'User not found' });
@@ -1518,7 +1518,8 @@ app.get('/api/user-info', async (req, res) => {
                 slika_url: user.slika_url,
                 pristup0: user.pristup0,
                 pristup1: user.pristup1,
-                brojac_pristupa: user.brojac_pristupa
+                brojac_pristupa: user.brojac_pristupa,
+                obavjestenja: user.obavjestenja
             },
             stats: {
                 total: currentTotal,
@@ -1597,7 +1598,7 @@ app.put('/api/user/update', async (req, res) => {
         return res.status(401).json({ error: 'Not authenticated' });
     }
 
-    const { ime, prezime, korisnik, eposta, slika_url, lozinka, nova_lozinka } = req.body;
+    const { ime, prezime, korisnik, eposta, slika_url, lozinka, nova_lozinka, obavjestenja } = req.body;
 
     // Validate mandatory fields
     if (!eposta || !lozinka) {
@@ -1685,6 +1686,11 @@ app.put('/api/user/update', async (req, res) => {
             const hashedPassword = await bcrypt.hash(nova_lozinka, 10);
             updateFields.push('lozinka = @nova_lozinka');
             request.input('nova_lozinka', sql.NVarChar, hashedPassword);
+        }
+
+        if (obavjestenja !== null && obavjestenja !== undefined) {
+            updateFields.push('obavjestenja = @obavjestenja');
+            request.input('obavjestenja', sql.Int, obavjestenja ? 1 : 0);
         }
 
         // Execute update if there are fields to update
