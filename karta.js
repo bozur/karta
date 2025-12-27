@@ -23,6 +23,13 @@ $(document).ready(function () {
             if (data.user) {
                 window.currentUserId = data.user.id;
                 window.currentUserProfilePic = data.user.slika_url; // Global storage
+
+                // Vanish Skadar marker after 10 seconds of user being logged in
+                setTimeout(function () {
+                    if (window.skadarMarker && karta) {
+                        karta.removeLayer(window.skadarMarker);
+                    }
+                }, 10000);
             }
         })
         .fail(function () {
@@ -362,7 +369,7 @@ $(document).ready(function () {
         popupAnchor: [0, -30] // point from which the popup should open relative to the iconAnchor
     });
 
-    L.marker([42.046475, 19.494058], { icon: iconSkadar }).addTo(karta).bindPopup('Скадар - престони град!')
+    window.skadarMarker = L.marker([42.046475, 19.494058], { icon: iconSkadar }).addTo(karta).bindPopup('Скадар - најдуже престони град Срба')
     var currentSection = null;
     var loadedScripts = {};
 
