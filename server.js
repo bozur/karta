@@ -219,7 +219,7 @@ app.get('/api/points/:id', async (req, res) => {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('uid', sql.Int, id)
-            .query(`select vrsta, podvrsta, razred, vrijeme0, vrijeme1, opis, izvor, tp, tv, dodao_vrijeme, izmjenio_vrijeme, zapis from ${tableName} WHERE ID = @uid`);
+            .query(`select vrsta, podvrsta, razred, vrijeme0, vrijeme1, opis, izvor, tp, tv, dodao_vrijeme, izmjenio_vrijeme, zapis from ${tableName} WHERE id = @uid`);
 
         if (result.recordset.length === 0) {
             return res.status(404).json({ error: "Point not found" });
@@ -273,11 +273,11 @@ app.post('/api/search', async (req, res) => {
         const pool = await poolPromise;
         const request = pool.request();
 
-        let query = `SELECT ID, vrsta, podvrsta, razred, vrijeme0, vrijeme1, tacke0, tacke FROM ${tableName}`;
+        let query = `SELECT id, vrsta, podvrsta, razred, vrijeme0, vrijeme1, tacke0, tacke FROM ${tableName}`;
         let conditions = [];
 
         if (req.body.id) {
-            conditions.push("ID = @id");
+            conditions.push("id = @id");
             request.input('id', sql.Int, req.body.id);
         }
 
@@ -342,7 +342,7 @@ app.post('/api/search', async (req, res) => {
                     coordinates: JSON.parse(row.tacke)
                 },
                 properties: {
-                    id: row.ID,
+                    id: row.id,
                     v: row.vrsta,
                     p: row.podvrsta,
                     r: row.razred,
@@ -391,7 +391,7 @@ app.post('/api/comments', async (req, res) => {
         profile_picture_url = req.session.user.slika_url || 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png';
     }
 
-    const created_by_admin = (req.session.user.admin || req.session.user.urednik) ? 1 : 0;
+    const created_by_admin = (req.session.user.admin || req.session.user.urednik) ? true : false;
 
     // Validate target
     if (!table || !id) {
@@ -411,8 +411,8 @@ app.post('/api/comments', async (req, res) => {
             .input('created_by_admin', sql.Bit, created_by_admin)
             .query(`
                 INSERT INTO comments (parent, target_type, target_id, created, modified, content, creator, fullname, profile_picture_url, created_by_admin, upvote_count, is_new)
-                OUTPUT INSERTED.*
-                VALUES (@parent, @target_type, @target_id, GETUTCDATE(), GETUTCDATE(), @content, @creator, @fullname, @profile_picture_url, @created_by_admin, 0, 1)
+                VALUES (@parent, @target_type, @target_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, @content, @creator, @fullname, @profile_picture_url, @created_by_admin, 0, true)
+                RETURNING *
             `);
 
         // Add 'user_has_upvoted' = false for the response since the creator hasn't upvoted yet
@@ -508,25 +508,37 @@ app.delete('/api/comments/:id', async (req, res) => {
         await pool.request()
             .input('rootId', sql.Int, id)
             .query(`
-                WITH Descendants AS (
+                WITH RECURSIVE descendants AS (
                     SELECT id FROM comments WHERE id = @rootId
                     UNION ALL
                     SELECT c.id FROM comments c
-                    INNER JOIN Descendants d ON c.parent = d.id
+                    INNER JOIN descendants d ON c.parent = d.id
                 )
-                DELETE FROM comment_upvotes WHERE comment_id IN (SELECT id FROM Descendants);
+                DELETE FROM comment_upvotes WHERE comment_id IN (SELECT id FROM descendants);
             `);
 
         await pool.request()
             .input('rootId', sql.Int, id)
             .query(`
-                WITH Descendants AS (
+                WITH RECURSIVE descendants AS (
                     SELECT id FROM comments WHERE id = @rootId
                     UNION ALL
                     SELECT c.id FROM comments c
-                    INNER JOIN Descendants d ON c.parent = d.id
+                    INNER JOIN descendants d ON c.parent = d.id
                 )
-                DELETE FROM comments WHERE id IN (SELECT id FROM Descendants);
+                DELETE FROM comment_downvotes WHERE comment_id IN (SELECT id FROM descendants);
+            `);
+
+        await pool.request()
+            .input('rootId', sql.Int, id)
+            .query(`
+                WITH RECURSIVE descendants AS (
+                    SELECT id FROM comments WHERE id = @rootId
+                    UNION ALL
+                    SELECT c.id FROM comments c
+                    INNER JOIN descendants d ON c.parent = d.id
+                )
+                DELETE FROM comments WHERE id IN (SELECT id FROM descendants);
             `);
 
         res.sendStatus(200);
@@ -571,20 +583,20 @@ app.post('/api/comments/:id/upvote', async (req, res) => {
             if (hasUpvoted) {
                 await request.query(`
                     DELETE FROM comment_upvotes WHERE comment_id = ${id} AND user_id = ${userId};
-                    UPDATE comments SET upvote_count = ISNULL(upvote_count, 0) - 1 WHERE id = ${id};
+                    UPDATE comments SET upvote_count = GREATEST(COALESCE(upvote_count, 0) - 1, 0) WHERE id = ${id};
                `);
             } else {
                 // If downvoted, remove downvote first
                 if (hasDownvoted) {
                     await request.query(`
                         DELETE FROM comment_downvotes WHERE comment_id = ${id} AND user_id = ${userId};
-                        UPDATE comments SET downvote_count = ISNULL(downvote_count, 0) - 1 WHERE id = ${id};
+                        UPDATE comments SET downvote_count = GREATEST(COALESCE(downvote_count, 0) - 1, 0) WHERE id = ${id};
                     `);
                 }
                 // Add upvote
                 await request.query(`
                     INSERT INTO comment_upvotes (comment_id, user_id) VALUES (${id}, ${userId});
-                    UPDATE comments SET upvote_count = ISNULL(upvote_count, 0) + 1 WHERE id = ${id};
+                    UPDATE comments SET upvote_count = COALESCE(upvote_count, 0) + 1 WHERE id = ${id};
                `);
             }
 
@@ -659,18 +671,18 @@ app.post('/api/comments/:id/downvote', async (req, res) => {
                 // Toggle off
                 await request.query(`
                     DELETE FROM comment_downvotes WHERE comment_id = ${id} AND user_id = ${userId};
-                    UPDATE comments SET downvote_count = ISNULL(downvote_count, 0) - 1 WHERE id = ${id};
+                    UPDATE comments SET downvote_count = GREATEST(COALESCE(downvote_count, 0) - 1, 0) WHERE id = ${id};
                `);
             } else {
                 if (hasUpvoted) {
                     await request.query(`
                         DELETE FROM comment_upvotes WHERE comment_id = ${id} AND user_id = ${userId};
-                        UPDATE comments SET upvote_count = ISNULL(upvote_count, 0) - 1 WHERE id = ${id};
+                        UPDATE comments SET upvote_count = GREATEST(COALESCE(upvote_count, 0) - 1, 0) WHERE id = ${id};
                     `);
                 }
                 await request.query(`
                     INSERT INTO comment_downvotes (comment_id, user_id) VALUES (${id}, ${userId});
-                    UPDATE comments SET downvote_count = ISNULL(downvote_count, 0) + 1 WHERE id = ${id};
+                    UPDATE comments SET downvote_count = COALESCE(downvote_count, 0) + 1 WHERE id = ${id};
                `);
             }
             await transaction.commit();
@@ -770,34 +782,6 @@ app.get('/api/v2/theme-options/:tema_id', async (req, res) => {
     } catch (err) {
         console.error('Error fetching theme options:', err);
         res.status(500).json({ error: 'Internal server error' });
-    }
-});
-
-// POST /api/urednik/teme/toggle-lock (Toggle theme lock status)
-app.post('/api/urednik/teme/toggle-lock', async (req, res) => {
-    try {
-        if (!req.session.user || (!req.session.user.admin && !req.session.user.urednik)) {
-            return res.status(403).json({ error: 'Немате овлашћење за ову акцију.' });
-        }
-
-        const { tema_id } = req.body;
-        if (!tema_id) {
-            return res.status(400).json({ error: 'Недостаје ID теме.' });
-        }
-
-        const pool = await poolPromise;
-        const result = await pool.request()
-            .input('tema_id', sql.Int, tema_id)
-            .query('UPDATE teme SET zakljucano = CASE WHEN ISNULL(zakljucano, 0) = 1 THEN 0 ELSE 1 END OUTPUT INSERTED.zakljucano WHERE id = @tema_id');
-
-        if (result.recordset.length === 0) {
-            return res.status(404).json({ error: 'Тема није пронађена.' });
-        }
-
-        res.json({ success: true, zakljucano: result.recordset[0].zakljucano });
-    } catch (err) {
-        console.error('Error toggling theme lock:', err);
-        res.status(500).json({ error: 'Грешка на серверу.' });
     }
 });
 
@@ -1110,8 +1094,8 @@ app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req,
             .input('stanje', sql.NVarChar, stanje)
             .query(`
                 INSERT INTO zapisi (naziv, opis, tema_id, korisnik_id, tagovi, file_path, file_type, file_size, stanje, created_at)
-                OUTPUT INSERTED.id
-                VALUES (@naziv, @opis, @tema_id, @korisnik_id, @tagovi, @file_path, @file_type, @file_size, @stanje, GETUTCDATE())
+                VALUES (@naziv, @opis, @tema_id, @korisnik_id, @tagovi, @file_path, @file_type, @file_size, @stanje, CURRENT_TIMESTAMP)
+                RETURNING id
             `);
 
         // Update user counter for zapisi
@@ -1488,7 +1472,7 @@ app.get('/api/user-info', async (req, res) => {
                 const stavkiSince = await pool.request()
                     .input('prevVisit', sql.DateTime2, previousVisit)
                     .query(`SELECT COUNT(*) as count FROM ${tableName} WHERE dodao_vrijeme > @prevVisit AND stanje IN('0', '1')`);
-                sinceLastStavki += stavkiSince.recordset[0].count || 0;
+                sinceLastStavki += parseInt(stavkiSince.recordset[0].count, 10) || 0;
             } catch (err) {
                 // Table might not exist
             }
@@ -1501,10 +1485,10 @@ app.get('/api/user-info', async (req, res) => {
         };
 
         const sinceLast = {
-            stavki: sinceLastStavki,
-            zapisi: zapisiSince.recordset[0].count || 0,
-            dogadjaji: dogadjajiSince.recordset[0].count || 0,
-            novosti: novostiSince.recordset[0].count || 0,
+            stavki: parseInt(sinceLastStavki, 10) || 0,
+            zapisi: parseInt(zapisiSince.recordset[0].count, 10) || 0,
+            dogadjaji: parseInt(dogadjajiSince.recordset[0].count, 10) || 0,
+            novosti: parseInt(novostiSince.recordset[0].count, 10) || 0,
             teme: 0 // No specific tracking for new themes yet
         };
 
@@ -2511,7 +2495,8 @@ app.get('/api/opste/stats', async (req, res) => {
             const tableName = `Table_${theme.id}`;
             try {
                 const stavkiResult = await pool.request().query(`SELECT COUNT(*) as count FROM ${tableName} WHERE stanje = '1'`);
-                stavkiTotal += stavkiResult.recordset[0].count;
+                // Ensure integer addition, Postgres returns COUNT as string (bigint)
+                stavkiTotal += parseInt(stavkiResult.recordset[0].count, 10) || 0;
             } catch (err) {
                 // Ignore if table doesn't exist
             }
@@ -2680,13 +2665,13 @@ app.post('/api/urednik/sync-counters', async (req, res) => {
             const zapisiResult = await pool.request()
                 .input('userId', sql.Int, user.id)
                 .query("SELECT COUNT(*) as count FROM zapisi WHERE korisnik_id = @userId AND stanje IN ('0', '1')");
-            const zapisiCount = zapisiResult.recordset[0].count;
+            const zapisiCount = parseInt(zapisiResult.recordset[0].count, 10) || 0;
 
             // b. Count Dogadjaji
             const dogadjajiResult = await pool.request()
                 .input('userId', sql.Int, user.id)
                 .query("SELECT COUNT(*) as count FROM dogadjaji WHERE korisnik_id = @userId AND stanje IN ('0', '1')");
-            const dogadjajiCount = dogadjajiResult.recordset[0].count;
+            const dogadjajiCount = parseInt(dogadjajiResult.recordset[0].count, 10) || 0;
 
             // c. Count Stavki (Iterate through all Table_X)
             let stavkiCount = 0;
@@ -2696,7 +2681,7 @@ app.post('/api/urednik/sync-counters', async (req, res) => {
                     const stavkiResult = await pool.request()
                         .input('userId', sql.Int, user.id)
                         .query(`SELECT COUNT(*) as count FROM ${tableName} WHERE dodao = @userId AND stanje IN ('0', '1')`);
-                    stavkiCount += stavkiResult.recordset[0].count;
+                    stavkiCount += parseInt(stavkiResult.recordset[0].count, 10) || 0;
                 } catch (err) {
                     // Table might not exist yet for new themes
                 }
@@ -2727,6 +2712,99 @@ app.post('/api/urednik/sync-counters', async (req, res) => {
     } catch (err) {
         console.error('Error syncing counters:', err);
         res.status(500).json({ error: 'Грешка при синхронизацији бројача' });
+    }
+});
+
+// POST /api/urednik/teme/toggle-lock - Toggle theme lock status
+app.post('/api/urednik/teme/toggle-lock', async (req, res) => {
+    try {
+        // 1. Authentication check
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+
+        // 2. Admin check
+        if (req.session.user.urednik != 1 && req.session.user.urednik != '1') {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { tema_id } = req.body;
+
+        if (!tema_id) {
+            return res.status(400).json({ error: 'ID теме је обавезан' });
+        }
+
+        const pool = await poolPromise;
+
+        // Get current lock status
+        const currentResult = await pool.request()
+            .input('tema_id', sql.Int, tema_id)
+            .query('SELECT zakljucano FROM teme WHERE id = @tema_id');
+
+        if (currentResult.recordset.length === 0) {
+            return res.status(404).json({ error: 'Тема није пронађена' });
+        }
+
+        const currentStatus = currentResult.recordset[0].zakljucano;
+        const newStatus = !currentStatus; // Toggle
+
+        // Update the lock status
+        await pool.request()
+            .input('tema_id', sql.Int, tema_id)
+            .input('zakljucano', sql.Bit, newStatus ? true : false)
+            .query('UPDATE teme SET zakljucano = @zakljucano WHERE id = @tema_id');
+
+        res.json({
+            success: true,
+            zakljucano: newStatus
+        });
+
+    } catch (err) {
+        console.error('Error toggling theme lock:', err);
+        res.status(500).json({ error: 'Грешка при измјени статуса закључавања' });
+    }
+});
+
+// GET /api/urednik/comments/reported - Fetch comments with downvotes > 0
+app.get('/api/urednik/comments/reported', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const pool = await poolPromise;
+
+        // Query to get reported comments (downvote_count > 0)
+        // Join with teme for theme name, join with korisnik for author info
+        const result = await pool.request().query(`
+            SELECT 
+                c.id, 
+                c.content, 
+                c.upvote_count, 
+                c.downvote_count, 
+                c.target_type, 
+                c.target_id,
+                c.created,
+                k.slika_url AS author_picture_url,
+                k.korisnik,
+                k.eposta,
+                k.ime,
+                k.prezime,
+                CASE 
+                    WHEN c.target_type = 'dogadjaj' THEN 'догађаји'
+                    ELSE t.naziv 
+                END as theme_name
+            FROM comments c
+            LEFT JOIN teme t ON c.target_type = CAST(t.id AS VARCHAR)
+            LEFT JOIN korisnik k ON c.creator = k.id
+            WHERE c.downvote_count > 0
+            ORDER BY c.downvote_count DESC, c.created DESC
+        `);
+
+        res.json({ success: true, results: result.recordset });
+    } catch (err) {
+        console.error('Error fetching reported comments:', err);
+        res.status(500).json({ error: 'Грешка при добављању примедби' });
     }
 });
 
@@ -2782,46 +2860,4 @@ app.use(express.static(path.join(__dirname, '.')));
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
-});
-// GET /api/urednik/comments/reported - Fetch comments with downvotes > 0
-app.get('/api/urednik/comments/reported', async (req, res) => {
-    try {
-        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
-            return res.status(403).json({ error: 'Немате дозволу' });
-        }
-
-        const pool = await poolPromise;
-
-        // Query to get reported comments (downvote_count > 5)
-        // Join with teme for theme name, join with korisnik for author info
-        const result = await pool.request().query(`
-            SELECT 
-                c.id, 
-                c.content, 
-                c.upvote_count, 
-                c.downvote_count, 
-                c.target_type, 
-                c.target_id,
-                c.created,
-                k.slika_url AS author_picture_url,
-                k.korisnik,
-                k.eposta,
-                k.ime,
-                k.prezime,
-                CASE 
-                    WHEN c.target_type = 'dogadjaj' THEN 'догађаји'
-                    ELSE t.naziv 
-                END as theme_name
-            FROM comments c
-            LEFT JOIN teme t ON c.target_type = CAST(t.id AS NVARCHAR)
-            LEFT JOIN korisnik k ON c.creator = k.id
-            WHERE c.downvote_count > 0
-            ORDER BY c.downvote_count DESC, c.created DESC
-        `);
-
-        res.json({ success: true, results: result.recordset });
-    } catch (err) {
-        console.error('Error fetching reported comments:', err);
-        res.status(500).json({ error: 'Грешка при добављању примедби' });
-    }
 });
