@@ -5,7 +5,7 @@ DROP TABLE IF EXISTS "novosti" CASCADE;
 CREATE TABLE "novosti" (
   "id" SERIAL PRIMARY KEY,
   "vrijeme" TIMESTAMP WITH TIME ZONE,
-  "opis" VARCHAR(255),
+  "opis" VARCHAR(4000),
   "uneo" INTEGER
 );
 

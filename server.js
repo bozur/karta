@@ -2476,8 +2476,8 @@ app.post('/api/novosti', async (req, res) => {
             return res.status(400).json({ error: 'Опис мора имати најмање 10 карактера.' });
         }
 
-        if (opis.length > 255) {
-            return res.status(400).json({ error: 'Опис не смије бити дужи од 255 карактера.' });
+        if (opis.length > 4000) {
+            return res.status(400).json({ error: 'Опис не смије бити дужи од 4000 карактера.' });
         }
 
         const pool = await poolPromise;

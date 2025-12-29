@@ -20,8 +20,8 @@ function initUrednikSection() {
                 showAlert(alertsDiv, 'Опис мора имати најмање 10 карактера.', 'danger');
                 return;
             }
-            if (opis.length > 255) {
-                showAlert(alertsDiv, 'Опис не смије бити дужи од 255 карактера.', 'danger'); // Although maxlength prevents typing, good specific check
+            if (opis.length > 4000) {
+                showAlert(alertsDiv, 'Опис не смије бити дужи од 4000 карактера.', 'danger'); // Although maxlength prevents typing, good specific check
                 return;
             }
 
