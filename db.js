@@ -5,7 +5,8 @@ require('dotenv').config();
 const connectionString = process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/map';
 
 const pool = new Pool({
-    connectionString: connectionString
+    connectionString: connectionString,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
 // Helper to convert MSSQL params (@foo) to Postgres params ($1)
@@ -121,13 +122,29 @@ const sql = {
     }
 };
 
-const poolPromise = (async () => {
-    try {
-        // Test connection
-        const client = await pool.connect();
-        console.log('Connected to PostgreSQL');
-        client.release();
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+const poolPromise = (async () => {
+    let client;
+    let attempts = 5;
+    while (attempts > 0) {
+        try {
+            // Test connection
+            client = await pool.connect();
+            console.log('Connected to PostgreSQL');
+            break; // Success!
+        } catch (err) {
+            attempts--;
+            console.warn(`PostgreSQL Connection Failed! Attempts remaining: ${attempts}. Error: ${err.message}`);
+            if (attempts === 0) {
+                console.error('Final connection attempt failed.');
+                throw err;
+            }
+            await delay(5000); // Wait 5 seconds before retrying
+        }
+    }
+
+    try {
         // Ensure session table exists
         await client.query(`
             CREATE TABLE IF NOT EXISTS "session" (
@@ -145,6 +162,7 @@ const poolPromise = (async () => {
 
             CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
         `);
+        client.release();
 
         // Return a mock pool object that server.js expects
         return {
@@ -159,7 +177,8 @@ const poolPromise = (async () => {
             }
         };
     } catch (err) {
-        console.error('PostgreSQL Connection Failed!', err);
+        if (client) client.release();
+        console.error('PostgreSQL Setup Error:', err);
         throw err;
     }
 })();
