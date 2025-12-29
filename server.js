@@ -92,6 +92,39 @@ app.use(session({
 
 // API Routes
 
+// Email helper function using Resend API
+async function sendEmail({ to, subject, html, bcc }) {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!apiKey) {
+        console.error('RESEND_API_KEY is missing in .env file');
+        throw new Error('API кључ није подешен.');
+    }
+
+    try {
+        const payload = {
+            from: 'Kontakt obrazac <kontakt@1.xn--80aa2azak.xn--90a3ac>',
+            to: Array.isArray(to) ? to : [to],
+            subject: subject,
+            html: html
+        };
+        if (bcc) {
+            payload.bcc = Array.isArray(bcc) ? bcc : [bcc];
+        }
+
+        const response = await axios.post('https://api.resend.com/emails', payload, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            }
+        });
+        return response.data;
+    } catch (error) {
+        const errorData = error.response ? error.response.data : error.message;
+        console.error('Resend API error details:', JSON.stringify(errorData, null, 2));
+        throw error;
+    }
+}
+
 // POST /api/kontakt (Contact form submission via Resend)
 app.post('/api/kontakt', async (req, res) => {
     const { subject, message } = req.body;
@@ -100,20 +133,13 @@ app.post('/api/kontakt', async (req, res) => {
         return res.status(400).json({ error: 'Наслов и порука су обавезни.' });
     }
 
-    const apiKey = process.env.RESEND_API_KEY;
-    if (!apiKey) {
-        console.error('RESEND_API_KEY is missing in .env file');
-        return res.status(500).json({ error: 'Грешка на серверу: API кључ није подешен.' });
-    }
-
     // Get user info from session if available
     const userEmail = req.session.user ? (req.session.user.email || req.session.user.eposta || 'anonymous@karta.rs') : 'anonymous@karta.rs';
     const userName = req.session.user ? (req.session.user.username || req.session.user.korisnik || req.session.user.ime || 'Anonymous User') : 'Anonymous User';
 
     try {
-        const response = await axios.post('https://api.resend.com/emails', {
-            from: 'Kontakt obrazac <kontakt@1.xn--80aa2azak.xn--90a3ac>',
-            to: ['bozur.vujicic@gmail.com'], // Updated recipient
+        const data = await sendEmail({
+            to: 'bozur.vujicic@gmail.com',
             subject: `Kontakt obrazac: ${subject}`,
             html: `
                 <p><strong>Od:</strong> ${userName} (${userEmail})</p>
@@ -121,18 +147,11 @@ app.post('/api/kontakt', async (req, res) => {
                 <p><strong>Poruka:</strong></p>
                 <p>${message.replace(/\n/g, '<br>')}</p>
             `
-        }, {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            }
         });
 
-        res.json({ success: true, data: response.data });
+        res.json({ success: true, data });
     } catch (error) {
-        const errorData = error.response ? error.response.data : error.message;
-        console.error('Resend API error details:', JSON.stringify(errorData, null, 2));
-        res.status(500).json({ error: 'Грешка при слању е-поште.', details: errorData });
+        res.status(500).json({ error: 'Грешка при слању е-поште.' });
     }
 });
 
@@ -1954,8 +1973,16 @@ app.post('/api/register', async (req, res) => {
                 VALUES (@email, @username, @password, GETUTCDATE(), 0)
             `);
 
-        // Mock sending email
-        console.log(`[MOCK EMAIL]To: ${email}, Password: ${password} `);
+        // Send real email via Resend
+        await sendEmail({
+            to: email,
+            subject: 'Лозинка за приступ',
+            html: `Добродошли на стране карта.СРБ! 
+<br><br>
+Ваша лозинка за приступ странама је: '${password}'. 
+<br><br>
+Након што се пријавите у дијелу 'корисник' можете да промјените лозинку и унесете остале податке. У горњем десном углу се налази листа веза према свим функцијама које можете да користите, а предлажемо да почнете од везе 'упутство' која је означена упитником и која појашњава све могућности на странама.`
+        });
 
         res.json({ success: true, message: 'Password sent to email' });
 
@@ -1997,8 +2024,12 @@ app.post('/api/forgot-password', async (req, res) => {
             .input('password', sql.NVarChar, hashedPassword)
             .query('UPDATE korisnik SET lozinka = @password WHERE eposta = @email');
 
-        // Mock sending email
-        console.log(`[MOCK EMAIL]To: ${email}, New Password: ${newPassword} `);
+        // Send real email via Resend
+        await sendEmail({
+            to: email,
+            subject: 'Заборављена лозинка',
+            html: `Ваша нова лозинка је '${newPassword}'. У дијелу 'корисник' можете да измјените лозинку поред осталих ваших података.`
+        });
 
         res.json({ success: true, message: 'Password sent to email' });
 
@@ -2461,6 +2492,31 @@ app.post('/api/novosti', async (req, res) => {
             VALUES (GETUTCDATE(), @opis, @uneo)
         `);
 
+        // Send notifications to subscribers
+        try {
+            console.log('Fetching subscribers for news notification...');
+            const subscribersResult = await pool.request()
+                .query("SELECT eposta FROM korisnik WHERE obavjestenja IS TRUE");
+            const subscribers = subscribersResult.recordset.map(r => r.eposta).filter(e => e);
+
+            console.log(`Found ${subscribers.length} subscribers.`);
+
+            if (subscribers.length > 0) {
+                const data = await sendEmail({
+                    to: 'kontakt@1.xn--80aa2azak.xn--90a3ac', // Primary recipient (self)
+                    bcc: subscribers,
+                    subject: 'Новости на странама карта.СРБ',
+                    html: `На странама карта.срб је објављена новост: '${opis}'.
+<br><br>
+Ако желите да се одјавите са примања ових порука то можете да учините у дијелу "контакт" измјеном поља за обавјештавање!`
+                });
+                console.log('News notifications sent successfully:', data);
+            }
+        } catch (emailErr) {
+            console.error('Error sending news notifications:', emailErr);
+            // Non-blocking error for the user
+        }
+
         res.json({ success: true, message: 'Новости успјешно додате.' });
 
     } catch (err) {
@@ -2870,3 +2926,99 @@ app.use(express.static(path.join(__dirname, '.')));
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
+
+// --- Monthly Digest Logic ---
+async function runMonthlyDigest() {
+    try {
+        const pool = await poolPromise;
+        const now = new Date();
+        const currentMonthKey = `${now.getFullYear()}-${now.getMonth() + 1}`;
+        const statusPath = path.join(__dirname, 'monthly_digest_status.json');
+
+        // Skip if not the first day of the month or already sent this month
+        // For testing purposes during implementation, you might want to bypass the date check
+        if (now.getDate() !== 1) return;
+
+        let status = { lastSentMonth: '' };
+        if (fs.existsSync(statusPath)) {
+            try {
+                status = JSON.parse(fs.readFileSync(statusPath, 'utf8'));
+            } catch (e) {
+                console.error('Error reading monthly_digest_status.json:', e);
+            }
+        }
+
+        if (status.lastSentMonth === currentMonthKey) return;
+
+        console.log(`Starting monthly digest check for ${currentMonthKey}...`);
+
+        const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const startOfThisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+
+        // 1. Gather stats from the previous month
+        const newsCountResult = await pool.request()
+            .input('start', sql.DateTime2, startOfLastMonth)
+            .input('end', sql.DateTime2, startOfThisMonth)
+            .query("SELECT COUNT(*) as count FROM novosti WHERE vrijeme >= @start AND vrijeme < @end");
+        const newsCount = newsCountResult.recordset[0].count;
+
+        const dogadjajiCountResult = await pool.request()
+            .input('start', sql.DateTime2, startOfLastMonth)
+            .input('end', sql.DateTime2, startOfThisMonth)
+            .query("SELECT COUNT(*) as count FROM dogadjaji WHERE unos >= @start AND unos < @end AND stanje = '1'");
+        const dogadjajiCount = dogadjajiCountResult.recordset[0].count;
+
+        // Sum of Table_X records (items)
+        const themesResult = await pool.request().query("SELECT id FROM teme");
+        let itemsCount = 0;
+        for (const theme of themesResult.recordset) {
+            try {
+                const tableResult = await pool.request()
+                    .input('start', sql.DateTime2, startOfLastMonth)
+                    .input('end', sql.DateTime2, startOfThisMonth)
+                    .query(`SELECT COUNT(*) as count FROM Table_${theme.id} WHERE dodao_vrijeme >= @start AND dodao_vrijeme < @end AND stanje = '1'`);
+                itemsCount += parseInt(tableResult.recordset[0].count) || 0;
+            } catch (e) { }
+        }
+
+        // Teme table doesn't have created_at, so we count 0 for now as a placeholder
+        const themesCount = 0;
+
+        // 2. Find users who were inactive for the entire last month and have notifications enabled
+        const recipientsResult = await pool.request()
+            .input('start', sql.DateTime2, startOfLastMonth)
+            .query(`
+                SELECT eposta FROM korisnik 
+                WHERE (obavjestenja = true OR obavjestenja = 'true' OR obavjestenja = 1)
+                AND (pristup1 < @start OR (pristup1 IS NULL AND (pristup0 < @start OR pristup0 IS NULL)))
+            `);
+        const recipients = recipientsResult.recordset.map(r => r.eposta).filter(e => e);
+
+        // 3. Only send if there were updates and there are recipients
+        if (recipients.length > 0 && (newsCount > 0 || dogadjajiCount > 0 || itemsCount > 0)) {
+            await sendEmail({
+                to: 'kontakt@1.xn--80aa2azak.xn--90a3ac', // System address as primary recipient
+                bcc: recipients,
+                subject: 'У међувремену на странама карта.СРБ',
+                html: `У протеклих мјесец дана колико нисте били на странама, унето је новости: '${newsCount}', тема: '${themesCount}', ставки: '${itemsCount}', догађаја: '${dogadjajiCount}'. Надамо се да би нешто од овога било вриједно ваше пажње! До поновног логовања, срдачно вас поздрављамо! 
+<br><br>
+Ако желите да се одјавите са примања ових порука то можете да учините у дијелу "контакт" измјеном поља за обавјештавање!`
+            });
+            console.log(`✓ Monthly digest sent to ${recipients.length} recipients for period ending ${startOfThisMonth.toDateString()}`);
+        } else {
+            console.log('Monthly digest skipped: No updates or no inactive recipients found.');
+        }
+
+        // 4. Update status so we don't send again this month
+        status.lastSentMonth = currentMonthKey;
+        fs.writeFileSync(statusPath, JSON.stringify(status, null, 2));
+
+    } catch (err) {
+        console.error('Error in monthly digest task:', err);
+    }
+}
+
+// Check every hour
+setInterval(runMonthlyDigest, 3600000);
+// Also run on startup after 1 minute to allow server to stabilize
+setTimeout(runMonthlyDigest, 60000);
