@@ -1181,6 +1181,7 @@ function displayPendingStavke(data, temaId, themeName) {
     };
 
     pending.forEach(record => {
+        const recordId = record.id || record.ID;
         const razredText = options.razred[record.razred] || record.razred || '';
         const vrstaText = options.vrsta[record.vrsta] || record.vrsta || '';
         const podvrstaText = options.podvrsta[record.podvrsta] || record.podvrsta || '';
@@ -1189,7 +1190,7 @@ function displayPendingStavke(data, temaId, themeName) {
         record.vrijeme1_fmt = formatDate(record.vrijeme1);
 
         const row = $(`
-            <tr style="border-bottom: 1px solid #eee; cursor: pointer;" data-id="${record.ID}">
+            <tr style="border-bottom: 1px solid #eee; cursor: pointer;" data-id="${recordId}">
                 <td style="padding: 3px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${record.opis || ''}</td>
                 <td style="padding: 3px;">${razredText}</td>
                 <td style="padding: 3px;">${vrstaText}</td>
@@ -1202,17 +1203,17 @@ function displayPendingStavke(data, temaId, themeName) {
                     ${record.zapis ? `<a href="/api/zapisi/${record.zapis}" target="_blank" class="zapis-link-table">${record.zapis_naziv || record.zapis}</a>` : ''}
                 </td>
                 <td style="padding: 3px; text-align: center;">
-                    <input type="checkbox" class="stavke-approve-checkbox" data-id="${record.ID}">
+                    <input type="checkbox" class="stavke-approve-checkbox" data-id="${recordId}">
                 </td>
                 <td style="padding: 3px; text-align: center;">
-                    <input type="checkbox" class="stavke-delete-checkbox" data-id="${record.ID}">
+                    <input type="checkbox" class="stavke-delete-checkbox" data-id="${recordId}">
                 </td>
             </tr>
         `);
 
         row.on('click', function (e) {
-            if ($(e.target).is('input[type="checkbox"]')) return;
-            showPendingStavkaOnMap(record.ID);
+            if ($(e.target).is('input[type="checkbox"], a, a *')) return;
+            showPendingStavkaOnMap(recordId);
         });
 
         tbody.append(row);
@@ -1237,28 +1238,41 @@ function displayPendingStavke(data, temaId, themeName) {
 }
 
 function showPendingStavkaOnMap(recordId) {
-    if (window.stavkeApprovalMarkers) {
-        const marker = window.stavkeApprovalMarkers.find(m => m.options && m.options.recordId === recordId && m.options.isPending);
-        if (marker) {
-            if (marker.getLatLng) {
-                // Point
-                karta.panTo(marker.getLatLng());
+    if (!window.stavkeApprovalMarkers) return;
+
+    // Use loose equality and convert to string for safe comparison
+    const targetId = String(recordId);
+
+    const marker = window.stavkeApprovalMarkers.find(m => {
+        if (!m.options || !m.options.recordId) return false;
+        return String(m.options.recordId) === targetId && m.options.isPending === true;
+    });
+
+    if (marker) {
+        if (marker.getLatLng) {
+            // Point marker
+            karta.panTo(marker.getLatLng());
+            // Small delay to ensure pan doesn't conflict with popup open
+            setTimeout(() => {
                 marker.openPopup();
-            } else if (marker.getBounds) {
-                // Polyline/Polygon GeoJSON layer group
-                const bounds = marker.getBounds();
-                if (bounds.isValid()) {
-                    karta.fitBounds(bounds);
-                    // For layers, we need to find a layer inside that has a popup or open at center
-                    const layers = marker.getLayers ? marker.getLayers() : [];
-                    if (layers.length > 0) {
-                        layers[0].openPopup();
-                    } else if (marker.openPopup) {
+            }, 50);
+        } else if (marker.getBounds) {
+            // Polyline/Polygon GeoJSON layer group
+            const bounds = marker.getBounds();
+            if (bounds.isValid()) {
+                karta.fitBounds(bounds.pad(0.1));
+                setTimeout(() => {
+                    if (marker.openPopup) {
                         marker.openPopup(bounds.getCenter());
+                    } else {
+                        const layers = marker.getLayers ? marker.getLayers() : [];
+                        if (layers.length > 0) layers[0].openPopup();
                     }
-                }
+                }, 100);
             }
         }
+    } else {
+        console.warn('Marker not found for recordId:', recordId);
     }
 }
 
@@ -1323,10 +1337,11 @@ function updateMapForStavkeApproval(data, temaId) {
                     </div>
                 `;
 
+                const recordId = record.id || record.ID;
                 if (record.tacke0 === 'Point') {
                     const pos = getLatLng(record.tacke, record.tacke0);
                     if (pos) {
-                        const marker = L.marker(pos, { icon: orangeIcon, recordId: record.ID, isPending: true })
+                        const marker = L.marker(pos, { icon: orangeIcon, recordId: recordId, isPending: true })
                             .addTo(karta)
                             .bindPopup(popupContent);
                         window.stavkeApprovalMarkers.push(marker);
@@ -1340,7 +1355,7 @@ function updateMapForStavkeApproval(data, temaId) {
                             coordinates: coords
                         },
                         properties: {
-                            id: record.ID
+                            id: recordId
                         }
                     };
 
@@ -1351,14 +1366,17 @@ function updateMapForStavkeApproval(data, temaId) {
                         }
                     }).addTo(karta);
 
+                    // Bind popup to the group so it can be opened at any LatLng (e.g. center)
+                    layer.bindPopup(popupContent);
+
                     // Critical: Attach metadata to the group and each layer for identification
                     layer.options = layer.options || {};
-                    layer.options.recordId = record.ID;
+                    layer.options.recordId = recordId;
                     layer.options.isPending = true;
 
                     layer.eachLayer(l => {
                         l.options = l.options || {};
-                        l.options.recordId = record.ID;
+                        l.options.recordId = recordId;
                         l.options.isPending = true;
                     });
 
@@ -1371,13 +1389,14 @@ function updateMapForStavkeApproval(data, temaId) {
     });
 
     existing.forEach(record => {
+        const recordId = record.id || record.ID;
         const pos = getLatLng(record.tacke, record.tacke0);
         if (pos) {
             const icon = typeof window.createIcon === 'function' ? window.createIcon(record.razred, temaId) : new L.Icon.Default();
             const popupLabel = options.vrsta[record.vrsta] || record.vrsta || '';
-            const popupContent = `<a href="#" class="detalji" pointinfo="${record.ID}"><i class="bi bi-book"></i></a> ${popupLabel}`;
+            const popupContent = `<a href="#" class="detalji" pointinfo="${recordId}"><i class="bi bi-book"></i></a> ${popupLabel}`;
 
-            const marker = L.marker(pos, { icon: icon, recordId: record.ID, isPending: false })
+            const marker = L.marker(pos, { icon: icon, recordId: recordId, isPending: false })
                 .addTo(karta)
                 .bindPopup(popupContent);
 
@@ -1594,7 +1613,7 @@ async function showUserDetails(userId) {
             $('#u_detail_name').text(`${u.ime || ''} ${u.prezime || ''}`.trim() || 'Без имена');
             $('#u_detail_username').text(u.korisnik);
             $('#u_detail_email').text(u.eposta);
-            $('#u_detail_img').attr('src', u.slika_url || '');
+            $('#u_detail_img').attr('src', u.slika_url || 'slike/user-icon.png');
 
             // Populate stats
             $('#u_detail_p0').text(u.pristup0 ? new Date(u.pristup0).toLocaleDateString('sr-RS') : '-');
@@ -1669,7 +1688,11 @@ function initUrednikStavkeSearch() {
             const select = $('#stavka_tabela');
             select.find('option:not(:first)').remove();
             data.themes.forEach(theme => {
-                select.append(`<option value="${theme.id || theme.ID}">${theme.naziv || theme.NAZIV}</option>`);
+                const id = theme.id || theme.ID;
+                const naziv = theme.naziv || theme.NAZIV;
+                const zakljucano = theme.zakljucano === 1 || theme.zakljucano === true;
+                const label = zakljucano ? `🔒 ${naziv}` : naziv;
+                select.append(`<option value="${id}">${label}</option>`);
             });
         });
 
