@@ -3,8 +3,9 @@ const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
 const path = require('path');
-const { poolPromise, sql } = require('./db');
+const { poolPromise, sql, pool } = require('./db');
 const session = require('express-session');
+const PgSession = require('connect-pg-simple')(session);
 const bcrypt = require('bcrypt');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
@@ -79,11 +80,15 @@ app.use(express.urlencoded({ extended: true }));
 
 // Session configuration
 app.use(session({
+    store: new PgSession({
+        pool: pool,
+        tableName: 'session' // Default is "session"
+    }),
     secret: process.env.SESSION_SECRET || 'secret_key_change_this',
     resave: false,
     saveUninitialized: false,
     cookie: {
-        secure: false, // Set to true if using HTTPS
+        secure: process.env.NODE_ENV === 'production', // Set to true if using HTTPS
         maxAge: 24 * 60 * 60 * 1000 // 24 hours (can be extended with remember me)
     }
 }));
@@ -2875,8 +2880,8 @@ app.get('/api/urednik/comments/reported', async (req, res) => {
 
 // POST /api/upload-profile-picture
 app.post('/api/upload-profile-picture', (req, res) => {
-    // Check for upload directory existence
-    const uploadDir = 'c:/karta/slike/users';
+    // Check for upload directory existence - moved to consolidated /uploads path
+    const uploadDir = path.join(__dirname, 'uploads', 'slike', 'users');
     if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
     }
@@ -2919,6 +2924,10 @@ app.post('/api/upload-profile-picture', (req, res) => {
         res.json({ url: fileUrl });
     });
 });
+
+// Serve static files from the new relocated icon folder for backwards compatibility
+app.use('/slike/users', express.static(path.join(__dirname, 'uploads', 'slike', 'users')));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Serve static files (MUST be after API routes to avoid conflicts)
 app.use(express.static(path.join(__dirname, '.')));
