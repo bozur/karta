@@ -1136,6 +1136,8 @@ app.post('/api/zapisi/search', async (req, res) => {
             INNER JOIN korisnik k ON z.korisnik_id = k.id
                 `;
         let conditions = [];
+        conditions.push("z.stanje = '1'");
+
         if (naziv) {
             conditions.push("z.naziv LIKE @naziv");
             request.input('naziv', sql.NVarChar, `% ${naziv} % `);
@@ -1192,6 +1194,13 @@ app.get('/api/zapisi/:id', async (req, res) => {
             return res.status(404).json({ error: 'Запис није пронађен' });
         }
         const record = result.recordset[0];
+
+        // Check visibility: only editors can see/download unapproved records
+        const isUrednik = req.session.user && (req.session.user.urednik == 1 || req.session.user.urednik == '1');
+        if (record.stanje !== '1' && !isUrednik) {
+            return res.status(403).json({ error: 'Запис још није одобрен' });
+        }
+
         if (!fs.existsSync(record.file_path)) {
             return res.status(404).json({ error: 'Фајл није пронађен' });
         }
