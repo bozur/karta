@@ -145,23 +145,18 @@ const poolPromise = (async () => {
     }
 
     try {
-        // Ensure session table exists
+        // Ensure session table exists - Simplified for Postgres 12+
+        console.log('Ensuring session table exists...');
         await client.query(`
             CREATE TABLE IF NOT EXISTS "session" (
-                "sid" varchar NOT NULL COLLATE "default",
+                "sid" varchar NOT NULL PRIMARY KEY,
                 "sess" json NOT NULL,
                 "expire" timestamp(6) NOT NULL
-            ) WITH (OIDS=FALSE);
+            );
             
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'session_pkey') THEN
-                    ALTER TABLE "session" ADD CONSTRAINT "session_pkey" PRIMARY KEY ("sid") NOT DEFERRABLE INITIALLY IMMEDIATE;
-                END IF;
-            END $$;
-
             CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
         `);
+        console.log('✓ Session table verified');
         client.release();
 
         // Return a mock pool object that server.js expects
@@ -181,7 +176,9 @@ const poolPromise = (async () => {
         console.error('PostgreSQL Setup Error:', err);
         throw err;
     }
-})();
+})().catch(err => {
+    console.error('CRITICAL: Database initialization failed permanently. The application may be unstable.', err);
+});
 
 module.exports = {
     sql,

@@ -6,7 +6,7 @@ const path = require('path');
 const { poolPromise, sql, pool } = require('./db');
 const session = require('express-session');
 const PgSession = require('connect-pg-simple')(session);
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const fs = require('fs');
@@ -130,6 +130,27 @@ async function sendEmail({ to, subject, html, bcc }) {
         throw error;
     }
 }
+
+// Health Check Endpoint
+app.get('/api/health', async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        const result = await pool.query('SELECT 1 as connected');
+        res.json({
+            status: 'ok',
+            database: 'connected',
+            node_env: process.env.NODE_ENV,
+            timestamp: new Date().toISOString()
+        });
+    } catch (err) {
+        res.status(500).json({
+            status: 'error',
+            database: 'disconnected',
+            error: err.message,
+            timestamp: new Date().toISOString()
+        });
+    }
+});
 
 // POST /api/kontakt (Contact form submission via Resend)
 app.post('/api/kontakt', async (req, res) => {
@@ -1444,12 +1465,13 @@ app.get('/api/check-auth', async (req, res) => {
             console.error('Error fetching latest user details in check-auth:', err);
         }
 
+        console.log(`✓ Auth check successful for user: ${req.session.user.id}`);
         res.json({
             user: req.session.user,
             is_admin: req.session.user.urednik == 1 || req.session.user.urednik == "1"
         });
     } else {
-        console.log('No user found in session');
+        console.log('⚠ Auth check: No user session found');
         res.status(401).json({ error: 'Not authenticated' });
     }
 });
@@ -1936,13 +1958,13 @@ app.post('/api/login', async (req, res) => {
             }
         };
 
-        console.log(`User ${user.id} logged in. Session created: ${req.sessionID}`);
-
+        console.log(`✓ User ${user.id} authenticated. Saving session...`);
         req.session.save(err => {
             if (err) {
-                console.error('Session save error:', err);
+                console.error('CRITICAL: Session save error during login:', err);
                 return res.status(500).json({ error: 'Internal server error' });
             }
+            console.log(`✓ Session saved for user ${user.id}. Redirecting to /karta.html`);
             res.json({ success: true, redirect: '/karta.html' });
         });
 
