@@ -70,6 +70,7 @@ const upload = multer({
     }
 });
 const app = express();
+app.set('trust proxy', 1); // Trust Render's proxy for secure cookies
 const port = process.env.PORT || 3000;
 
 // Middleware
@@ -1426,7 +1427,9 @@ app.post('/api/dogadjaji/search', async (req, res) => {
 // POST /api/login
 // POST /api/login
 app.get('/api/check-auth', async (req, res) => {
+    console.log(`Checking auth for session: ${req.sessionID}`);
     if (req.session.user) {
+        console.log(`User found in session: ${req.session.user.id}`);
         try {
             // Fetch latest profile picture URL needed for global UI
             const pool = await poolPromise;
@@ -1446,6 +1449,7 @@ app.get('/api/check-auth', async (req, res) => {
             is_admin: req.session.user.urednik == 1 || req.session.user.urednik == "1"
         });
     } else {
+        console.log('No user found in session');
         res.status(401).json({ error: 'Not authenticated' });
     }
 });
@@ -1932,7 +1936,15 @@ app.post('/api/login', async (req, res) => {
             }
         };
 
-        res.json({ success: true, redirect: '/karta.html' });
+        console.log(`User ${user.id} logged in. Session created: ${req.sessionID}`);
+
+        req.session.save(err => {
+            if (err) {
+                console.error('Session save error:', err);
+                return res.status(500).json({ error: 'Internal server error' });
+            }
+            res.json({ success: true, redirect: '/karta.html' });
+        });
 
     } catch (err) {
         console.error(err);

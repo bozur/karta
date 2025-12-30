@@ -79,7 +79,7 @@ $(document).ready(function () {
         }
 
         if (username && password) {
-            $.post('/api/login', { username, password }, function (response) {
+            $.post('/api/login', { username, password, remember }, function (response) {
                 if (response.success) {
                     if (remember) {
                         // Logic to keep logged in (session cookie handles this mostly, but could extend maxAge)
