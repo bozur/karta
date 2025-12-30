@@ -1397,6 +1397,16 @@ function initTemeSection() {
                 $('#teme_alat_container').show();
             }
 
+            // RESTORE THEME EXPLANATION (Persistence Fix)
+            if (window.temeState && window.temeState.searchData && window.temeState.searchData.tabela) {
+                const tabelaId = window.temeState.searchData.tabela;
+                if (window.temeMetadata && window.temeMetadata[tabelaId] && window.temeMetadata[tabelaId].opis) {
+                    $('#teme_objasnjenje_content').text(window.temeMetadata[tabelaId].opis);
+                } else {
+                    $('#teme_objasnjenje_content').text("тема није изабрана");
+                }
+            }
+
             if (window.temeState && window.temeState.alatVisible) {
                 $('#teme_alat_checkbox').prop('checked', true).trigger('change');
             }
@@ -1407,14 +1417,6 @@ function initTemeSection() {
                 $('#teme_dogadjaji_podaci').collapse('show');
             }
 
-            // RESTORE NOVO INSERT ROWS (Persistence Fix)
-            if (window.temeInsertRows && window.temeInsertRows.length > 0) {
-                for (let i = 0; i < window.temeInsertRows.length; i++) {
-                    renderInsertRow(i);
-                }
-                $('#teme_predlozi_row').show();
-                $('#teme_novo_podaci').collapse('show');
-            }
         }, 300);
     }
 
