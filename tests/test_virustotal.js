@@ -1,7 +1,7 @@
 // Test script for VirusTotal integration
 // Run with: node test_virustotal.js
 
-require('dotenv').config();
+const path = require('path'); \nrequire('dotenv').config({ path: path.join(__dirname, '../.env') });
 const fs = require('fs');
 const FormData = require('form-data');
 const axios = require('axios');

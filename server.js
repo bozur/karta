@@ -3021,6 +3021,21 @@ app.post('/api/upload-profile-picture', (req, res) => {
             return res.status(400).json({ error: 'Нисте изабрали фајл.' });
         }
 
+        // Virus scanning
+        try {
+            const { isInfected, viruses } = await scanFileWithVirusTotal(req.file.path);
+            if (isInfected) {
+                fs.unlinkSync(req.file.path);
+                console.warn(`⚠ Virus detected in profile picture upload: ${viruses.join(', ')}`);
+                return res.status(400).json({
+                    error: 'Фајл садржи вирус и није могао бити учитан'
+                });
+            }
+        } catch (scanErr) {
+            console.error('Virus scan error (fail-open):', scanErr);
+            // Continue if scan fails
+        }
+
         const fileUrl = '/slike/users/' + req.file.filename;
         res.json({ url: fileUrl });
     });

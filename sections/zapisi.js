@@ -118,6 +118,9 @@ function handleFileUpload() {
 
     spinner.css('visibility', 'visible');
 
+    // Show virus check message in the error div (left of button)
+    errorDiv.css('color', 'orange').text('Провјера на вирусе ... ово може потрајати 1 min.').show();
+
     fetch('/api/zapisi/upload', {
         method: 'POST',
         body: formData
@@ -127,7 +130,7 @@ function handleFileUpload() {
             spinner.css('visibility', 'hidden');
             if (data.success) {
                 // Show success message in the error div (styled green)
-                errorDiv.css('color', 'green').text(data.message || 'запис је учитан').show();
+                errorDiv.css('color', 'green').text(data.message || 'запис је учитан').show(); /**/
                 $('#zapisi_unos_form')[0].reset();
                 $('#unos_korisnik').val(sessionStorage.getItem('username') || 'TestUser');
                 $('.custom-file-label').html('запис није изабран');
@@ -137,13 +140,13 @@ function handleFileUpload() {
                     errorDiv.hide().css('color', 'orange');
                 }, 3000);
             } else {
-                errorDiv.text(data.error || 'Грешка при додавању фајла').show();
+                errorDiv.css('color', 'orange').text(data.error || 'Грешка при додавању фајла').show();
             }
         })
         .catch(error => {
             spinner.css('visibility', 'hidden');
             console.error('Error:', error);
-            errorDiv.text('Грешка при комуникацији са сервером').show();
+            errorDiv.css('color', 'orange').text('Грешка при комуникацији са сервером').show();
         });
 }
 

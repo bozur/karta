@@ -315,7 +315,10 @@ function initKorisnikSection() {
             formData.append('profile_picture', file);
 
             // Show uploading state (optional, or just disable submit)
-            $('#submit_izmjeni').prop('disabled', true).text('Отпремање...');
+            $('#submit_izmjeni').prop('disabled', true);
+
+            // Show virus check message
+            errorDiv.css('color', 'orange').text('Провјера на вирусе ... ово може потрајати 1 min.').show();
 
             // Upload
             $.ajax({
@@ -330,6 +333,12 @@ function initKorisnikSection() {
                         // Optional: Show success indicator
                         label.text(file.name + ' (Успјешно)');
                         $('#submit_izmjeni').prop('disabled', false).text('измјени');
+
+                        // Show success message
+                        errorDiv.css('color', 'green').text('Запис је провјерен').show();
+                        setTimeout(function () {
+                            errorDiv.hide();
+                        }, 3000);
                     }
                 },
                 error: function (jqXHR, textStatus, errorThrown) {
@@ -471,7 +480,7 @@ function initKorisnikSection() {
                         $('#submit_izmjeni').prop('disabled', false);
 
                         // Show success message
-                        $('#form_error').css('color', 'green').text('Подаци су успјешно ажурирани').show();
+                        $('#form_error').css('color', 'green').text('Подаци су снимљени').show();
 
                         // Clear password fields
                         $('#edit_lozinka').val('');
