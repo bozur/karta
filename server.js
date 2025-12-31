@@ -18,7 +18,6 @@ let FileType;
 (async () => {
     FileType = await import('file-type');
 })();
-// Rate limiter for file uploads - STRICT: 5 uploads per day
 const uploadLimiter = rateLimit({
     windowMs: 24 * 60 * 60 * 1000, // 24 hours
     max: 5, // 5 uploads per day
@@ -26,6 +25,81 @@ const uploadLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
+
+// Auth Rate Limiter (Login, Register, Forgot Password) - Strict
+const authLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10, // 10 attempts per IP
+    message: { error: 'Превише покушаја. Сачекајте 15 минута.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// General API Rate Limiter (Search, etc.) - Moderate to prevent scraping
+const apiLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 1000, // 1000 requests per hour
+    message: { error: 'Превише захтјева. Сачекајте мало.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+// Bot Protection Helper (Honeypot + CAPTCHA)
+async function validateBotProtection(req) {
+    // 1. Honeypot Check (Hidden field should be empty)
+    if (req.body._hp_check && req.body._hp_check.length > 0) {
+        console.warn(`Bot detected via honeypot from IP ${req.ip}`);
+        return { valid: false, error: "Откривен 'бот' (HP)" };
+    }
+
+    // 2. reCAPTCHA v3 Check (Only if configured)
+    const recaptchaToken = req.body['g-recaptcha-response'];
+    const recaptchaSecret = process.env.RECAPTCHA_SECRET_KEY;
+
+    if (recaptchaSecret && recaptchaToken) {
+        try {
+            const verifyUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${recaptchaSecret}&response=${recaptchaToken}`;
+            const response = await axios.post(verifyUrl);
+            const data = response.data;
+
+            if (!data.success) {
+                // Check if failure is due to domain mismatch or browser error (common in localhost/dev)
+                // Google response: { "success": false, "error-codes": ["domain-mismatch"] } or ["browser-error"]
+                if (data['error-codes'] && (data['error-codes'].includes('domain-mismatch') || data['error-codes'].includes('browser-error'))) {
+                    console.warn(`reCAPTCHA dev/localhost error (${data['error-codes'].join(',')}) - Allowing request from IP ${req.ip}`);
+                    return { valid: true };
+                }
+
+                // Real bot detection failure (score low)
+                if (data.score !== undefined && data.score < 0.5) {
+                    console.warn(`Bot detected via reCAPTCHA (score: ${data.score}) from IP ${req.ip}`);
+                    return { valid: false, error: "Откривен 'бот' (CAPTCHA)" };
+                }
+
+                // Other errors (invalid key, etc) - Fail open or closed?
+                // Let's treat undefined score as suspicious only if success is false AND not domain mismatch?
+                // Actually, if success is false, score is usually undefined.
+                // If success is false and NOT domain mismatch, it might be a bot (invalid token) OR config error.
+                // To be safe against bots, we should block if token is invalid.
+                // But for now, user is blocked. Let's return error if success is false.
+                console.warn(`Bot detected or CAPTCHA error (success: false, codes: ${JSON.stringify(data['error-codes'])}) from IP ${req.ip}`);
+                return { valid: false, error: "Откривен 'бот' (CAPTCHA)" };
+            }
+
+            // Success true, check score
+            if (data.score < 0.5) {
+                console.warn(`Bot detected via reCAPTCHA (score: ${data.score}) from IP ${req.ip}`);
+                return { valid: false, error: "Откривен 'бот' (CAPTCHA)" };
+            }
+        } catch (error) {
+            console.error('reCAPTCHA verification error:', error.message);
+            // Fail open if CAPTCHA service is down? Or fail closed? 
+            // Let's log but allow for now to avoid locking users out if config is wrong
+        }
+    }
+
+    return { valid: true };
+}
 // VirusTotal API configuration
 const VIRUSTOTAL_API_KEY = process.env.VIRUSTOTAL_API_KEY;
 
@@ -146,6 +220,12 @@ const app = express();
 app.set('trust proxy', 1); // Trust Render's proxy for secure cookies
 const port = process.env.PORT || 3000;
 
+// Apply General API Limiter to specific generic routes to prevent scraping
+app.use('/api/search', apiLimiter);
+app.use('/api/zapisi/search', apiLimiter);
+app.use('/api/dogadjaji/search', apiLimiter);
+app.use('/api/points', apiLimiter);
+
 // Middleware
 app.use(cors());
 app.use(morgan('dev'));
@@ -163,7 +243,8 @@ app.use(session({
     saveUninitialized: false,
     cookie: {
         secure: process.env.NODE_ENV === 'production', // Set to true if using HTTPS
-        maxAge: 24 * 60 * 60 * 1000 // 24 hours (can be extended with remember me)
+        maxAge: 24 * 60 * 60 * 1000, // 24 hours (can be extended with remember me)
+        sameSite: 'lax' // Protection against CSRF
     }
 }));
 
@@ -1965,7 +2046,13 @@ app.get('/api/user/download-geojson/:temaId', async (req, res) => {
     }
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
+    // Bot Protection
+    const botCheck = await validateBotProtection(req);
+    if (!botCheck.valid) {
+        return res.status(400).json({ error: botCheck.error });
+    }
+
     const { username, password, remember } = req.body;
 
     try {
@@ -2041,7 +2128,13 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authLimiter, async (req, res) => {
+    // Bot Protection
+    const botCheck = await validateBotProtection(req);
+    if (!botCheck.valid) {
+        return res.status(400).json({ error: botCheck.error });
+    }
+
     const { email } = req.body;
 
     // Basic email validation
@@ -2099,7 +2192,13 @@ app.post('/api/register', async (req, res) => {
 });
 
 // POST /api/forgot-password
-app.post('/api/forgot-password', async (req, res) => {
+app.post('/api/forgot-password', authLimiter, async (req, res) => {
+    // Bot Protection
+    const botCheck = await validateBotProtection(req);
+    if (!botCheck.valid) {
+        return res.status(400).json({ error: botCheck.error });
+    }
+
     const { email } = req.body;
 
     // Basic email validation

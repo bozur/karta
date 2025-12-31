@@ -383,9 +383,19 @@ function handleTemeSearch(e) {
                 calculatePlaybackRange();
             }
         },
-        error: function () {
+        error: function (xhr) {
             spinner.css('visibility', 'hidden');
-            $('#teme_alert_area').text('Грешка при претрази').show();
+            let errorMsg = 'Грешка при претрази';
+            if (xhr.responseJSON && xhr.responseJSON.error) {
+                errorMsg = xhr.responseJSON.error;
+            } else if (xhr.responseText) {
+                // Try parsing raw response if JSON mapping failed
+                try {
+                    const resp = JSON.parse(xhr.responseText);
+                    if (resp.error) errorMsg = resp.error;
+                } catch (e) { }
+            }
+            $('#teme_alert_area').text(errorMsg).show();
         }
     });
 }

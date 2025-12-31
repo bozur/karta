@@ -1,4 +1,9 @@
 ﻿/* Common styles - NO font-size set to use browser default (16px) */
+/* Global Styles */
+.grecaptcha-badge {
+  display: none !important;
+}
+
 body,
 html {
   height: 100%;

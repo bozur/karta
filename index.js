@@ -61,12 +61,14 @@ $(document).ready(function () {
     });
 
     // Login Form Submission
+    // Login Form Submission
     $('#change-logging').submit(function (e) {
         e.preventDefault();
         const username = $('#username').val();
         const password = $('#password').val();
         const remember = $('#remember').is(':checked');
 
+        // Validation first
         if (!username) {
             $('#username').css('border-color', 'red');
         } else {
@@ -79,23 +81,46 @@ $(document).ready(function () {
         }
 
         if (username && password) {
-            $.post('/api/login', { username, password, remember }, function (response) {
-                if (response.success) {
-                    if (remember) {
-                        // Logic to keep logged in (session cookie handles this mostly, but could extend maxAge)
-                    }
-                    window.location.href = response.redirect;
+            // Helper function to submit login
+            const submitLogin = (token) => {
+                const _hp_check = $('#change-logging').find('input[name="_hp_check"]').val();
+                const data = { username, password, remember, _hp_check };
+                if (token) {
+                    data['g-recaptcha-response'] = token;
                 }
-            }).fail(function (xhr) {
-                let errorMsg = 'погрешно корисничко име/е-пошта или лозинка';
-                if (xhr.responseJSON && xhr.responseJSON.error) {
-                    errorMsg = xhr.responseJSON.error;
-                }
-                $('#loggingenter0').text(errorMsg).css('color', '#f5a615');
-                $('#username').css('border-color', 'red');
-                $('#password').css('border-color', 'red');
-            });
 
+                $.post('/api/login', data, function (response) {
+                    if (response.success) {
+                        window.location.href = response.redirect;
+                    }
+                }).fail(function (xhr) {
+                    let errorMsg = 'погрешно корисничко име/е-пошта или лозинка';
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    }
+                    $('#loggingenter0').text(errorMsg).css('color', '#f5a615');
+                    $('#username').css('border-color', 'red');
+                    $('#password').css('border-color', 'red');
+                });
+            };
+
+            // Execute reCAPTCHA with fallback
+            if (typeof grecaptcha !== 'undefined') {
+                grecaptcha.ready(function () {
+                    grecaptcha.execute('6LfZgTwsAAAAAHh1E-UJF5VokZKu2Ujh68gVaxVR', { action: 'login' })
+                        .then(function (token) {
+                            submitLogin(token);
+                        })
+                        .catch(function (err) {
+                            console.warn('reCAPTCHA execution failed (likely domain mismatch), proceeding without it:', err);
+                            submitLogin(null);
+                        });
+                });
+            } else {
+                // If script didn't load at all
+                console.warn('reCAPTCHA library not loaded, proceeding without it');
+                submitLogin(null);
+            }
         }
     });
 
@@ -114,7 +139,8 @@ $(document).ready(function () {
             $('#newuserenter0').text('');
         }
 
-        $.post('/api/register', { email }, function (response) {
+        const _hp_check = $(this).find('input[name="_hp_check"]').val();
+        $.post('/api/register', { email, _hp_check }, function (response) {
             if (response.success) {
                 $('#newuserenter0').text('лозинка је послата на е-пошту').css('color', '#f5a615'); // Using orange
             }
@@ -141,7 +167,8 @@ $(document).ready(function () {
             return;
         }
 
-        $.post('/api/forgot-password', { email }, function (response) {
+        const _hp_check = $(this).find('input[name="_hp_check"]').val();
+        $.post('/api/forgot-password', { email, _hp_check }, function (response) {
             console.log('Forgot password response:', response);
             if (response.success) {
                 $('#passwordforgottenenter0').text('нова лозинка је прослијеђена на е-пошту').css('color', '#f5a615');
