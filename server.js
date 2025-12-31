@@ -10,7 +10,7 @@ const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const fs = require('fs');
-const NodeClam = require('clamscan');
+const FormData = require('form-data');
 const axios = require('axios');
 
 // Dynamic import for file-type (ESM module)
@@ -26,21 +26,94 @@ const uploadLimiter = rateLimit({
     standardHeaders: true,
     legacyHeaders: false,
 });
-// Virus scanning (optional - works if ClamAV is installed)
-let virusScanner = null;
-(async () => {
-    try {
-        virusScanner = await new NodeClam().init({
-            removeInfected: false,
-            quarantineInfected: false,
-            debugMode: false,
-            clamdscan: { host: 'localhost', port: 3310, timeout: 60000 }
-        });
-        console.log('✓ Virus scanner initialized');
-    } catch (err) {
-        console.warn('⚠ Virus scanner not available (ClamAV not installed). Files will not be scanned for viruses.');
+// VirusTotal API configuration
+const VIRUSTOTAL_API_KEY = process.env.VIRUSTOTAL_API_KEY;
+
+// VirusTotal virus scanning function
+async function scanFileWithVirusTotal(filePath) {
+    if (!VIRUSTOTAL_API_KEY) {
+        console.warn('⚠ VirusTotal API key not configured. Files will not be scanned for viruses.');
+        return { isInfected: false, viruses: [] };
     }
-})();
+
+    try {
+        // Step 1: Upload file to VirusTotal
+        const form = new FormData();
+        form.append('file', fs.createReadStream(filePath));
+
+        const uploadResponse = await axios.post(
+            'https://www.virustotal.com/api/v3/files',
+            form,
+            {
+                headers: {
+                    ...form.getHeaders(),
+                    'x-apikey': VIRUSTOTAL_API_KEY
+                },
+                maxContentLength: Infinity,
+                maxBodyLength: Infinity
+            }
+        );
+
+        const analysisId = uploadResponse.data.data.id;
+        console.log(`VirusTotal: File uploaded for analysis (ID: ${analysisId})`);
+
+        // Step 2: Wait for analysis to complete (poll with timeout)
+        const maxAttempts = 12; // 12 attempts * 5 seconds = 60 seconds max
+        let attempts = 0;
+
+        while (attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 5000)); // Wait 5 seconds
+            attempts++;
+
+            try {
+                const analysisResponse = await axios.get(
+                    `https://www.virustotal.com/api/v3/analyses/${analysisId}`,
+                    {
+                        headers: { 'x-apikey': VIRUSTOTAL_API_KEY }
+                    }
+                );
+
+                const status = analysisResponse.data.data.attributes.status;
+
+                if (status === 'completed') {
+                    const stats = analysisResponse.data.data.attributes.stats;
+                    const isInfected = stats.malicious > 0 || stats.suspicious > 0;
+
+                    if (isInfected) {
+                        console.log(`✓ VirusTotal scan complete: INFECTED (${stats.malicious} malicious, ${stats.suspicious} suspicious)`);
+                        return {
+                            isInfected: true,
+                            viruses: [`Detected by ${stats.malicious + stats.suspicious} engines`]
+                        };
+                    } else {
+                        console.log(`✓ VirusTotal scan complete: Clean (${stats.harmless} harmless, ${stats.undetected} undetected)`);
+                        return { isInfected: false, viruses: [] };
+                    }
+                }
+
+                console.log(`VirusTotal: Analysis in progress (attempt ${attempts}/${maxAttempts})...`);
+            } catch (pollError) {
+                console.error('VirusTotal polling error:', pollError.message);
+            }
+        }
+
+        // Timeout - assume clean to avoid blocking uploads
+        console.warn('⚠ VirusTotal scan timeout - proceeding without scan result');
+        return { isInfected: false, viruses: [] };
+
+    } catch (error) {
+        console.error('VirusTotal scan error:', error.response?.data || error.message);
+        // On error, allow upload to proceed (fail open)
+        return { isInfected: false, viruses: [] };
+    }
+}
+
+// Log VirusTotal status on startup
+if (VIRUSTOTAL_API_KEY) {
+    console.log('✓ VirusTotal virus scanning enabled');
+} else {
+    console.warn('⚠ VirusTotal API key not configured. Set VIRUSTOTAL_API_KEY in .env file.');
+}
 // Configure multer for file uploads
 const uploadDir = path.join(__dirname, 'uploads', 'zapisi');
 if (!fs.existsSync(uploadDir)) {
@@ -1112,20 +1185,14 @@ app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req,
                 error: 'Дозвољене врсте записа су: PDF, JPG, PNG'
             });
         }
-        // 6. Virus scanning (if ClamAV is available)
-        if (virusScanner) {
-            try {
-                const { isInfected, viruses } = await virusScanner.isInfected(req.file.path);
-                if (isInfected) {
-                    fs.unlinkSync(req.file.path);
-                    console.warn(`⚠ Virus detected in upload by user ${korisnik_id}: ${viruses.join(', ')}`);
-                    return res.status(400).json({
-                        error: 'Фајл садржи вирус и није могао бити учитан'
-                    });
-                }
-            } catch (scanErr) {
-                console.error('Virus scan error:', scanErr);
-            }
+        // 6. Virus scanning with VirusTotal
+        const { isInfected, viruses } = await scanFileWithVirusTotal(req.file.path);
+        if (isInfected) {
+            fs.unlinkSync(req.file.path);
+            console.warn(`⚠ Virus detected in upload by user ${korisnik_id}: ${viruses.join(', ')}`);
+            return res.status(400).json({
+                error: 'Фајл садржи вирус и није могао бити учитан'
+            });
         }
         // 7. Save to database
         const result = await pool.request()
