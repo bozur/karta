@@ -6,7 +6,7 @@
    
    Open your `.env` file and add:
    ```
-   VIRUSTOTAL_API_KEY=bcfda9cc681892ecf161fae506d431f17f0733ca33b3a0945e20e037ac9355e9
+   VIRUSTOTAL_API_KEY=
    ```
 
 2. **Restart your server**
@@ -31,7 +31,7 @@
    - Click on "Environment" in the left sidebar
    - Click "Add Environment Variable"
    - Key: `VIRUSTOTAL_API_KEY`
-   - Value: `bcfda9cc681892ecf161fae506d431f17f0733ca33b3a0945e20e037ac9355e9`
+   - Value: ``
    - Click "Save Changes"
 
 3. **Deploy**
