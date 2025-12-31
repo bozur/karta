@@ -320,7 +320,7 @@ app.post('/api/kontakt', async (req, res) => {
 
     try {
         const data = await sendEmail({
-            to: 'bozur.vujicic@gmail.com',
+            to: 'kontakt@1.xn--80aa2azak.xn--90a3ac',
             subject: `Kontakt obrazac: ${subject}`,
             html: `
                 <p><strong>Od:</strong> ${userName} (${userEmail})</p>
