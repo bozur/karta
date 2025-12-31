@@ -2,8 +2,8 @@
 
 This document describes all features and behaviors of the "kontakt" (contact) tab for user communication with administrators.
 
-**Last Updated:** 2025-12-04  
-**Files:** `sections/kontakt.html`, `sections/kontakt.js`, `kontakt.txt`
+**Last Updated:** 2025-12-31  
+**Files:** `sections/kontakt.html`, `sections/kontakt.js`
 
 ---
 
@@ -437,8 +437,61 @@ Provide contextual help/information for each subject category.
 
 ---
 
+## 13. Current Implementation (2025-12-31)
+
+### Resend API Integration
+
+**Status:** ✅ IMPLEMENTED
+
+**API Endpoint:** `POST /api/kontakt`
+
+**Implementation:**
+```javascript
+app.post('/api/kontakt', async (req, res) => {
+    const { subject, message } = req.body;
+    
+    if (!subject || !message) {
+        return res.status(400).json({ error: 'Наслов и порука су обавезни.' });
+    }
+    
+    try {
+        const data = await sendEmail({
+            to: 'kontakt@karta.srb',
+            subject: `Контакт: ${subject}`,
+            html: `<p><strong>Наслов:</strong> ${subject}</p><p><strong>Порука:</strong></p><p>${message}</p>`
+        });
+        
+        res.json({ success: true, data });
+    } catch (error) {
+        res.status(500).json({ error: 'Грешка при слању е-поште.' });
+    }
+});
+```
+
+**Email Service:** Resend (resend.com)  
+**Recipient:** kontakt@karta.srb  
+**Format:** HTML email with subject and message
+
+### Changes from Proposed Implementation
+
+**Simplified Approach:**
+- No database storage of contact messages
+- Direct email sending via Resend API
+- No admin panel (messages go to email)
+- No message history tracking
+
+**Benefits:**
+- Simpler implementation
+- No additional database tables needed
+- Immediate delivery to administrators
+- Standard email workflow
+
+---
+
 ## Version History
 
 | Date | Changes | Modified By |
 |------|---------|-------------|
 | 2025-12-04 | Initial documentation created | AI Assistant |
+| 2025-12-31 | Implemented Resend API integration for contact form, direct email sending to kontakt@karta.srb, removed database storage proposal in favor of email-only approach | AI Assistant |
+

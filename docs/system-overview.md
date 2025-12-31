@@ -2,8 +2,8 @@
 
 This document describes the overall application architecture, authentication system, and main pages (index.html and karta.html).
 
-**Last Updated:** 2025-12-04  
-**Files:** `index.html`, `index.js`, `karta.html`, `karta.js`, `server.js`, `.env`
+**Last Updated:** 2025-12-31  
+**Files:** `index.html`, `index.js`, `karta.html`, `karta.js`, `server.js`, `.env`, `render.yaml`
 
 ---
 
@@ -19,18 +19,26 @@ This document describes the overall application architecture, authentication sys
 - **Leaflet 1.7.1** - Interactive maps
 - **Leaflet.Draw 1.0.4** - Drawing tools
 - **Bootstrap Icons 1.7** - Icon library
+- **Flatpickr** - DateTime picker library
 
 **Backend:**
 - **Node.js** - Runtime environment
 - **Express.js** - Web server framework
-- **MSSQL** - SQL Server database
-- **mssql** - Database driver
+- **PostgreSQL** - Database (migrated from MSSQL)
+- **pg** - PostgreSQL driver
 - **express-session** - Session management
 - **bcrypt** - Password hashing
 - **express-rate-limit** - Rate limiting
 - **multer** - File upload handling
 - **file-type** - File content validation
 - **clamscan** - Virus scanning (optional)
+- **Resend API** - Email delivery service
+
+**Deployment:**
+- **Platform:** Render.com
+- **Database:** PostgreSQL (managed)
+- **Storage:** Persistent disk (15GB for uploads)
+- **Environment:** Production
 
 ### Architecture
 
@@ -48,7 +56,9 @@ sections/*.html + sections/*.js
   ↓ (API calls)
 server.js (Express Server)
   ↓
-SQL Server Database
+PostgreSQL Database
+  ↓
+Resend API (Email)
 ```
 
 ---
@@ -74,25 +84,41 @@ karta/
 │   ├── zapisi.html/js
 │   ├── opste.html/js
 │   ├── korisnik.html/js
+│   ├── urednik.html/js     # Admin/editor tab
 │   ├── podrska.html/js
 │   ├── kontakt.html/js
 │   └── uputstvo.html/js
 │
 ├── database/               # SQL schema files
+│   ├── postgresql_schema.sql
 │   ├── create_*.sql
 │   └── populate_*.sql
+│
+├── email/                  # Email templates
+│   └── dobrodosli.html     # Welcome email template
 │
 ├── ikone/                  # Map marker icons
 │   └── {tema_id}/
 │       └── {razred}.png
 │
 ├── uploads/                # User-uploaded files
+│   └── zapisi/             # Uploaded documents
+│
+├── comments/               # User comment files (JSON)
 │
 ├── docs/                   # Feature documentation
+│   ├── system-overview.md
 │   ├── dogadjaji-features.md
 │   ├── zapisi-features.md
 │   ├── teme-features.md
-│   └── korisnik-features.md
+│   ├── korisnik-features.md
+│   ├── urednik-features.md
+│   ├── opste-features.md
+│   ├── kontakt-features.md
+│   ├── podrska-features.md
+│   └── uputstvo-features.md
+│
+├── render.yaml             # Render.com deployment config
 │
 └── leaflet-sidebar-master/ # Sidebar plugin
 ```
@@ -317,6 +343,7 @@ req.session.user = {
   - `bi-folder` - Записи (zapisi)
   - `bi-lightbulb` - Опште (opste)
   - `bi-person` - Корисник (korisnik)
+  - `bi-pencil-square` - Уредник (urednik) - **Admin only**
   - `bi-cash-coin` - Подршка (podrska)
   - `bi-envelope` - Контакт (kontakt)
   - `bi-question-circle` - Упутство (uputstvo)
@@ -475,25 +502,25 @@ All drawing tool tooltips and buttons are localized to Serbian Cyrillic via `L.d
 
 **Required Variables:**
 ```
-DB_SERVER=server_address
-DB_DATABASE=database_name
-DB_USER=username
-DB_PASSWORD=password
+DATABASE_URL=postgresql://user:password@host:port/database
+PORT=10000
+SESSION_SECRET=your_secret_key
+NODE_ENV=production
+RESEND_API_KEY=re_xxxxxxxxx
 ```
 
 **Connection Pool:**
 ```javascript
-const poolPromise = new sql.ConnectionPool({
-  server: process.env.DB_SERVER,
-  database: process.env.DB_DATABASE,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  options: {
-    encrypt: true,
-    trustServerCertificate: true
+const { Pool } = require('pg');
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: {
+    rejectUnauthorized: false
   }
-}).connect();
+});
 ```
+
+**Note:** PostgreSQL connection uses connection pooling for better performance.
 
 ---
 
@@ -638,9 +665,170 @@ const poolPromise = new sql.ConnectionPool({
 
 ---
 
+## 13. Email System
+
+### Resend API Integration
+
+**Service:** Resend (resend.com)  
+**API Key:** Stored in `RESEND_API_KEY` environment variable
+
+### Email Helper Function
+
+**Function:** `sendEmail({ to, subject, html, bcc })`
+
+**Usage:**
+```javascript
+await sendEmail({
+  to: 'user@example.com',
+  subject: 'Welcome to KARTA.SRB',
+  html: emailTemplate,
+  bcc: 'admin@karta.srb'
+});
+```
+
+### Welcome Email
+
+**Template:** `email/dobrodosli.html`  
+**Trigger:** New user registration  
+**Content:**
+- Welcome message
+- Auto-generated password
+- Quick start guide
+- Opt-out instructions
+
+### Contact Form Email
+
+**Endpoint:** `POST /api/kontakt`  
+**Recipient:** `kontakt@karta.srb`  
+**Content:** User-submitted message with subject
+
+### Email Preferences
+
+**Field:** `obavjestenja` in `korisnik` table  
+**Default:** TRUE (enabled)  
+**User Control:** Can disable in korisnik tab
+
+---
+
+## 14. Comments System
+
+### Database Tables
+
+**Main Table:** `comments`
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | SERIAL | Primary key |
+| parent | INTEGER | Parent comment ID (for threading) |
+| target_type | VARCHAR(50) | 'table_X', 'dogadjaji', 'zapisi' |
+| target_id | INTEGER | ID of target item |
+| created | TIMESTAMP | Creation time |
+| modified | TIMESTAMP | Last edit time |
+| content | TEXT | Comment text |
+| creator | INTEGER | User ID |
+| fullname | VARCHAR(255) | Display name |
+| profile_picture_url | VARCHAR(255) | User avatar |
+
+**Voting Tables:**
+- `comment_upvotes` - User upvotes
+- `comment_downvotes` - User downvotes
+
+### API Endpoints
+
+**Get Comments:** `GET /api/comments?table=table_1&id=123`  
+**Post Comment:** `POST /api/comments`  
+**Upvote:** `POST /api/comments/:id/upvote`  
+**Downvote:** `POST /api/comments/:id/downvote`  
+**Report:** `POST /api/comments/:id/report`
+
+### Features
+
+- Threaded comments (parent-child relationships)
+- Upvote/downvote system
+- User reporting for moderation
+- Admin review in urednik tab
+- Real-time vote counts
+
+---
+
+## 15. Flatpickr Integration
+
+### Library
+
+**Name:** Flatpickr  
+**Purpose:** Replace native datetime-local inputs  
+**Locale:** Serbian (sr)
+
+### Configuration
+
+```javascript
+flatpickr(".flatpickr-datetime", {
+  enableTime: true,
+  dateFormat: "Y-m-d H:i",
+  locale: "sr",
+  time_24hr: true
+});
+```
+
+### Used In
+
+- **Dogadjaji Tab:** pocetak, kraj fields (unos and trazi)
+- **Teme Tab:** Novo section datetime inputs
+- **Teme Popups:** pocetak, kraj fields
+- **Urednik Tab:** Pretraga stavki datetime filters
+
+### Benefits
+
+- Consistent UI across browsers
+- Better mobile experience
+- Localized to Serbian
+- Time picker included
+
+---
+
+## 16. Deployment (Render.com)
+
+### Configuration File
+
+**File:** `render.yaml`
+
+### Services
+
+**Web Service:**
+- **Name:** karta
+- **Runtime:** Node.js
+- **Build:** `npm install`
+- **Start:** `npm start`
+- **Plan:** Starter
+
+### Environment Variables
+
+- `DATABASE_URL` - From managed PostgreSQL database
+- `PORT` - 10000
+- `SESSION_SECRET` - Auto-generated
+- `NODE_ENV` - production
+- `RESEND_API_KEY` - Manual configuration
+
+### Persistent Disk
+
+- **Name:** karta-uploads
+- **Mount Path:** `/opt/render/project/src/uploads`
+- **Size:** 15GB
+- **Purpose:** Store user-uploaded files
+
+### Database
+
+- **Type:** PostgreSQL
+- **Plan:** Basic (256MB)
+- **Managed:** Yes (automatic backups)
+
+---
+
 ## Version History
 
 | Date | Changes | Modified By |
 |------|---------|-------------|
 | 2025-12-04 | Initial documentation created | AI Assistant |
 | 2025-12-04 | Added Serbian Cyrillic localization for drawing tools and zoom controls | AI Assistant |
+| 2025-12-31 | Major update: PostgreSQL migration, Render deployment, email system (Resend), comments system, Flatpickr integration, urednik tab, updated file structure | AI Assistant |
+

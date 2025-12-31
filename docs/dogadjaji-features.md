@@ -2,7 +2,7 @@
 
 This document describes all features and behaviors of the "dogadjaji" (events) tab.
 
-**Last Updated:** 2025-12-04  
+**Last Updated:** 2025-12-31  
 **Files:** `sections/dogadjaji.html`, `sections/dogadjaji.js`
 
 ---
@@ -27,7 +27,8 @@ The dogadjaji tab allows users to insert, search, and view historical events on 
 | `korisnik_id` | INT | NOT NULL, FK → `korisnik.id` | User who created the event |
 | `zapis` | INT | NULL | Reference to zapisi table (no FK constraint) |
 | `koordinate` | NVARCHAR(100) | NULL | Coordinates in WKT POINT format: "POINT(lng lat)" |
-| `unos` | DATETIME2 | DEFAULT GETDATE() | Insertion timestamp |
+| `unos` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Insertion timestamp |
+| `stanje` | VARCHAR(2) | DEFAULT '0' | Approval status: '0' = pending, '1' = approved |
 
 ### Indexes:
 - `idx_dogadjaji_korisnik` on `korisnik_id`
@@ -36,6 +37,13 @@ The dogadjaji tab allows users to insert, search, and view historical events on 
 
 ### Database Trigger:
 **`trg_dogadjaji_default_kraj`** - Automatically sets `kraj = pocetak` when `kraj` is NULL on INSERT
+
+### Approval Workflow
+
+**New Events:** Inserted with `stanje = '0'` (pending) by default  
+**Auto-Approve:** If user has `moze_ucitati = 1`, events inserted with `stanje = '1'`  
+**Visibility:** Only events with `stanje = '1'` appear in search results and on map  
+**Admin Approval:** Editors can approve/delete pending events in urednik tab
 
 ---
 
@@ -47,8 +55,8 @@ The dogadjaji tab allows users to insert, search, and view historical events on 
 |-------|-----|------|----------|------------|-------|
 | Корисник | `dogadjaji_unos_korisnik` | Hidden | Yes | Auto-populated | Current username from session |
 | Опис | `dogadjaji_unos_opis` | Textarea | Yes | Min 10 chars, Max 255 chars | Event description |
-| Почетак | `dogadjaji_unos_pocetak` | datetime-local | Yes | Valid datetime | Event start time |
-| Крај | `dogadjaji_unos_kraj` | datetime-local | No | Valid datetime | Event end time |
+| Почетак | `dogadjaji_unos_pocetak` | Flatpickr | Yes | Valid datetime | Event start time |
+| Крај | `dogadjaji_unos_kraj` | Flatpickr | No | Valid datetime, >= pocetak | Event end time |
 | Координате | `dogadjaji_unos_koordinate` | Text | No | WKT POINT format | Auto-populated by marker tool |
 | Извор | `dogadjaji_unos_izvor` | Text | Yes | Max 50 chars | Source reference |
 | Запис | `dogadjaji_unos_zapis` | Text | No | - | Record reference |
@@ -69,6 +77,26 @@ The dogadjaji tab allows users to insert, search, and view historical events on 
    - Must not be empty
    - Error: "попуните поље (извор)"
 
+4. **Datetime Validation**
+   - If both pocetak and kraj are provided, kraj must be >= pocetak
+   - Error: "Вријеме краја мора бити послије почетка!"
+   - Red border on kraj field
+
+### Flatpickr Configuration
+
+**Library:** Flatpickr  
+**Fields:** `#dogadjaji_unos_pocetak`, `#dogadjaji_unos_kraj`, `#dogadjaji_trazi_pocetak`, `#dogadjaji_trazi_kraj`
+
+**Settings:**
+```javascript
+flatpickr("#dogadjaji_unos_pocetak, #dogadjaji_unos_kraj, #dogadjaji_trazi_pocetak, #dogadjaji_trazi_kraj", {
+  enableTime: true,
+  dateFormat: "Y-m-d H:i",
+  locale: "sr",
+  time_24hr: true
+});
+```
+
 ### Error Display
 
 - **Location:** `#dogadjaji_unos_error` div
@@ -80,10 +108,21 @@ The dogadjaji tab allows users to insert, search, and view historical events on 
 
 ### Success Behavior
 
-- Message: "догађај је додат" (green color)
+**Conditional Message:**
+- If user has `moze_ucitati = 1`: "подаци су учитани" (green) - Auto-approved
+- If user has `moze_ucitati = 0`: "догађај је додат" (green) - Pending approval
+
+**Actions:**
 - Form resets after successful insertion
 - Username field repopulated automatically
 - Success message disappears after 3 seconds
+
+**Database Insert:**
+```sql
+INSERT INTO dogadjaji (pocetak, kraj, opis, izvor, korisnik_id, zapis, koordinate, stanje)
+VALUES (@pocetak, @kraj, @opis, @izvor, @korisnik_id, @zapis, @koordinate, @stanje)
+-- @stanje = '1' if moze_ucitati = 1, else '0'
+```
 
 ---
 
@@ -169,6 +208,15 @@ User checks "алат"
 - **Method:** POST
 - **Loading Indicator:** `#dogadjaji_trazi_cekanje` spinner
 - **Error Display:** `#dogadjaji_trazi_error` div (orange text)
+- **Filter:** Only returns events with `stanje = '1'` (approved)
+
+### Datetime Validation
+
+**Search Form:**
+- If both pocetak and kraj are provided, kraj must be >= pocetak
+- Error: "Вријеме краја мора бити послије почетка!"
+- Red border on kraj field
+- Search blocked until validation passes
 
 ### Results Display
 
@@ -404,3 +452,4 @@ var currentDogadjajiMarker = null;
 | 2025-12-04 | Initial documentation created | AI Assistant |
 | 2025-12-04 | Fixed marker tool: zoom validation (15), inline errors, tool stays active | AI Assistant |
 | 2025-12-18 | Updated minimum zoom level to 13 for both dogadjaji and teme sections | AI Assistant |
+| 2025-12-31 | Added stanje column for approval workflow, Flatpickr integration, datetime validation, conditional insertion logic based on moze_ucitati | AI Assistant |

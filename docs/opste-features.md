@@ -2,7 +2,7 @@
 
 This document describes all features and behaviors of the "opste" (general) tab for displaying news, statistics, and user rankings.
 
-**Last Updated:** 2025-12-04  
+**Last Updated:** 2025-12-31  
 **Files:** `sections/opste.html`, `sections/opste.js`
 
 ---
@@ -22,8 +22,10 @@ The opste tab displays general information about the application including recen
 
 **Sections:**
 1. **Новости** (News) - Default open
-2. **Преглед** (Overview) - Default closed
-3. **Избор** (Selection/Rankings) - Default closed
+2. **Преглед** (Overview/Statistics) - Default closed
+3. **Избор сарадника** (Top Contributors) - Default closed
+4. **Избор подршке** (Support Selection) - Default closed
+5. **Начин сарадње** (Collaboration Guidelines) - Default closed
 
 ---
 
@@ -56,20 +58,30 @@ Display recent activity and updates on the platform.
 | 29.11.2025. | Нова ставка је одобрена |
 | 28.11.2025. | Додата је нова примједба |
 
-### Implementation Status
+### Implementation
 
-**Current:** Static HTML content (hardcoded)  
-**Future:** Should be dynamically loaded from database
+**Status:** **Fully Dynamic** - Loaded from database via API
 
-**Potential Database Table:**
+**API Endpoint:** `GET /api/novosti`
+
+**Database Table:**
 ```sql
 CREATE TABLE novosti (
-    id INT PRIMARY KEY IDENTITY(1,1),
-    datum DATETIME2 DEFAULT GETDATE(),
-    opis NVARCHAR(255) NOT NULL,
-    tip NVARCHAR(50) -- 'tema', 'korisnik', 'dogadjaj', 'stavka', 'primjedba'
+    id SERIAL PRIMARY KEY,
+    vrijeme TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    opis VARCHAR(4000) NOT NULL,
+    uneo INTEGER -- User ID who created the news
 );
 ```
+
+**JavaScript Function:** `ucitajNovosti()`
+
+**Loading Process:**
+1. Fetch news from `/api/novosti`
+2. Format dates using `toLocaleDateString('sr-RS')`
+3. Populate `#opste_novosti_tabela`
+4. Show "Нема новости." if empty
+5. Display error message on failure
 
 ---
 
@@ -86,15 +98,14 @@ Display overall platform statistics.
 
 ### Statistics Displayed
 
-| Label | Element ID | Sample Value | Description |
-|-------|-----------|--------------|-------------|
-| новости | `#pregled-novosti` | 15 | Total news items |
-| тема | `#pregled-tema` | 89 | Total themes |
-| ставки | `#pregled-stavki` | 456 | Total map items/points |
-| догађаја | `#pregled-dogadjaja` | 67 | Total events |
-| записа | `#pregled-zapisa` | 543 | Total uploaded files |
-| примједби | `#pregled-primjedbi` | 234 | Total comments |
-| корисника | `#pregled-korisnika` | 127 | Total registered users |
+| Label | Element ID | Description |
+|-------|-----------|-------------|
+| новости | `#pregled-novosti` | Total news items from `novosti` table |
+| тема | `#pregled-tema` | Total themes from `teme` table |
+| ставки | `#pregled-stavki` | Total map items (sum of all table_1 through table_6) |
+| догађаја | `#pregled-dogadjaja` | Total events from `dogadjaji` table (stanje='1') |
+| записа | `#pregled-zapisa` | Total uploaded files from `zapisi` table (stanje='1') |
+| корисника | `#pregled-korisnika` | Total registered users from `korisnik` table |
 
 ### Display Format
 
@@ -108,77 +119,120 @@ Display overall platform statistics.
 - Values in default text color
 - 5px margin between rows
 
-### Implementation Status
+### Implementation
 
-**Current:** Static HTML content (hardcoded values)  
-**Future:** Should be dynamically loaded via API
+**Status:** **Fully Dynamic** - Loaded from database via API
 
-**Potential API Endpoint:**
-```
-GET /api/statistics/overview
-Response: {
-  "novosti": 15,
-  "tema": 89,
-  "stavki": 456,
-  "dogadjaja": 67,
-  "zapisa": 543,
-  "primjedbi": 234,
-  "korisnika": 127
+**API Endpoint:** `GET /api/opste/stats`
+
+**Response Format:**
+```json
+{
+  "pregled": {
+    "novosti": 15,
+    "tema": 6,
+    "stavki": 456,
+    "dogadjaja": 67,
+    "zapisa": 543,
+    "korisnika": 127
+  },
+  "izbor": [
+    {
+      "username": "user123",
+      "points": 4580,
+      "stavki": 456,
+      "dogadjaja": 12,
+      "zapisa": 8
+    }
+  ]
 }
 ```
 
+**JavaScript Function:** `ucitajStatistiku()`
+
 ---
 
-## 4. Избор (Selection/Rankings) Section
+## 4. Избор сарадника (Top Contributors) Section
 
 ### Purpose
-Display user ranking categories based on contribution levels.
+Display top 5 contributors based on point calculation.
 
 ### Structure
 
 **Toggle Element:** `#opste_izbor`  
 **Content Container:** `#opste_izbor_sadrzaj`  
+**List Container:** `#opste_izbor_lista`  
 **Default State:** Collapsed
 
-### Ranking Categories
+### Point Calculation Formula
 
-**Three Levels:**
+```
+Total Points = (stavki × 10) + dogadjaja + zapisa
+```
 
-1. **Почетник (Beginner)**
-   - ставки: `#izbor-stavki-1` (7)
-   - догађаја: `#izbor-dogadjaja-1` (3)
-   - записа: `#izbor-zapisa-1` (5)
-   - примједби: `#izbor-primjedbi-1` (2)
-
-2. **Напредни (Advanced)**
-   - ставки: `#izbor-stavki-2` (12)
-   - догађаја: `#izbor-dogadjaja-2` (5)
-   - записа: `#izbor-zapisa-2` (8)
-   - примједби: `#izbor-primjedbi-2` (4)
-
-3. **Експерт (Expert)**
-   - ставки: `#izbor-stavki-3` (20)
-   - догађаја: `#izbor-dogadjaja-3` (10)
-   - записа: `#izbor-zapisa-3` (15)
-   - примједби: `#izbor-primjedbi-3` (7)
+**Where:**
+- `stavki` = Total records in table_1 through table_6 inserted by user
+- `dogadjaja` = Total records in dogadjaji inserted by user
+- `zapisa` = Total records in zapisi inserted by user
 
 ### Display Format
 
-**Structure:**
+**Format:** `{rank}. {points} {username} (ставки: {stavki}, догађаја: {dogadjaja}, записа: {zapisa})`
+
+**Example:**
 ```
-{number}. {category_name} (ставки: X, догађаја: Y, записа: Z, примједби: W)
+1. 4580 user123 (ставки: 456, догађаја: 12, записа: 8)
+2. 3210 contributor2 (ставки: 320, догађаја: 5, записа: 5)
 ```
 
-**Purpose:** Show contribution thresholds for each user level
+### Implementation
 
-### Implementation Status
-
-**Current:** Static HTML content (hardcoded values)  
-**Future:** Could be used for user gamification/badges
+**Data Source:** Included in `/api/opste/stats` response  
+**Limit:** Top 5 contributors  
+**Sorting:** By total points (descending)
 
 ---
 
-## 5. JavaScript Functionality
+## 5. Избор подршке (Support Selection) Section
+
+### Purpose
+Display support/donation options (future feature).
+
+### Structure
+
+**Toggle Element:** `#opste_podrska`  
+**Content Container:** `#opste_podrska_sadrzaj`  
+**Default State:** Collapsed
+
+### Current Status
+
+**Implementation:** Placeholder  
+**Content:** "Нема података."
+
+---
+
+## 6. Начин сарадње (Collaboration Guidelines) Section
+
+### Purpose
+Provide guidelines for contributors on how to collaborate effectively.
+
+### Structure
+
+**Toggle Element:** `#opste_nacin_saradnje`  
+**Content Container:** `#opste_nacin_saradnje_sadrzaj`  
+**Default State:** Collapsed
+
+### Content
+
+**Topics Covered:**
+- How to coordinate work to avoid duplication
+- Specific theme suggestions (e.g., "страдање објеката СПЦ")
+- Source recommendations for different themes
+- Contact information for collaboration
+
+---
+
+## 7. JavaScript Functionality
 
 ### File: `opste.js`
 
@@ -402,3 +456,5 @@ CREATE TABLE statistika (
 | Date | Changes | Modified By |
 |------|---------|-------------|
 | 2025-12-04 | Initial documentation created | AI Assistant |
+| 2025-12-31 | Major update: Replaced static content with dynamic API implementation, added contributor rankings with point calculation, added collaboration guidelines section, updated database schema to PostgreSQL | AI Assistant |
+

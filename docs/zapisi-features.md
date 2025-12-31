@@ -2,8 +2,8 @@
 
 This document describes all features and behaviors of the "zapisi" (records/documents) tab for file uploads and management.
 
-**Last Updated:** 2025-12-04  
-**Files:** `sections/zapisi.html`, `sections/zapisi.js`, `database/create_zapisi_table.sql`
+**Last Updated:** 2025-12-31  
+**Files:** `sections/zapisi.html`, `sections/zapisi.js`, `database/postgresql_schema.sql`
 
 ---
 
@@ -25,10 +25,11 @@ The zapisi tab allows approved users to upload PDF and image files (JPG, PNG) wi
 | `tema_id` | INT | NOT NULL, FK → `teme.id` | Theme/category ID (foreign key) |
 | `korisnik_id` | INT | NOT NULL, FK → `korisnik.id` | User ID who uploaded (foreign key) |
 | `tagovi` | NVARCHAR(MAX) | NULL | Comma-separated tags |
-| `file_path` | NVARCHAR(500) | NOT NULL | Server path to uploaded file |
-| `file_type` | NVARCHAR(10) | NOT NULL | File extension (pdf, jpg, png) |
-| `file_size` | INT | NULL | File size in bytes |
-| `created_at` | DATETIME2 | DEFAULT GETDATE() | Upload timestamp |
+| `file_path` | VARCHAR(500) | NOT NULL | Server path to uploaded file |
+| `file_type` | VARCHAR(10) | NOT NULL | File extension (pdf, jpg, png) |
+| `file_size` | INTEGER | NULL | File size in bytes |
+| `created_at` | TIMESTAMP | DEFAULT CURRENT_TIMESTAMP | Upload timestamp |
+| `stanje` | VARCHAR(2) | DEFAULT '0' | Approval status: '0' = pending, '1' = approved |
 
 ### Indexes:
 - `idx_naziv` on `naziv`
@@ -120,7 +121,25 @@ The zapisi tab allows approved users to upload PDF and image files (JPG, PNG) wi
 - **Behavior:**
   - Invalid fields get red border
   - First validation error shown
-  - Success message: "запис је учитан" (green, 3 seconds)
+  - Success message varies based on approval status
+
+### Success Messages
+
+**Conditional based on `moze_ucitati`:**
+- If user has `moze_ucitati = 1`: "подаци су учитани" (green) - Auto-approved
+- If user has `moze_ucitati = 0`: "запис је учитан" (green) - Pending approval
+
+**Message duration:** 3 seconds
+
+### Approval Workflow
+
+**Conditional Insertion:**
+- If user has `moze_ucitati = 1`: Insert with `stanje = '1'` (auto-approved)
+- If user has `moze_ucitati = 0`: Insert with `stanje = '0'` (pending approval)
+
+**Visibility:**
+- Only records with `stanje = '1'` appear in search results
+- Pending records reviewed in urednik tab
 
 ### File Storage
 
@@ -162,13 +181,35 @@ The zapisi tab allows approved users to upload PDF and image files (JPG, PNG) wi
 | Column | Width | Content |
 |--------|-------|---------|
 | ID | 60px | Record ID |
-| Назив | 200px | Record name |
+| Назив | 200px | **Clickable link** (darkorange color) |
 | Опис | Auto | Description |
 
+#### Link Functionality:
+
+**Naziv as Download Link:**
+- Class: `zapis-link`
+- Color: `darkorange`
+- Hover: Underline, darkorange
+- Click: Triggers `viewZapis(id)` → downloads file
+- **Only naziv triggers download**, not the entire row
+
+**CSS:**
+```css
+.zapis-link {
+    color: darkorange;
+    text-decoration: none;
+    cursor: pointer;
+}
+.zapis-link:hover {
+    text-decoration: underline;
+    color: darkorange;
+}
+```
+
 #### Row Behavior:
-- **Hover:** Light gray background
-- **Click:** Calls `viewZapis(id)` → downloads file
-- **Cursor:** Pointer
+- **Hover:** Light gray background (entire row)
+- **Click naziv:** Downloads file
+- **Click elsewhere:** No action
 
 #### Empty Results:
 - Message: "Нема резултата."
@@ -399,3 +440,4 @@ ORDER BY z.created_at DESC
 | Date | Changes | Modified By |
 |------|---------|-------------|
 | 2025-12-04 | Initial documentation created | AI Assistant |
+| 2025-12-31 | Added stanje column for approval workflow, link functionality (naziv as clickable download link with darkorange styling), conditional insertion logic based on moze_ucitati, updated database schema to PostgreSQL | AI Assistant |

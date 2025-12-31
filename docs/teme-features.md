@@ -2,8 +2,8 @@
 
 This document describes all features and behaviors of the "teme" (themes) tab for searching, displaying, and managing map markers by theme categories.
 
-**Last Updated:** 2025-12-06  
-**Files:** `sections/teme.html`, `sections/teme.js`, `database/create_teme_table.sql`, `database/create_teme_opcije_table.sql`
+**Last Updated:** 2025-12-31  
+**Files:** `sections/teme.html`, `sections/teme.js`, `database/postgresql_schema.sql`
 
 ---
 
@@ -36,8 +36,25 @@ The teme tab allows users to select a theme/category, then search for map marker
 
 ### Table: `Table_{tema_id}`
 
-**Dynamic tables** for each theme containing actual map data:
-(Standard columns: ID, vrsta, podvrsta, razred, vrijeme0, vrijeme1, tacke, izvor, opis...)
+**Dynamic tables** for each theme (table_1 through table_6) containing actual map data:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| id | SERIAL | Primary key |
+| vrsta | VARCHAR(2) | Type code |
+| podvrsta | VARCHAR(2) | Subtype code |
+| razred | VARCHAR(2) | Class code |
+| prostorno | TEXT | Spatial data (GeoJSON) |
+| vrijeme0 | TIMESTAMP | Start time |
+| vrijeme1 | TIMESTAMP | End time |
+| opis | VARCHAR(255) | Description |
+| izvor | VARCHAR(255) | Source |
+| dodao | INTEGER | User ID who created |
+| dodao_vrijeme | TIMESTAMP | Creation timestamp |
+| izmjenio | INTEGER | User ID who modified |
+| izmjenio_vrijeme | TIMESTAMP | Modification timestamp |
+| zapis | INTEGER | Reference to zapisi |
+| stanje | VARCHAR(2) | Approval status: '0' = pending, '1' = approved |
 
 ---
 

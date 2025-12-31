@@ -2,7 +2,7 @@
 
 This document describes all features and behaviors of the "korisnik" (user profile) tab for viewing and editing user information.
 
-**Last Updated:** 2025-12-04  
+**Last Updated:** 2025-12-31  
 **Files:** `sections/korisnik.html`, `sections/korisnik.js`
 
 ---
@@ -430,8 +430,72 @@ The korisnik tab allows logged-in users to view their profile statistics and edi
 
 ---
 
+## 8. New Features (2025-12-31)
+
+### Unique Username Enforcement
+
+**Backend Validation:**
+- Username must be unique across all users
+- Check performed before registration and profile update
+- Error: "Корисничко име већ постоји"
+
+**Frontend Validation:**
+- Real-time availability check on username field blur
+- Visual feedback (green checkmark or red X)
+
+### Password Visibility Toggle
+
+**Feature:** Eye icon to show/hide password
+
+**Implementation:**
+- Icon: Bootstrap Icons `bi-eye` / `bi-eye-slash`
+- Toggle between `type="password"` and `type="text"`
+- Applied to all password fields (login, registration, profile edit)
+
+**Location:**
+- Login page (`index.html`)
+- Registration form
+- Profile edit password fields
+
+### New Database Columns
+
+**Counter Fields:**
+| Column | Type | Description |
+|--------|------|-------------|
+| brojac_stavki | INTEGER | Total items inserted (sum of table_1-6) |
+| brojac_zapisa | INTEGER | Total records uploaded |
+| brojac_dogadjaja | INTEGER | Total events created |
+| brojac_primjedbi | INTEGER | Total comments posted |
+
+**Email Preferences:**
+| Column | Type | Description |
+|--------|------|-------------|
+| obavjestenja | BOOLEAN | Email notification opt-in (default: TRUE) |
+
+**Admin Fields:**
+| Column | Type | Description |
+|--------|------|-------------|
+| blokiran | BOOLEAN | User blocked status |
+| napomena | TEXT | Admin notes about user |
+
+### Statistics Display Updates
+
+**Enhanced Display:**
+- Counter values shown in statistics panel
+- Formatted numbers with proper spacing
+- Consistent text styling across sections
+
+**Calculation:**
+- Counters synchronized via urednik tab
+- Updated on record approval/insertion
+- Formula: See urednik-features.md for sync logic
+
+---
+
 ## Version History
 
 | Date | Changes | Modified By |
 |------|---------|-------------|
 | 2025-12-04 | Initial documentation created | AI Assistant |
+| 2025-12-31 | Added unique username enforcement, password visibility toggle, new counter fields (brojac_stavki, brojac_zapisa, brojac_dogadjaja, brojac_primjedbi), email preferences (obavjestenja), admin fields (blokiran, napomena), updated database schema to PostgreSQL | AI Assistant |
+

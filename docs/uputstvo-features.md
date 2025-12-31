@@ -2,7 +2,7 @@
 
 This document describes all features and behaviors of the "uputstvo" (instructions) tab for displaying user guide and help content.
 
-**Last Updated:** 2025-12-06  
+**Last Updated:** 2025-12-31  
 **Files:** `sections/uputstvo.html`, `sections/uputstvo.js`
 
 ---
@@ -114,3 +114,13 @@ To update the instructions:
 
 - **Keyboard:** Standard HTML tab navigation.
 - **Screen Readers:** Bootstrap collapse attributes (`aria-expanded`, etc.) should be managed by the Bootstrap JS library (ensure library version supports this or add manually if needed).
+
+---
+
+## Version History
+
+| Date | Changes | Modified By |
+|------|---------|-------------|
+| 2025-12-06 | Initial documentation created | AI Assistant |
+| 2025-12-31 | Confirmed current accordion structure with all sections (teme, dogadjaji, zapisi, opste, korisnik, podrska, kontakt), static content embedded in HTML | AI Assistant |
+
