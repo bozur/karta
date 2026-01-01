@@ -145,6 +145,11 @@ const poolPromise = (async () => {
     }
 
     try {
+        // Ensure extensions exist
+        console.log('Ensuring PostGIS extensions exist...');
+        await client.query('CREATE EXTENSION IF NOT EXISTS postgis;');
+        console.log('✓ PostGIS extension verified');
+
         // Ensure session table exists - Simplified for Postgres 12+
         console.log('Ensuring session table exists...');
         await client.query(`

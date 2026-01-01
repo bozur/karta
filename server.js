@@ -1047,10 +1047,14 @@ app.post('/api/teme/insert', async (req, res) => {
 
             // Coordinates Conversion (GeoJSON -> WKT)
             let wkt = null;
+
+            let coords = null;
+            let type = null;
+
             if (row.geometry) {
                 const geo = row.geometry;
-                const type = geo.type.toUpperCase();
-                const coords = geo.coordinates;
+                type = geo.type.toUpperCase();
+                coords = geo.coordinates;
 
                 if (type === 'POINT') {
                     // Coordinates: [lng, lat]
@@ -1103,7 +1107,7 @@ app.post('/api/teme/insert', async (req, res) => {
                 INSERT INTO ${tableName} 
                 (vrsta, podvrsta, razred, prostorno, tp, vrijeme0, vrijeme1, tv, opis, izvor, dodao, dodao_vrijeme, zapis, stanje, tacke, tacke0)
                 VALUES 
-                (@vrsta, @podvrsta, @razred, geometry::STGeomFromText('${wkt}', 4326), @tp, @vrijeme0, @vrijeme1, @tv, @opis, @izvor, @dodao, GETUTCDATE(), @zapis, @stanje, @tacke, @tacke0)
+                (@vrsta, @podvrsta, @razred, ST_GeomFromText('${wkt}', 4326), @tp, @vrijeme0, @vrijeme1, @tv, @opis, @izvor, @dodao, GETUTCDATE(), @zapis, @stanje, @tacke, @tacke0)
             `;
             await request.query(query);
         }
