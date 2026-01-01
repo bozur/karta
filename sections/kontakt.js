@@ -45,6 +45,9 @@ $(document).ready(function () {
             }),
             success: function (response) {
                 statusDiv.text('Порука је успјешно послата!').css('color', 'green').show();
+                setTimeout(function () {
+                    statusDiv.fadeOut();
+                }, 5000);
                 $('#kontakt-form')[0].reset();
                 $('#kontakt_opis > div').hide();
                 submitBtn.prop('disabled', false).text('пошаљи');
