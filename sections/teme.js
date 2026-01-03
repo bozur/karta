@@ -35,6 +35,46 @@ if (typeof window.playbackState === 'undefined') {
     };
 }
 
+// Serbian Cyrillic locale for Flatpickr
+if (typeof window.SerbianCyrillic === 'undefined') {
+    window.SerbianCyrillic = {
+        weekdays: {
+            shorthand: ["Нед", "Пон", "Уто", "Сре", "Чет", "Пет", "Суб"],
+            longhand: ["Недеља", "Понедељак", "Уторак", "Среда", "Четвртак", "Петак", "Субота"]
+        },
+        months: {
+            shorthand: ["Јан", "Феб", "Мар", "Апр", "Мај", "Јун", "Јул", "Авг", "Сеп", "Окт", "Нов", "Дец"],
+            longhand: ["Јануар", "Фебруар", "Март", "Април", "Мај", "Јун", "Јул", "Август", "Септембар", "Октобар", "Новембар", "Децембар"]
+        },
+        firstDayOfWeek: 1,
+        weekAbbreviation: "Нед.",
+        rangeSeparator: " до ",
+        time_24hr: true
+    };
+}
+
+// Sort GeoJSON features: Polygons first (bottom), then Lines, then Points (top)
+function sortGeoJSONFeatures(data) {
+    if (!data || !data.features || !Array.isArray(data.features)) return data;
+
+    const order = {
+        'Polygon': 1,
+        'MultiPolygon': 1,
+        'LineString': 2,
+        'MultiLineString': 2,
+        'Point': 3,
+        'MultiPoint': 3
+    };
+
+    data.features.sort((a, b) => {
+        const typeA = a.geometry ? a.geometry.type : '';
+        const typeB = b.geometry ? b.geometry.type : '';
+        return (order[typeA] || 0) - (order[typeB] || 0);
+    });
+
+    return data;
+}
+
 // Function to load teme content based on selected theme
 function loadTemeContent(valueSelected, isRestoring = false) {
     // Check if there are pending inserts
@@ -319,6 +359,9 @@ function handleTemeSearch(e) {
             // Check if clustering is enabled
             const groupingEnabled = $('#gr_cluster_checkbox').is(':checked');
 
+            // Sort features by type to ensure polygons stay below other elements
+            data = sortGeoJSONFeatures(data);
+
             if (groupingEnabled) {
                 // Initialize MarkerClusterGroup
                 window.temeClusterLayer = L.markerClusterGroup();
@@ -342,12 +385,6 @@ function handleTemeSearch(e) {
             } else {
                 // Standard GeoJSON Layer
                 window.addedGeoJSON = L.geoJSON(data, {
-                    style: function (feature) {
-                        if (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon') {
-                            return { pane: 'polygons-pane' };
-                        }
-                        return {};
-                    },
                     pointToLayer: function (feature, latlng) {
                         return L.marker(latlng, {
                             icon: typeof window.createIcon === 'function'
@@ -1361,22 +1398,6 @@ function initTemeSection() {
             return;
         }
 
-        // Manually define Serbian Cyrillic to be safe
-        const SerbianCyrillic = {
-            weekdays: {
-                shorthand: ["Нед", "Пон", "Уто", "Сре", "Чет", "Пет", "Суб"],
-                longhand: ["Недеља", "Понедељак", "Уторак", "Среда", "Четвртак", "Петак", "Субота"]
-            },
-            months: {
-                shorthand: ["Јан", "Феб", "Мар", "Апр", "Мај", "Јун", "Јул", "Авг", "Сеп", "Окт", "Нов", "Дец"],
-                longhand: ["Јануар", "Фебруар", "Март", "Април", "Мај", "Јун", "Јул", "Август", "Септембар", "Октобар", "Новембар", "Децембар"]
-            },
-            firstDayOfWeek: 1,
-            weekAbbreviation: "Нед.",
-            rangeSeparator: " до ",
-            time_24hr: true
-        };
-
         inputs.flatpickr({
             enableTime: true,
             dateFormat: "Y-m-d H:i",
@@ -1435,7 +1456,7 @@ function initTemeSection() {
 
             if (window.temeState && window.temeState.searchResults) {
                 // Restore map markers
-                const data = window.temeState.searchResults;
+                const data = sortGeoJSONFeatures(window.temeState.searchResults);
                 // Remove previous GeoJSON layer if exists
                 if (typeof addedGeoJSON !== 'undefined' && !$.isEmptyObject(addedGeoJSON)) {
                     karta.removeLayer(addedGeoJSON);

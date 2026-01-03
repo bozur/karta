@@ -63,11 +63,6 @@ $(document).ready(function () {
         zoomOutTitle: 'Удаљи'
     }).addTo(karta);
 
-    // Create custom pane for polygons to ensure they stay below markers and lines
-    var polyPane = karta.createPane('polygons-pane');
-    polyPane.style.zIndex = 350;
-    polyPane.style.pointerEvents = 'auto'; // Ensure clicks still work
-
     tilelayer1 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
         maxZoom: 18,
         attribution: '<a target="_blank" href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
