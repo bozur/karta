@@ -29,11 +29,40 @@ function initializeDogadjaji() {
 
     // Initialize Flatpickr for datetime inputs
     if (typeof flatpickr !== 'undefined') {
-        flatpickr("#dogadjaji_unos_pocetak, #dogadjaji_unos_kraj, #dogadjaji_trazi_pocetak, #dogadjaji_trazi_kraj", {
+        // Search fields - forgiving (guessing enabled)
+        flatpickr("#dogadjaji_trazi_pocetak, #dogadjaji_trazi_kraj", {
             enableTime: true,
             dateFormat: "Y-m-d H:i",
             locale: "sr",
-            time_24hr: true
+            time_24hr: true,
+            allowInput: true
+        });
+
+        // Entry fields - strict validation
+        const strictConfig = {
+            enableTime: true,
+            dateFormat: "Y-m-d H:i",
+            locale: "sr",
+            time_24hr: true,
+            allowInput: true,
+            parseDate: (dateStr) => {
+                const regex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+                if (!regex.test(dateStr)) return null;
+                const d = new Date(dateStr.replace(' ', 'T'));
+                return isNaN(d.getTime()) ? null : d;
+            }
+        };
+        flatpickr("#dogadjaji_unos_pocetak, #dogadjaji_unos_kraj", strictConfig);
+
+        // Add visual alarm on blur for entry fields
+        $('#dogadjaji_unos_pocetak, #dogadjaji_unos_kraj').on('blur', function () {
+            const val = $(this).val();
+            const regex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+            if (val && !regex.test(val)) {
+                $(this).css('border-color', 'red');
+            } else {
+                $(this).css('border-color', '');
+            }
         });
     } else {
         console.error("Flatpickr not loaded!");

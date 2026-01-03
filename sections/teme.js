@@ -698,11 +698,33 @@ function renderInsertRow(rowIndex) {
     // Initialize Flatpickr for the new row
     if (typeof flatpickr !== 'undefined') {
         const rowSelector = `.teme_insert_row[data-row-index="${rowIndex}"]`;
-        flatpickr(`${rowSelector} input[data-field="pocetak"], ${rowSelector} input[data-field="kraj"]`, {
+        const fpConfig = {
             enableTime: true,
             dateFormat: "Y-m-d H:i",
-            locale: "sr",
-            time_24hr: true
+            locale: SerbianCyrillic,
+            time_24hr: true,
+            allowInput: true,
+            disableMobile: true,
+            parseDate: (dateStr) => {
+                const regex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+                if (!regex.test(dateStr)) return null;
+                const d = new Date(dateStr.replace(' ', 'T'));
+                return isNaN(d.getTime()) ? null : d;
+            }
+        };
+
+        const fpPocetak = flatpickr(`${rowSelector} input[data-field="pocetak"]`, fpConfig);
+        const fpKraj = flatpickr(`${rowSelector} input[data-field="kraj"]`, fpConfig);
+
+        // Add visual alarm (red border) on blur if input is invalid
+        $(`${rowSelector} input[data-field="pocetak"], ${rowSelector} input[data-field="kraj"]`).on('blur', function () {
+            const val = $(this).val();
+            const regex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+            if (val && !regex.test(val)) {
+                $(this).css('border-color', 'red');
+            } else {
+                $(this).css('border-color', '');
+            }
         });
     }
 
@@ -834,11 +856,33 @@ function bindPopupToLayer(layer, rowIndex) {
     layer.on('popupopen', function () {
         // Initialize Flatpickr for popup inputs
         if (typeof flatpickr !== 'undefined') {
-            flatpickr($(popupContent).find('input[data-field="pocetak"], input[data-field="kraj"]'), {
+            const fpConfig = {
                 enableTime: true,
                 dateFormat: "Y-m-d H:i",
-                locale: "sr",
-                time_24hr: true
+                locale: SerbianCyrillic,
+                time_24hr: true,
+                allowInput: true,
+                disableMobile: true,
+                parseDate: (dateStr) => {
+                    const regex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+                    if (!regex.test(dateStr)) return null;
+                    const d = new Date(dateStr.replace(' ', 'T'));
+                    return isNaN(d.getTime()) ? null : d;
+                }
+            };
+
+            const fpPocetak = flatpickr($(popupContent).find('.popup-input[data-field="pocetak"]'), fpConfig);
+            const fpKraj = flatpickr($(popupContent).find('.popup-input[data-field="kraj"]'), fpConfig);
+
+            // Add visual alarm on blur
+            $(popupContent).find('.popup-input[data-field="pocetak"], .popup-input[data-field="kraj"]').on('blur', function () {
+                const val = $(this).val();
+                const regex = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
+                if (val && !regex.test(val)) {
+                    $(this).css('border-color', 'red');
+                } else {
+                    $(this).css('border-color', '');
+                }
             });
         }
         if (window.temeInsertRows[rowIndex]) {
@@ -1339,6 +1383,7 @@ function initTemeSection() {
             time_24hr: true,
             locale: SerbianCyrillic,
             disableMobile: true, // Force custom picker even on touch devices
+            allowInput: true,
             onReady: function () { console.log("Flatpickr READY and mounted"); }
         });
         console.log(`Flatpickr initialized on ${inputs.length} inputs in teme.js`);
