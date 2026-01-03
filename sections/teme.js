@@ -342,6 +342,12 @@ function handleTemeSearch(e) {
             } else {
                 // Standard GeoJSON Layer
                 window.addedGeoJSON = L.geoJSON(data, {
+                    style: function (feature) {
+                        if (feature.geometry.type === 'Polygon' || feature.geometry.type === 'MultiPolygon') {
+                            return { pane: 'polygons-pane' };
+                        }
+                        return {};
+                    },
                     pointToLayer: function (feature, latlng) {
                         return L.marker(latlng, {
                             icon: typeof window.createIcon === 'function'
