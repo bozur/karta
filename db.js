@@ -29,6 +29,7 @@ function prepareQuery(text, inputs) {
         .replace(/GETUTCDATE\(\)/gi, 'CURRENT_TIMESTAMP')
         .replace(/ISNULL\(/gi, 'COALESCE(')
         .replace(/LEN\(/gi, 'LENGTH(')
+        .replace(/\bLIKE\b/gi, 'ILIKE')
         //.replace(/OUTPUT INSERTED\.id/gi, 'RETURNING id') // Disabled: handled manually in server.js
         //.replace(/TOP\s+(\d+)/gi, 'LIMIT $1') // Disabled: This naive replace breaks 'SELECT TOP' queries. Using complex logic below instead.
         .replace(/DATETIME2/gi, 'TIMESTAMP')
