@@ -1198,7 +1198,7 @@ function displayPendingStavke(data, temaId, themeName) {
                 <td style="padding: 3px;">${record.vrijeme0_fmt}</td>
                 <td style="padding: 3px;">${record.vrijeme1_fmt}</td>
                 <td style="padding: 3px;">${record.korisnik || ''}</td>
-                <td style="padding: 3px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${record.izvor || ''}</td>
+                <td style="padding: 3px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${window.formatIzvorLinks ? window.formatIzvorLinks(record.izvor) : (record.izvor || '')}</td>
                 <td style="padding: 3px;">
                     ${record.zapis ? `<a href="/api/zapisi/${record.zapis}" target="_blank" class="zapis-link-table">${record.zapis_naziv || record.zapis}</a>` : ''}
                 </td>
@@ -1332,7 +1332,7 @@ function updateMapForStavkeApproval(data, temaId) {
                         <div style="margin-bottom: 3px;"><b>Почетак:</b> ${record.vrijeme0_fmt || ''}</div>
                         <div style="margin-bottom: 3px;"><b>Крај:</b> ${record.vrijeme1_fmt || ''}</div>
                         <div style="margin-bottom: 3px;"><b>Корисник:</b> ${record.korisnik || ''}</div>
-                        <div style="margin-bottom: 3px;"><b>Извор:</b> ${record.izvor || ''}</div>
+                        <div style="margin-bottom: 3px;"><b>Извор:</b> ${window.formatIzvorLinks ? window.formatIzvorLinks(record.izvor) : (record.izvor || '')}</div>
                         <div style="margin-bottom: 3px;"><b>Запис:</b> ${record.zapis ? `<a href="/api/zapisi/${record.zapis}" target="_blank" style="color: darkorange;">${record.zapis_naziv || record.zapis}</a>` : ''}</div>
                     </div>
                 `;

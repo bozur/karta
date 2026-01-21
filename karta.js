@@ -138,6 +138,20 @@ $(document).ready(function () {
                 if (data.vremenski == '1') { vrem = "одређено"; } else { vrem = "неодређено"; }
                 if (data.prostorno == '1') { pros = "одређено"; } else { pros = "неодређено"; }
 
+                // Utility to linkify web addresses in "izvor" field
+                window.formatIzvorLinks = function (text) {
+                    if (!text) return '';
+                    // Regex to find URLs (http, https, or starting with www.)
+                    const urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
+                    return text.replace(urlRegex, function (url) {
+                        let href = url;
+                        if (!url.toLowerCase().startsWith('http')) {
+                            href = 'http://' + url;
+                        }
+                        return '<a href="' + href + '" target="_blank" style="color: darkorange; text-decoration: underline;">' + url + '</a>';
+                    });
+                };
+
                 function formatDate(dateStr) {
                     if (!dateStr) return '';
                     var datePart = dateStr.split('T')[0];
@@ -160,7 +174,7 @@ $(document).ready(function () {
                 htmlContent += '<div style="margin-bottom: 5px;"><b>просторно:</b> ' + pros + ' &nbsp;&nbsp;<b>временски:</b> ' + vrem + '</div>' +
                     '<div style="margin-bottom: 5px;"><b>вријеме:</b> ' + formatDate(data.vri0) + ' - ' + formatDate(data.vri1) + ' (' + vrem + ')</div>' +
                     '<div style="margin-bottom: 5px; background-color: #f0f0f0;"><b>опис:</b> ' + data.opi + '</div>' +
-                    '<div style="margin-bottom: 5px;"><b>извор:</b> ' + data.izv + '</div>' +
+                    '<div style="margin-bottom: 5px;"><b>извор:</b> ' + window.formatIzvorLinks(data.izv) + '</div>' +
                     '<div style="margin-bottom: 5px;"><b>запис:</b> ' + (data.zapis ? '<a href="/api/zapisi/' + data.zapis + '" target="_blank" style="color: darkorange;">' + (data.zapis_naziv || data.zapis) + '</a>' : '') + '</div>' +
                     '<div style="margin-bottom: 5px;"><b>унето:</b> ' + formatDate(data.dodao_vrijeme) + ' &nbsp;&nbsp;<b>измјењено:</b> ' + formatDate(data.izmjenio_vrijeme) + '</div>' +
                     '<hr style="border-top: 1px solid #ccc; margin-top: 10px;">' +
