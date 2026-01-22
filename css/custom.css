@@ -393,3 +393,8 @@ div {
 .table-hover-custom tbody tr:hover {
   background-color: #fff4e6 !important;
 }
+
+/* Rename Browse button */
+.custom-file-label::after {
+  content: "изабери сличицу" !important;
+}

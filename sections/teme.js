@@ -1591,16 +1591,40 @@ function initTemeSection() {
 
                 if (foundRow) {
                     console.log(`Sync editing: Updating coords for row ${foundIndex}`);
-                    // Update coordinates based on layer type
+
+                    // Update geometry in GeoJSON format to match backend expectations
+                    let geometry = null;
+                    if (layer instanceof L.Marker) {
+                        const latLng = layer.getLatLng();
+                        geometry = {
+                            type: 'Point',
+                            coordinates: [latLng.lng, latLng.lat]
+                        };
+                    } else if (layer instanceof L.Polygon) {
+                        const latLngs = layer.getLatLngs()[0];
+                        geometry = {
+                            type: 'Polygon',
+                            coordinates: [latLngs.map(ll => [ll.lng, ll.lat])]
+                        };
+                    } else if (layer instanceof L.Polyline) {
+                        const latLngs = layer.getLatLngs();
+                        geometry = {
+                            type: 'LineString',
+                            coordinates: latLngs.map(ll => [ll.lng, ll.lat])
+                        };
+                    }
+
+                    if (geometry) {
+                        foundRow.geometry = geometry;
+                    }
+
+                    // For backward compatibility if any legacy code uses .tacke
                     if (layer instanceof L.Marker) {
                         foundRow.tacke = JSON.stringify([layer.getLatLng().lat, layer.getLatLng().lng]);
-                    } else if (layer instanceof L.Polyline || layer instanceof L.Polygon) {
-                        // Simplify for storage: array of [lat, lng] arrays
+                    } else {
                         const latlngs = layer.getLatLngs();
-                        // Handle nested arrays (multipolygons) if necessary, strictly flattened for now as per previous logic
-                        // Assuming simple polygon/polyline for basic implementation matching existing add logic
                         let points = [];
-                        if (Array.isArray(latlngs[0])) { // Polygon default structure often nested
+                        if (Array.isArray(latlngs[0])) {
                             latlngs[0].forEach(ll => points.push([ll.lat, ll.lng]));
                         } else {
                             latlngs.forEach(ll => points.push([ll.lat, ll.lng]));
@@ -1608,10 +1632,9 @@ function initTemeSection() {
                         foundRow.tacke = JSON.stringify(points);
                     }
 
-                    // Update the hidden input in the sidebar
-                    const rowElement = $(`#teme_insert_row_${foundIndex}`);
+                    // Update UI feedback in sidebar
+                    const rowElement = $(`.teme_insert_row[data-row-index="${foundIndex}"]`);
                     if (rowElement.length) {
-                        rowElement.find('input[data-field="koordinate"]').val(foundRow.tacke);
                         // Also highlight to indicate update
                         rowElement.css('background-color', '#fff3cd');
                         setTimeout(() => rowElement.css('background-color', ''), 500);
