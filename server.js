@@ -314,13 +314,13 @@ app.post('/api/kontakt', async (req, res) => {
         return res.status(400).json({ error: 'Наслов и порука су обавезни.' });
     }
 
-    // Get user info from session if available
+    const ownerEmail = process.env.OWNER_GMAIL || 'bozur.vujicic@gmail.com';
     const userEmail = req.session.user ? (req.session.user.email || req.session.user.eposta || 'anonymous@karta.rs') : 'anonymous@karta.rs';
     const userName = req.session.user ? (req.session.user.username || req.session.user.korisnik || req.session.user.ime || 'Anonymous User') : 'Anonymous User';
 
     try {
         const data = await sendEmail({
-            to: 'kontakt@1.xn--80aa2azak.xn--90a3ac',
+            to: ownerEmail,
             subject: `Kontakt obrazac: ${subject}`,
             html: `
                 <p><strong>Od:</strong> ${userName} (${userEmail})</p>
@@ -333,6 +333,43 @@ app.post('/api/kontakt', async (req, res) => {
         res.json({ success: true, data });
     } catch (error) {
         res.status(500).json({ error: 'Грешка при слању е-поште.' });
+    }
+});
+
+// POST /api/resend-webhook (Handling inbound emails from Resend)
+app.post('/api/resend-webhook', async (req, res) => {
+    // Resend sends a webhook with the email content
+    const payload = req.body;
+
+    if (payload.type !== 'email.received') {
+        console.log(`Webhook received: ${payload.type}`);
+        return res.sendStatus(200);
+    }
+
+    const emailData = payload.data;
+    const ownerEmail = process.env.OWNER_GMAIL || 'bozur.vujicic@gmail.com';
+
+    console.log(`Inbound email received from ${emailData.from} to ${emailData.to}`);
+
+    try {
+        // Forward the inbound email to owner's Gmail
+        await sendEmail({
+            to: ownerEmail,
+            subject: `Fwd: [Inbound] ${emailData.subject}`,
+            html: `
+                <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 20px;">
+                    <p><strong>Originalna poruka primljena na:</strong> ${emailData.to}</p>
+                    <p><strong>Od:</strong> ${emailData.from}</p>
+                    <p><strong>Datum:</strong> ${emailData.created_at}</p>
+                </div>
+                ${emailData.html || emailData.text || 'Nema sadržaja.'}
+            `
+        });
+
+        res.sendStatus(200);
+    } catch (error) {
+        console.error('Error forwarding inbound email:', error.message);
+        res.status(500).send('Error forwarding email');
     }
 });
 
