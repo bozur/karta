@@ -338,7 +338,10 @@ app.post('/api/kontakt', async (req, res) => {
 
 // POST /api/resend-webhook (Handling inbound emails from Resend)
 app.post('/api/resend-webhook', async (req, res) => {
-    // Resend sends a webhook with the email content
+    console.log('--- Resend Webhook Received ---');
+    console.log('Headers:', JSON.stringify(req.headers, null, 2));
+    console.log('Payload:', JSON.stringify(req.body, null, 2));
+
     const payload = req.body;
 
     if (payload.type !== 'email.received') {
