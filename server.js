@@ -262,7 +262,7 @@ async function sendEmail({ to, subject, html, bcc }) {
 
     try {
         const payload = {
-            from: 'Kontakt obrazac <kontakt@1.xn--80aa2azak.xn--90a3ac>',
+            from: 'Kontakt obrazac <kontakt@xn--80aa2azak.xn--90a3ac>',
             to: Array.isArray(to) ? to : [to],
             subject: subject,
             html: html
