@@ -1,0 +1,226 @@
+<span style="display: block">
+    <span class="naslov">Теме</span>
+    <div class="mt-2 mb-2"
+        style="display: inline-flex; gap: 15px; flex-wrap: wrap; align-items: center; margin-left: 20px;">
+        <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="switch_slojevi" checked
+                onchange="window.layersVisible = this.checked; localStorage.setItem('layersVisible', this.checked); if(typeof window.toggleMapLayers === 'function') window.toggleMapLayers();">
+            <label class="custom-control-label" for="switch_slojevi" style="font-size: 0.9rem;">слојеви</label>
+        </div>
+    </div>
+</span>
+<style>
+    .custom-checkbox .custom-control-input:checked~.custom-control-label::before {
+        background-color: #6c757d !important;
+        border-color: #6c757d !important;
+    }
+
+    /* Flatpickr overrides for bootstrap theme compatibility */
+    .flatpickr-input {
+        background-color: white !important;
+    }
+
+    #teme_dogadjaji_results table tr:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+
+    #teme_dogadjaji_results {
+        margin-top: 15px;
+    }
+
+    .teme_insert_row {
+        display: flex;
+        gap: 5px;
+        margin-bottom: 10px;
+        flex-wrap: nowrap;
+        min-width: fit-content;
+    }
+
+    .teme_insert_row input,
+    .teme_insert_row select {
+        font-size: 0.85rem;
+    }
+
+    #teme_novo_podaci {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    /* Compact popup styles */
+    .teme-popup-form .form-control-sm {
+        height: calc(1.4em + 0.5rem + 2px);
+        padding: 0.2rem 0.4rem;
+        font-size: 0.8rem;
+    }
+
+    /* Hide CAPTCHA badge to prevent overlapping */
+    .grecaptcha-badge {
+        visibility: hidden;
+    }
+</style>
+
+
+
+
+
+<div id="teme_content">
+    <!-- Тражи Section -->
+    <div id="teme_trazi" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <div>
+            <strong>тражи</strong> <span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#teme_trazi_podaci"></span>
+        </div>
+        <div class="custom-control custom-checkbox">
+            <input type="checkbox" class="custom-control-input" id="gr_cluster_checkbox">
+            <label class="custom-control-label" for="gr_cluster_checkbox" style="font-size: 0.9rem;">скупи</label>
+        </div>
+    </div>
+    <div id="teme_trazi_podaci" class="collapse show">
+        <form id="form_trazi">
+            <div class="form-row mb-2">
+                <div class="col">
+                    <select class="form-control" id="teme_izbor">
+                        <option value="0">изабери:</option>
+                        <!-- Theme options will be loaded dynamically from database -->
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <select id="razred" class="form-control">
+                        <option value="">разред</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="vrsta" class="form-control">
+                        <option value="">врста</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="podvrsta" class="form-control">
+                        <option value="">подврста</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col-6">
+                    <input type="text" id="od" class="form-control flatpickr-datetime" placeholder="од">
+                </div>
+                <div class="col-6">
+                    <input type="text" id="do" class="form-control flatpickr-datetime" placeholder="до">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <select id="prostorno" class="form-control">
+                        <option value="">просторно</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="vremenski" class="form-control">
+                        <option value="">временски</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="izvor" class="form-control">
+                        <option value="-1">извор</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <input type="text" id="opis" class="form-control" placeholder="опис">
+                </div>
+            </div>
+            <div class="form-row mt-2">
+                <div class="col">
+                    <div id="teme_alert_area" style="color: orange; display: none;"></div>
+                </div>
+                <button type="submit" class="btn btn-white border border-dark">тражи</button>
+                <div class="spinner-border text-secondary spinner-border-sm m-2" id="form_trazi_cekanje" role="status"
+                    style="visibility: hidden;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Догађаји Section -->
+    <div id="teme_dogadjaji" class="mt-2"><strong>догађаји</strong> <span class="bi bi-arrows-expand ml-2"
+            data-toggle="collapse" data-target="#teme_dogadjaji_podaci"></span>
+    </div>
+    <div id="teme_dogadjaji_podaci" class="collapse">
+        <div id="teme_dogadjaji_results">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody id="teme_dogadjaji_results_body">
+                    <!-- Results will be populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Playback Section -->
+    <div id="teme_playback" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>прикажи као снимак</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#teme_playback_podaci"></span></span>
+    </div>
+    <div id="teme_playback_podaci" class="collapse">
+        <div class="d-flex justify-content-between align-items-center p-2">
+            <div>
+                <span>почетак:</span> <span id="playback_min_val">-</span>
+            </div>
+            <div>
+                <span>крај:</span> <span id="playback_max_val">-</span>
+            </div>
+            <select id="playback_steps_select" class="form-control form-control-sm"
+                style="width: 70px; height: 30px; font-size: 0.9rem;">
+                <option value="10" selected>10</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+            </select>
+            <i class="bi bi-play-btn-fill" id="playback_start_btn"
+                style="font-size: 1.5rem; cursor: pointer; color: #6c757d;" title="Покрени"></i>
+        </div>
+        <div id="playback_alert_row" style="display: none; padding: 0 10px 10px 10px; text-align: center;">
+            <span id="playback_alert_msg" style="color: orange; font-size: 0.9rem;"></span>
+        </div>
+    </div>
+
+    <div id="teme_objasnjenje" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>појашњење за изабрану тему</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#teme_objasnjenje_podaci"></span></span>
+    </div>
+    <div id="teme_objasnjenje_podaci" class="collapse">
+        <p id="teme_objasnjenje_content" style="padding: 10px; margin: 5px 0;">
+            тема није изабрана
+        </p>
+    </div>
+
+    <!-- Ново Section -->
+    <div id="teme_novo" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>ново</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#teme_novo_podaci"></span></span>
+        <div class="custom-control custom-checkbox" id="teme_alat_container" style="display: none;">
+            <input type="checkbox" class="custom-control-input" id="teme_alat_checkbox">
+            <label class="custom-control-label" for="teme_alat_checkbox" style="font-size: 0.9rem;">алат</label>
+        </div>
+    </div>
+    <div id="teme_novo_podaci" class="collapse">
+        <p style="padding: 10px; margin: 5px 0;">Алатом са лијеве стране предложите нове ставке за унос.</p>
+        <div id="teme_insert_rows_container">
+            <!-- Dynamic insert rows will be added here -->
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-2" id="teme_predlozi_row"
+            style="display: none;">
+            <div id="teme_novo_alert_area" style="color: orange; display: none;"></div>
+            <button type="button" id="teme_predlozi_button"
+                class="btn btn-white border border-dark ml-auto">предложи</button>
+        </div>
+    </div>
+</div>

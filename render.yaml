@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: karta
+    runtime: node
+    plan: starter
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: karta-db
+          property: connectionString
+      - key: PORT
+        value: 10000
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: NODE_ENV
+        value: production
+      - key: RESEND_API_KEY
+        sync: false # User must set this manually in Render dashboard
+    disk:
+      name: karta-uploads
+      mountPath: /opt/render/project/src/uploads
+      sizeGB: 15
+
+databases:
+  - name: karta-db
+    plan: basic-256mb

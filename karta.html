@@ -1,501 +1,108 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="sr">
 
 <head>
   <title>Карта</title>
-
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
-  <meta http-equiv="Content-type" content="text/html;charset=UTF-8">
-  <meta name="keywords" content="">
-  <meta name="description" content="">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <!--for IE compatibility-->
-
   <link rel="shortcut icon" href="slike/icon.ico">
 
-
-  <!--ovih 3 ispod je za desno bocno-->
-  <link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.css" />
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
+    integrity="sha384-MCw98/SFnGE8fJT3GXwEOngsV7Zt27NXFoaoApmYm81iuXoPkFOJwJ8ERdknLPMO" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css"
+    integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A=="
+    crossorigin="" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css">
+  <link rel="stylesheet" type="text/css"
+    href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+  <link rel="stylesheet" type="text/css" href="css/jquery-comments.css">
+  <link rel="stylesheet" href="css/custom.css">
   <link rel="stylesheet" href="leaflet-sidebar-master/src/L.Control.Sidebar.css" />
-  <!--[if lte IE 8]><link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet-0.7.2/leaflet.ie.css" /><![endif]-->
-
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.1/dist/css/bootstrap.min.css" integrity="sha384-zCbKRCUGaJDkqS1kPbPd7TveP5iyJE0EjAuZQTgFLD2ylzuqKfdKlfG/eSrtxUkn" crossorigin="anonymous">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" integrity="sha512-xodZBNTC5n17Xt2atTPuE1HxjVMSvLVW9ocqUKLsCC5CXdbqCmblAshOMAS6/keqq/sMZMZ19scR4PsZChSR7A==" crossorigin="" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />  <!--leaflet draw-->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.0/font/bootstrap-icons.css">
-  <link rel="stylesheet" href="css/custom.css" />  <!---->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
 
   <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.16.0/umd/popper.min.js"></script>
-  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js" integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy" crossorigin="anonymous"></script> <!-- mora posle jquery-->
-  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js" integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA==" crossorigin=""></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>  <!--leaflet draw-->
-
-  <script src='https://openlayers.org/api/OpenLayers.js'></script>  <!--za wkt za unos podataka-->
-
-  <!--<script src="js/index.js"></script> izmijeniti po potrebi ...-->
-
-
-  
-  <!-- ово испод је za brze provere stilova?-->
-  <style>
-  
-  </style>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/js/bootstrap.min.js"
+    integrity="sha384-ChfqqxuZUCnJSK3+MXmPNIyE6ZbWh2IMqE241rYiqJxyMiZ6OW/JmZQ5stwEULTy"
+    crossorigin="anonymous"></script> <!-- mora posle jquery-->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"
+    integrity="sha512-XQoYMqMTK8LvdxXYG3nZ448hOEQiglfqkJs1NOQV44cWnUrBc8PkAOcXy20w0vlaXaVUearIOBhiXZ5V3ynxwA=="
+    crossorigin=""></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script> <!--leaflet draw-->
+  <script src="leaflet-sidebar-master/src/L.Control.Sidebar.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://npmcdn.com/flatpickr/dist/l10n/sr.js"></script>
 
 </head>
 
 <body>
-    <div id="sidebar">
-    </div>
+  <div id="sidebar">
+  </div>
   <div id="radna">
     <div id="izbor_karte" class="izbor_karte">
-      <i class="mx-2" title="промјена карте" data-toggle="tooltip" data-placement="bottom" id="promjena_karte" style="cursor: context-menu; font-style: normal;">терен/сателит</i>
+      <i class="mx-2" title="промјена карте" data-toggle="tooltip" data-placement="bottom" id="promjena_karte"
+        style="cursor: context-menu; font-style: normal;">терен/сателит</i>
     </div>
     <div id="navodi" class="navodi">
-      <i class="bi-layers mx-2 izbor" title="теме" data-toggle="tooltip" data-placement="bottom" title2="#teme"></i>      
-      <i class="bi-calendar3 mx-2 izbor" title="догађаји" data-toggle="tooltip" data-placement="bottom" title2="#dogadjaji"></i>
-      <i class="bi-lightbulb mx-2 izbor" title="приједлози" data-toggle="tooltip" data-placement="bottom" title2="#predlozi"></i>
-      <i class="bi-folder mx-2 izbor" title="записи" data-toggle="tooltip" data-placement="bottom" title2="#zapisi"></i>
-      <i class="bi-person mx-2 izbor" title="корисник" data-toggle="tooltip" data-placement="bottom" title2="#korisnik"></i>
-      <i class="bi-envelope mx-2 izbor" title="контакт" data-toggle="tooltip" data-placement="bottom" title2="#kontakt"></i>
-      <i class="bi-question-circle mx-2 izbor" title="упутство" data-toggle="tooltip" data-placement="bottom" title2="#uputstvo"></i>
+      <i class="bi bi-menu-app-fill mx-2 izbor" id="urednik_tab_icon" style="display: none;" title="уредник"
+        data-toggle="tooltip" data-placement="bottom" title2="urednik"></i>
+      <i class="bi-layers mx-2 izbor" title="теме" data-toggle="tooltip" data-placement="bottom" title2="teme"></i>
+      <i class="bi-calendar3 mx-2 izbor" title="догађаји" data-toggle="tooltip" data-placement="bottom"
+        title2="dogadjaji"></i>
+      <i class="bi-folder mx-2 izbor" title="записи" data-toggle="tooltip" data-placement="bottom" title2="zapisi"></i>
+      <i class="bi-lightbulb mx-2 izbor" title="опште" data-toggle="tooltip" data-placement="bottom" title2="opste"></i>
+      <i class="bi-person mx-2 izbor" title="корисник" data-toggle="tooltip" data-placement="bottom"
+        title2="korisnik"></i>
+      <i class="bi bi-cash-coin mx-2 izbor" title="подршка" data-toggle="tooltip" data-placement="bottom"
+        title2="podrska"></i>
+      <i class="bi-envelope mx-2 izbor" title="контакт" data-toggle="tooltip" data-placement="bottom"
+        title2="kontakt"></i>
+      <i class="bi-question-circle mx-2 izbor" title="упутство" data-toggle="tooltip" data-placement="bottom"
+        title2="uputstvo"></i>
+      <i class="bi-box-arrow-right mx-2" id="logout-link" title="излаз" data-toggle="tooltip" data-placement="bottom"
+        style="cursor: pointer;"></i>
+    </div>
+    <!-- Dogadjaj detail layer - top positioned -->
+    <div id="dogadjaj_layer" class="dogadjaj_layer">
+      <div class="dogadjaj_header">
+        <i class="bi bi-x" id="dogadjaj_close" style="cursor: pointer; float: right;"></i>
+      </div>
+      <div class="dogadjaj_content">
+        <p id="dogadjaj_opis"></p>
+        <p id="dogadjaj_vrijeme"></p>
+        <p id="dogadjaj_izvor"></p>
+      </div>
+      <div class="dogadjaj_resize_handle"></div>
+    </div>
+    <!-- Playback info layer - bottom positioned -->
+    <div id="playback_info_layer" class="dogadjaj_layer"
+      style="top: auto; bottom: 0; height: auto; display: none; z-index: 2000;">
+      <div class="dogadjaj_header">
+        <i class="bi bi-x" id="playback_close" style="cursor: pointer; float: right;"></i>
+      </div>
+      <div class="dogadjaj_content"
+        style="display: flex; flex-direction: row; align-items: center; justify-content: center; gap: 20px; padding: 10px;">
+        <p id="playback_time_window" style="font-weight: bold; margin: 0;">-</p>
+        <div id="playback_controls" style="font-size: 1.5rem; display: flex; gap: 10px;">
+          <i class="bi bi-pause-btn-fill" id="playback_pause_btn" style="cursor: pointer; color: #6c757d;"
+            title="заустави"></i>
+          <i class="bi bi-stop-btn-fill" id="playback_stop_btn" style="cursor: pointer; color: #6c757d;"
+            title="прекини"></i>
+        </div>
+      </div>
     </div>
     <div id="kartaid" style="width: 100%;"></div>
-    <div id="teme" class="sloj_vidi">
-      <h4>Теме</h4>
-      <div class="form-group">
-        <select class="form-control" id="teme_izbor">
-          <option value="0">изабери:</option>
-          <option value="1">напади на објекте СПЦ</option>
-          <option value="2">промјена назива</option>
-          <option value="3">распрострањеност топонима</option>
-          <option value="4">логори за Србе</option>
-          <option value="5">страдања људи</option>
-          <option value="6">границе</option>
-        </select>
-        
-      </div>
-      <div class="form-group mt-2" id="teme_trazi">
-        <p>промјена теме брише приједлог за унос и сакрива податке о изабраној ставци!</p>
-      </div>
-
-    </div>
-    <div id="dogadjaji" class="sloj_vidi">
-      <h4>Догађаји</h4>претрага, избор, примједбе, унос ..тагови, вријеме обавезно ...координате по могућности
-    </div>
-    <div id="predlozi" class="sloj_vidi">
-      <h4>Приједлози за нове теме</h4>приједлози и прихваћене теме са описима, прегледима примједбама на ставке и сл.
-      Ово треба преименовати у обште или томе слично... можда "корисници" са два човечуљка на слици. где би било приказано број корисника, послиједњих 10 прилога са износима, 
-      број ставки, тема, примхједби, догађаја ... унето од послиједње посјете, догађаја, ставки, тема, записа,  .....можда још једна страна где би се видело шта се чека на одобрење???
-    </div>
-    <div id="zapisi" class="sloj_vidi">
-      <h4>Записи</h4>zapisi тј документи...образац за унос ... само пдф, ворд, јпг, пнг ... додати део за унос и претрагу. 
-      Унос да укључи период на који запис указује, теме на које се односи и тагова(ознаке). Записи да имају примједбе!
-    </div>
-    <div id="korisnik" class="sloj_vidi">
-      <h4>Корисник</h4>промјена лозинке ко допринесе са 1000 нових ставки, добија 100е. апел да се допринесе! обавештења
-      корисницима тренд раста, у међувремену шта се десило, укидање реклама, помоћ, Преузимање ваших записа. Прва
-      посјета, послиједња посјета, унето ставки, повољно оцијењено, лоше оцијењено, примједбе,
-    </div>
-    <div id="kontakt" class="sloj_vidi">
-      <h4>Контакт</h4>
-      <form>
-        <div class="form-group">
-          <label for="exampleFormControlSelect1">наслов:</label>
-          <select class="form-control" id="kontakt_izbor">
-            <option value="0">изабери наслов</option>
-            <option value="1">грешка на странама</option>
-            <option value="2">приједлог за нову тему</option>
-            <option value="3">приједлог за побољшање</option>
-            <option value="4">помоћ на странама</option>
-            <option value="5">остало</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label for="exampleFormControlTextarea1">напис</label>
-          <textarea class="form-control" id="exampleFormControlTextarea1" rows="5"></textarea>
-        </div>
-        <button type="submit" class="btn btn-white border border-dark">пошаљи</button>
-      </form>
-      <div class="form-group mt-2" id="kontakt_opis">
-      </div>
-    </div>
-    <div id="uputstvo" class="sloj_vidi"></div>
+    <!-- Dynamic content container for navigation sections -->
+    <div id="section-content" class="sloj_vidi"></div>
   </div>
 
-
-
+  <script src="js/config/theme_config.js"></script>
+  <script src="js/config/draw_config.js"></script>
+  <script type="text/javascript"
+    src="https://cdnjs.cloudflare.com/ajax/libs/jquery.textcomplete/1.8.0/jquery.textcomplete.js"></script>
+  <script src="js/jquery-comments.js"></script>
+  <script src="karta.js"></script>
 </body>
 
 </html>
-
-<script src="leaflet-sidebar-master/src/L.Control.Sidebar.js"></script>
-
-<script>
-var tabela;
-var addedGeoJSON;
-var table = [
-[
-  [''],
-  [''],
-  ['']
-],
-  [
-  ['црква','конак','манастир','дом','капела','споменик','гробље'],
-  ['оштећено','уништено'],
-  ['спаљено','опљачкано','поломљено','минирано']
-], [
-  ['задржано сопство','промјена сопства'],
-  ['Серби','Славени','Грци','Турци','Нијемци','Маџари'],  
-  ['бријег','језеро','мјесто','море','област','планина','ријека']
-],[
-  ['с(е)рб','влах','венет/венд','илир','косово','сег/сиг','слат','вар','лоз','луг','тер'],
-  ['мјесто','ријека','језеро','море','област'],
-  ['']
-],[
-  ['радни','војни','за истребљење','дјечији'],
-  [''],
-  ['']
-], [
-  ['Србин','Шиптар','Турчин','Бугарин','Маџар','Циган','Хрват','Муслиман','Талијан','Нијемац'],    
-  ['човјек','дијете','жена','старији','војник'],
-  ['силовање','мучење','убиство','рањавање','протјеривање']
-],[
-  ['царство','каљевство','кнежевина','војводство','репоблика'],
-  ['сербско','маџарско','бугарско','грчко','турско'],
-  ['']
-]
-];
-
-  //da se karta i sloj prilagode promenama
-  $('#kartaid').height(window.innerHeight)
-  $('.sloj_vidi').height(window.innerHeight - 78)
-  $(window).resize(function () {
-    $('#kartaid').height(window.innerHeight)
-    $('.sloj_vidi').height(window.innerHeight - 78)
-  });
-  //za gornji desni ugao tumačenja
-  $('[data-toggle="tooltip"]').tooltip();
-
-
-  //za uvlacenje slojeva
-  $(document).on('click', '.izbor', function () {
-    if ($($(this).attr('title2')).hasClass('in')) {
-      $('.sloj_vidi').removeClass('in');
-    } else {
-      $('.sloj_vidi').removeClass('in');
-      $($(this).attr('title2')).addClass('in')
-    }
-  });
-
-
-  $('#teme_izbor').on('change', function () {
-    //LoadWithoutCache("teme.html", "teme_trazi");
-    
-    var valueSelected  = $(this).find("option:selected").val();
-          if (valueSelected=="0") {
-            karta.removeLayer(drawnItems);
-            karta.removeControl(drawnControl);
-            $("#teme_trazi").html("<p>промјена теме брише приједлог за унос!</p>");
-
-          } else  {
-            karta.addLayer(drawnItems);
-            karta.addControl(drawnControl)
-
-            $.ajax({
-              url: "teme.html",
-              cache: false,
-              dataType: "html",
-              success: function(data) {
-                  $("#teme_trazi").html(data);
-                    //dodati promene za padajuće liste
-                    for (var i = 0; i < table[valueSelected][0].length; i++) {
-                    $('#razred').append('<option value="' + i + '">' + table[valueSelected][0][i] + '</option>');
-                    }
-                    for (var i = 0; i < table[valueSelected][1].length; i++) {
-                    $('#vrsta').append('<option value="' + i + '">' + table[valueSelected][1][i] + '</option>');
-                    }
-                    for (var i = 0; i < table[valueSelected][2].length; i++) {
-                    $('#podvrsta').append('<option value="' + i + '">' + table[valueSelected][2][i] + '</option>');
-                    }
-
-                  pretrazi();
-                  }    
-            });
-          }
-  });
-  $('#kontakt_izbor').on('change', function () {
-    //ovo je sa keširanjem!
-    $("#kontakt_opis").load("kontakt.txt #kontakt_p" + this.value);
-  });
-  //ovo je sa keširanjem!
-  $("#uputstvo").load("uputstvo.txt");
-
-
-  function LoadWithoutCache(url, dest) {
-    $.ajax({
-      url: url,
-      cache: false,
-      dataType: "html",
-      success: function (data) {
-        $("#" + dest).html(data);
-        return false;
-      }
-    });
-  }
-
-  var karta = L.map('kartaid').setView([44, 21], 6);
-var tilelayer1 =   L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
-    maxZoom: 18,
-    attribution: '<a target="_blank" href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-      'Imagery © <a target="_blank" href="https://www.mapbox.com/">Mapbox</a>',
-    id: 'mapbox/streets-v11',
-    tileSize: 512,
-    zoomOffset: -1
-  })
-  var tilelayer2 =   L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
-    maxZoom: 18,
-    attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
-      'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
-    id: 'mapbox/streets-v11',
-    tileSize: 512,
-    zoomOffset: -1
-  })
-
-  tilelayer1.addTo(karta);
-
-  $(document).on('click', '#promjena_karte', function() {
-    if (karta.hasLayer(tilelayer1)) {
-        karta.addLayer(tilelayer2);
-        karta.removeLayer(tilelayer1);
-    } else {
-        karta.addLayer(tilelayer1);
-        karta.removeLayer(tilelayer2);
-    }
-  });
-
-  var idpointinfo=0;
-  var sidebar = L.control.sidebar('sidebar', {
-      position: 'left'
-  });
-  karta.addControl(sidebar);
-  
-  $(document).on('click', '.detalji', function() {
-    var idpoint=$(this).attr("pointinfo");
-    if (idpointinfo===idpoint) {
-      sidebar.toggle();
-    } else {
-      if (idpointinfo===0) {sidebar.toggle();} 
-      if (idpointinfo!=idpoint&&!sidebar.isVisible() ) {sidebar.show();}
-
-
-      $.getJSON('back/test4.asp?id='+idpoint+'&table='+tabela, function(data){
-        console.log(data)
-        var vrem, pros
-        if (data["vremenski"]==='1') {vrem='green'} else {vrem='red'}
-        if (data["prostorno"]==='1') {pros='green'} else {pros='red'}
-        sidebar.setContent(''+data["vri0"]+' - '+data["vri1"]+';  <i class="bi bi-clock" style="color:'+vrem+'"></i>; <i class="bi bi-geo" style="color:'+pros+'"></i>; <br><br><strong>'+table[tabela][0][data["raz"]]+'; '+table[tabela][1][data["vrs"]]+'; '+table[tabela][2][data["pod"]]+'; </strong>  <br><br><strong>opis:</strong> '+data["opi"]+' <br>(<strong>izvor:</strong>: '+data["izv"]+')<br><br><strong>примједбе:</strong> <div id="comments-container"></div>');
-				})
-
-      // fetch('back/test4.asp?id='+idpoint+'&table='+tabela)
-      // .then(function (response) {
-      //   return response.json();
-      // })
-      // .then(function (data) {
-      //   console.log(data)
-      //   var vrem, pros
-      //   if (data["vremenski"]==='1') {vrem='green'} else {vrem='red'}
-      //   if (data["prostorno"]==='1') {pros='green'} else {pros='red'}
-      //   sidebar.setContent(''+data["vri0"]+' - '+data["vri1"]+';  <i class="bi bi-clock" style="color:'+vrem+'"></i>; <i class="bi bi-geo" style="color:'+pros+'"></i>; <br><br><strong>'+table[1][0][data["raz"]]+'; '+table[1][1][data["vrs"]]+'; '+table[1][2][data["pod"]]+'; </strong>  <br><br><strong>opis:</strong> '+data["opi"]+' (<strong>izvor:</strong>: '+data["izv"]+')<br><br><strong>примједбе:</strong>');
-      // }); 
-
-
-      idpointinfo=idpoint;
-    }
-    
-    //sidebar.setContent('<br>'+$(this).attr("pointinfo"));
-
-  });
-  
-
-  // Create feature group for drawn items
-  var drawnItems = L.featureGroup() //.addTo(karta);
-
-  // Add draw control
-  var drawnControl = new L.Control.Draw({
-    draw: {
-      circle: false,
-      rectangle: false,
-      circlemarker: false,
-      polygon: {
-                allowIntersection: false,
-                drawError: {
-              message: 'није дозвољено преклапање површина' // Message that will show when intersect 
-           }
-            },
-      polyline: {
-          allowIntersection: false,
-          drawError: {
-          message: 'није дозвољено пресијецање линија' // Message that will show when intersect 
-      }
-      },
-    },
-    edit: {
-        featureGroup: drawnItems,
-        poly: {
-              allowIntersection: false
-          }
-      }
-  }) // .addTo(karta);
-
-
-  // On draw - add drawing to 'drawnItems'
-  karta.on("draw:created", function(e) {
-      e.layer.addTo(drawnItems);
-
-      var type = e.layerType,
-      layer = e.layer;
-  if (type === 'marker') {
-    layer.bindPopup('LatLng: ' + parseFloat(layer.getLatLng().lat).toFixed(5) + ',' + parseFloat(layer.getLatLng().lng.toFixed(5)).openPopup());
-  }
-
-  drawnItems.addLayer(layer);
-  layerGeoJSON = drawnItems.toGeoJSON();
-  alert("GEOJSON FORMAT\r\n" + JSON.stringify(layerGeoJSON));
-      
-      var type = e.layerType;
-      var wkt_options = {};
-      var geojson_format = new OpenLayers.Format.GeoJSON();
-      var testFeature = geojson_format.read(layerGeoJSON);
-      var wkt = new OpenLayers.Format.WKT(wkt_options);
-      var out = wkt.write(testFeature);
-
-  alert("WKT FORMAT\r\n" + out);
-
-
-  });
-
-
-
-
-  var scale = L.control.scale(); // Creating scale control
-  scale.addTo(karta); // Adding scale control to the map
-
-  var iconcrkva = L.icon({
-    iconUrl: '/ikone/crkva.png',
-    iconSize: [32, 37], // size of the icon
-    iconAnchor: [16, 37], // point of the icon which will correspond to marker's location
-    popupAnchor: [0, -30] // point from which the popup should open relative to the iconAnchor
-  });
-
-  L.marker([44, 21], { icon: iconcrkva }).addTo(karta).bindPopup('trtrt')
-  L.marker([44.5, 21.5], { icon: iconcrkva }).addTo(karta).bindPopup('trtrt2')
-
-
-
-
-  function onEachFeature(feature, layer) {
-
-
-//alert (table[1][0][0]);
-
-    // does this feature have a property named popupContent?
-    if (feature.properties && feature.properties.v) {
-      layer.bindPopup('<a href="#" class="detalji" pointinfo="'+feature.properties.id+'"><i class="bi bi-book"></i></a> ' + table[tabela][1][feature.properties.v]);
-    }
-
-    //     if (feature.properties.subtype='mined') {
-    //   layer.setIcon(icontest);
-    //   layer.addTo(layer1);
-    // } else {
-    //   layer.setIcon(icontest3);
-    //   layer.addTo(layer1);
-    // }
-  }
-
-  var LeafIcon = L.Icon.extend({
-    options: {
-      iconSize: [32, 37], // size of the icon
-      iconAnchor: [16, 37], // point of the icon which will correspond to marker's location
-      popupAnchor: [0, -30] // point from which the popup should open relative to the iconAnchor
-    }
-  });
-
-function pretrazi () {
-$("#form_trazi").submit(function(e) {
-  e.preventDefault();
-  tabela = $('#teme_izbor').val();
-  $("#form_trazi_cekanje").css('visibility','visible');
-  var formData = {
-   'tabela'    : tabela,
-   'vrsta'     : $('#vrsta').val(),
-   'podvrsta'  : $('#podvrsta').val(),
-	 'razred'    : $('#razred').val(),
-	 'prostorno' : $('#prostorno').val(),
-   'vremenski' : $('#vremenski').val(),
-   'izvor'     : $('#izvor').val(),
-   'opis'      : $('#opis').val(),
-  };
-  $.ajax({
-          url: 'back/test5.asp',
-          type: 'post',
-          dataType: 'json',
-          data: formData, 
-          success: function(data) {
-            $("#form_trazi_cekanje").css('visibility','hidden');
-            //
-            //console.log(data);
-            //L.geoJSON(data).addTo(map);
-            if (!$.isEmptyObject(addedGeoJSON)){
-              karta.removeLayer(addedGeoJSON);
-            }
-            addedGeoJSON = L.geoJSON(data, {
-            pointToLayer: function (feature, latlng) {
-              return L.marker(latlng, { icon: createIcon(feature.properties.r,tabela) });
-              },
-              onEachFeature: onEachFeature
-            }).addTo(karta);
-
-            if (!$.isEmptyObject(addedGeoJSON)){
-              karta.fitBounds(addedGeoJSON.getBounds());
-            }
-            
-          }
-  });
-});
-
-}
-
-  // var url = "back/test3.asp";
-  // fetch(url)
-  //   .then(function (response) {
-  //     return response.json();
-  //   })
-  //   .catch(function() {
-  //   alert("error while loading data");
-  //   })
-  //   .then(function (data) {
-  //     //console.log(data);
-
-  //     //L.geoJSON(data).addTo(map);
-
-  //     var addedGeoJSON = L.geoJSON(data, {
-  //       pointToLayer: function (feature, latlng) {
-  //         return L.marker(latlng, { icon: createIcon(feature.properties.r) });
-  //       },
-  //       onEachFeature: onEachFeature
-  //     }).addTo(karta);
-
-  //     karta.fitBounds(addedGeoJSON.getBounds());
-  //   });
-
-
-
-  function createIcon(razred,tabela) {
-    return new LeafIcon({ iconUrl: '/ikone/'+tabela+'/'+razred+'.png' });
-  }
-
-
-
-
-</script>

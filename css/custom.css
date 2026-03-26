@@ -1,13 +1,127 @@
+﻿/* Common styles - NO font-size set to use browser default (16px) */
+/* Global Styles */
+.grecaptcha-badge {
+  display: none !important;
+}
+
 body,
 html {
   height: 100%;
   margin: 0;
   padding: 0;
-  font-size: 0.9rem;
   font-family: Lato, sans-serif;
   color: rgb(0, 0, 0);
 }
 
+/* Index page specific styles */
+#naslovna {
+  background-image: url("../slike/naslovna.jpg");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  width: 100%;
+  height: 100%;
+}
+
+/* Override body/html for index page - restore original white text */
+#naslovna body,
+#naslovna html {
+  color: #fff;
+  font-family: Lato, sans-serif;
+}
+
+/* White color for text elements in naslovna (but allow inline styles to override) */
+#naslovna h1,
+#naslovna h3,
+#naslovna small,
+#naslovna label {
+  color: #fff;
+}
+
+/* Don't force color on spans - let inline styles work */
+#naslovna span:not([style*="color"]) {
+  color: #fff;
+}
+
+/* Don't force color on divs - let text flow naturally */
+#naslovna div:not([style*="color"]) {
+  color: #fff;
+}
+
+#naslovna .col {
+  text-align: center;
+}
+
+#naslovna .form-control {
+  border-width: 1px;
+  border-color: #fff;
+  background-color: transparent;
+  color: #fff;
+}
+
+#naslovna .form-control:focus {
+  border-width: 1px;
+  border-color: #f5a615;
+  background-color: rgba(0, 0, 0, 0.1);
+  color: #fff;
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.veza {
+  color: #ffffff;
+}
+
+.veza:hover {
+  color: #f5a615;
+  text-decoration: none;
+}
+
+.veza2 {
+  color: #dddddd;
+}
+
+#logform {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.password-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 1.5rem;
+  cursor: pointer;
+  color: #dddddd;
+  z-index: 10;
+  font-size: 1.1rem;
+}
+
+.password-toggle:hover {
+  color: #f5a615;
+}
+
+/* Karta page specific styles */
+#kartaid {
+  height: 100%;
+  width: 100%;
+}
+
+#radna {
+  height: 100vh;
+  width: 100%;
+}
+
+/* Karta page - set smaller font size only for karta page */
+#radna body,
+#radna html {
+  font-size: 0.9rem;
+}
+
+/* Shared styles for both pages */
 .tooltip-inner {
   max-width: 200px;
   padding: 3px 8px;
@@ -25,13 +139,52 @@ html {
   border-bottom-color: #444;
 }
 
+.navodi {
+  position: absolute;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.9);
+  right: 0;
+  top: 0;
+  margin: 0px;
+  padding: 3px 5px;
+  border-bottom: 2px solid #bbb;
+  border-left: 2px solid #bbb;
+  border-bottom-left-radius: 4px;
+  color: #000;
+  font-size: 0.9rem;
+}
 
-.navodi {position: absolute; z-index: 1000; background: rgba(255, 255, 255, 0.9); right: 0; top:0; margin: 0px; padding: 3px 5px; border-bottom: 2px solid #bbb; border-left: 2px solid #bbb;border-bottom-left-radius: 4px}
-.izbor_karte {position: absolute; z-index: 1000; background: rgba(255, 255, 255, 0.9); right: 0; top:0; margin-right: 250px; padding: 3px 5px; border-bottom: 2px solid #bbb; border-left: 2px solid #bbb;border-bottom-left-radius: 4px; border-right: 2px solid #bbb;border-bottom-right-radius: 4px}
+.navodi i {
+  font-size: 0.9rem;
+}
 
+.izbor_karte {
+  position: absolute;
+  z-index: 1000;
+  background: rgba(255, 255, 255, 0.9);
+  right: 0;
+  top: 0;
+  margin-right: 335px;
+  padding: 3px 5px;
+  border-bottom: 2px solid #bbb;
+  border-left: 2px solid #bbb;
+  border-bottom-left-radius: 4px;
+  border-right: 2px solid #bbb;
+  border-bottom-right-radius: 4px;
+  color: #000;
+  font-size: 0.9rem;
+}
 
-i:hover,span:hover {
+.izbor_karte i {
+  font-size: 0.9rem;
+}
+
+i:hover {
   color: darkorange;
+}
+
+.naslov {
+  font-size: x-large;
 }
 
 .sloj_vidi {
@@ -42,19 +195,206 @@ i:hover,span:hover {
   margin-bottom: 20px;
   right: 0px;
   top: 0;
+  bottom: 0;
   z-index: 1001;
   background: rgba(255, 255, 255, 0.9);
-  transition: 1.0s;
-  padding: 12px;
+  transition: 0.5s;
+  padding: 10px;
   overflow-y: auto;
-  border-left: 2px solid #bbb; border-top: 2px solid #bbb; border-top-left-radius: 4px; border-bottom: 2px solid #bbb; border-bottom-left-radius: 4px; 
+  border-left: 1px solid #ccc;
+  color: #000;
+  font-size: 0.9rem;
 }
 
 .sloj_vidi.in {
   margin-right: 0px;
 }
 
+.sloj_vidi .form-control {
+  color: #000;
+  background-color: #fff;
+  border-color: #ced4da;
+  font-size: 0.9rem;
+}
+
+.sloj_vidi .form-control:focus {
+  color: #495057;
+  background-color: #fff;
+  border-color: #80bdff;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.sloj_vidi label,
+.sloj_vidi p,
+.sloj_vidi span,
+.sloj_vidi option {
+  color: #000;
+}
+
+/* Dogadjaj detail layer - top positioned */
+.dogadjaj_layer {
+  width: 460px;
+  position: fixed;
+  left: 50%;
+  transform: translateX(-50%);
+  top: 0;
+  z-index: 999;
+  background: rgba(255, 255, 255, 0.9);
+  padding: 5px 10px 12px 10px;
+  border-left: 2px solid #bbb;
+  border-right: 2px solid #bbb;
+  border-bottom: 2px solid #bbb;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+  color: #000;
+  font-size: 0.9rem;
+  display: none;
+  transition: 0.3s;
+  height: 35px;
+  overflow: hidden;
+}
+
+.dogadjaj_layer.show {
+  display: block;
+}
+
+.dogadjaj_header {
+  position: relative;
+  margin-bottom: 0;
+}
+
+.dogadjaj_content p {
+  margin: 3px 0;
+  word-wrap: break-word;
+  font-size: 0.9rem;
+}
+
+.dogadjaj_content p:first-child {
+  margin-top: 0;
+}
+
+.dogadjaj_resize_handle {
+  height: 8px;
+  cursor: ns-resize;
+  background: rgba(187, 187, 187, 0.3);
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px;
+}
+
+.dogadjaj_resize_handle:hover {
+  background: rgba(187, 187, 187, 0.6);
+}
+
+#dogadjaj_close {
+  font-size: 1.2rem;
+}
+
+#dogadjaj_close:hover {
+  color: darkorange;
+}
+
 div {
   text-align: justify;
   text-justify: inter-word;
+}
+
+/* Terms of Use (Uslovi) section styles */
+.terms-content {
+  line-height: 1.6;
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.terms-content h5 {
+  color: #333;
+  font-weight: 600;
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #f5a615;
+}
+
+.terms-content p {
+  margin-bottom: 0.75rem;
+  color: #444;
+}
+
+.terms-content ul {
+  margin-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.terms-content ul li {
+  margin-bottom: 0.5rem;
+  color: #444;
+}
+
+.terms-content a {
+  color: #007bff;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.terms-content a:hover {
+  color: #f5a615;
+  text-decoration: underline;
+}
+
+.terms-content strong {
+  color: #222;
+  font-weight: 600;
+}
+
+.terms-content .text-muted {
+  color: #6c757d !important;
+}
+
+/* Playback layer specific styles */
+#playback_info_layer {
+  height: 40px !important;
+  min-height: 40px !important;
+  max-height: 40px !important;
+}
+
+#playback_info_layer .dogadjaj_header {
+  display: none;
+}
+
+#playback_info_layer .dogadjaj_content {
+  padding: 5px 10px !important;
+  height: 40px;
+}
+
+/* Hover effects for all playback icons */
+#playback_start_btn:hover,
+#playback_pause_btn:hover,
+#playback_stop_btn:hover,
+#playback_close:hover {
+  color: #ff8c00 !important;
+}
+
+/* Override sidebar padding to match tab width */
+.leaflet-sidebar>.leaflet-control {
+  padding-left: 10px !important;
+  padding-right: 10px !important;
+}
+
+/* Orange filter for standard Leaflet markers - dark orange */
+.marker-orange {
+  filter: hue-rotate(165deg) saturate(1.8) brightness(0.9);
+}
+
+/* Custom table hover effect for approval tables */
+.table-hover-custom tbody tr:hover {
+  background-color: #fff4e6 !important;
+}
+
+/* Rename Browse button */
+.custom-file-label::after {
+  content: "изабери сличицу" !important;
 }

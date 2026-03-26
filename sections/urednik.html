@@ -1,0 +1,463 @@
+<style>
+    .zapis-link {
+        color: darkorange;
+        text-decoration: none;
+    }
+
+    .zapis-link:hover {
+        text-decoration: underline;
+        color: darkorange;
+    }
+
+    .theme-lock-row:hover {
+        background-color: #f0f0f0 !important;
+    }
+</style>
+
+<span class="naslov">Уредник</span>
+
+<div id="urednik_content">
+
+    <!-- Novosti -->
+    <div id="urednik_novosti" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>унос новости</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_novosti_podaci"></span></span>
+    </div>
+    <div id="urednik_novosti_podaci" class="collapse">
+        <div class="form-group mb-1 mt-1">
+            <textarea id="novosti_opis" class="form-control" rows="3" placeholder="опис" maxlength="4000"
+                style="font-size: 0.9rem;"></textarea>
+        </div>
+        <div class="d-flex align-items-center mt-2">
+            <div id="novosti_alerts" style="color: orange; flex-grow: 1;"></div>
+            <button id="btn_unesi_novosti" class="btn btn-white border border-dark ml-auto">унеси</button>
+        </div>
+    </div>
+
+    <!-- Nova Tema -->
+    <div id="urednik_nova_tema" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>нова тема</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_nova_tema_podaci"></span></span>
+    </div>
+    <div id="urednik_nova_tema_podaci" class="collapse">
+        <p style="padding: 10px; margin: 5px 0;">Садржај за нову тему...</p>
+    </div>
+
+    <!-- Zaključavanje Tema -->
+    <div id="urednik_zakljucavanje_tema" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>закључавање тема</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_zakljucavanje_tema_podaci"></span></span>
+    </div>
+    <div id="urednik_zakljucavanje_tema_podaci" class="collapse">
+        <div style="margin-top: 10px;">
+            <div id="theme_lock_alerts" style="color: orange; margin-bottom: 10px;"></div>
+            <div id="theme_lock_list" class="list-group list-group-flush" style="font-size: 0.9rem;">
+                <!-- Themes will be populated here -->
+            </div>
+            <div id="theme_lock_loading" style="display: none; text-align: center; padding: 10px;">
+                <div class="spinner-border text-secondary spinner-border-sm" role="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prijavljene Primedbe -->
+    <div id="urednik_primedbe" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>пријављене примједбе</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_primedbe_podaci"></span></span>
+    </div>
+    <div id="urednik_primedbe_podaci" class="collapse">
+        <div style="margin-top: 10px;">
+            <div id="primedbe_alerts" style="color: orange; margin-bottom: 10px;"></div>
+            <div id="primedbe_results" style="display: none;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <tbody id="primedbe_body">
+                        <!-- Reported comments will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+            <div id="primedbe_loading" style="display: none; text-align: center; padding: 10px;">
+                <div class="spinner-border text-secondary spinner-border-sm" role="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pretraga Korisnika -->
+    <div id="urednik_pretraga_korisnika" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>претрага корисника</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_pretraga_korisnika_podaci"></span></span>
+    </div>
+    <div id="urednik_pretraga_korisnika_podaci" class="collapse">
+        <div style="margin-top: 10px;">
+            <div class="input-group mb-2">
+                <input type="text" id="user_search_input" class="form-control" placeholder="корисничко име или е-пошта"
+                    style="font-size: 0.9rem;">
+                <div class="input-group-append">
+                    <button id="btn_user_search" class="btn btn-white border border-dark">тражи</button>
+                </div>
+            </div>
+
+            <!-- User Search Results Table -->
+            <div id="user_search_results" style="display: none; margin-top: 10px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #ddd; background-color: #f9f9f9;">
+                            <th style="padding: 5px; text-align: left; width: 50px;">ID</th>
+                            <th style="padding: 5px; text-align: left;">корисник</th>
+                            <th style="padding: 5px; text-align: left;">е-пошта</th>
+                        </tr>
+                    </thead>
+                    <tbody id="user_search_body">
+                        <!-- Search results will be populated here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- User Detail Panel (initially hidden) -->
+            <div id="user_detail_panel"
+                style="display: none; margin-top: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background-color: #fcfcfc;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 10px;">
+                    <span style="font-weight: bold; color: darkorange;">Детаљи корисника</span>
+                    <button class="btn btn-sm btn-link" id="btn_back_to_user_search"
+                        style="color: grey; text-decoration: none;">&larr; назад на листу</button>
+                </div>
+
+                <div id="user_detail_content">
+                    <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+                        <img id="u_detail_img" src="" alt=""
+                            style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; background-color: #eee; border: 1px solid #ddd;">
+                        <div>
+                            <div style="font-weight: bold;" id="u_detail_name">-</div>
+                            <div style="font-size: 0.85rem; color: #555;" id="u_detail_username">-</div>
+                            <div style="font-size: 0.85rem; color: #555;" id="u_detail_email">-</div>
+                        </div>
+                    </div>
+
+                    <div
+                        style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem; margin-bottom: 15px;">
+                        <div style="background: white; padding: 5px; border: 1px solid #eee;">
+                            <div style="color: #888; border-bottom: 1px solid #eee; margin-bottom: 3px;">Приступ</div>
+                            <div>Прва: <span id="u_detail_p0">-</span></div>
+                            <div>Задња: <span id="u_detail_p1">-</span></div>
+                            <div>Пријава: <span id="u_detail_count">-</span></div>
+                        </div>
+                        <div style="background: white; padding: 5px; border: 1px solid #eee;">
+                            <div style="color: #888; border-bottom: 1px solid #eee; margin-bottom: 3px;">Активност</div>
+                            <div>Ставки: <span id="u_detail_stavki">-</span></div>
+                            <div>Догађаја: <span id="u_detail_dogadjaja">-</span></div>
+                            <div>Записа: <span id="u_detail_zapisa">-</span></div>
+                        </div>
+                    </div>
+
+                    <div style="border-top: 1px solid #eee; padding-top: 10px;">
+                        <div style="display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 10px;">
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="checkbox" id="u_detail_urednik"> Уредник
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer;">
+                                <input type="checkbox" id="u_detail_moze_ucitati"> Дозвола за учитавање
+                            </label>
+                            <label style="display: flex; align-items: center; gap: 5px; cursor: pointer; color: red;">
+                                <input type="checkbox" id="u_detail_blokiran"> <strong>БЛОКИРАН</strong>
+                            </label>
+                        </div>
+                        <div class="form-group mb-2">
+                            <textarea id="u_detail_napomena" class="form-control" rows="3" placeholder="напомена"
+                                style="font-size: 0.85rem;"></textarea>
+                        </div>
+                        <div style="text-align: right;">
+                            <span id="user_update_alerts" style="margin-right: 10px; font-size: 0.85rem;"></span>
+                            <button id="btn_update_user" class="btn btn-white border border-dark">сачувај
+                                измјене</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spinner -->
+            <div id="user_management_loading" style="display: none; text-align: center; padding: 10px;">
+                <div class="spinner-border text-secondary spinner-border-sm" role="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pretraga Stavki -->
+    <div id="urednik_pretraga_stavki" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>претрага ставки</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_pretraga_stavki_podaci"></span></span>
+    </div>
+    <div id="urednik_pretraga_stavki_podaci" class="collapse">
+        <form id="form_pretraga_stavki" class="mt-2">
+            <div class="form-row mb-2">
+                <div class="col-3">
+                    <input type="number" id="stavka_id" class="form-control" placeholder="ID">
+                </div>
+                <div class="col-9">
+                    <select class="form-control" id="stavka_tabela">
+                        <option value="0">изабери тему:</option>
+                        <!-- Theme options will be loaded dynamically -->
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <select id="stavka_razred" class="form-control">
+                        <option value="">разред</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="stavka_vrsta" class="form-control">
+                        <option value="">врста</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="stavka_podvrsta" class="form-control">
+                        <option value="">подврста</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col-6">
+                    <input type="text" id="stavka_od" class="form-control flatpickr-datetime" placeholder="од">
+                </div>
+                <div class="col-6">
+                    <input type="text" id="stavka_do" class="form-control flatpickr-datetime" placeholder="до">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <select id="stavka_prostorno" class="form-control">
+                        <option value="">просторно</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="stavka_vremenski" class="form-control">
+                        <option value="">временски</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+                <div class="col">
+                    <select id="stavka_izvor" class="form-control">
+                        <option value="-1">извор</option>
+                        <option value="1">одређено</option>
+                        <option value="0">неодређено</option>
+                    </select>
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="col">
+                    <input type="text" id="stavka_opis" class="form-control" placeholder="опис">
+                </div>
+            </div>
+            <div class="form-row mt-2">
+                <div class="col">
+                    <div id="stavka_alert_area" style="color: orange; display: none;"></div>
+                </div>
+                <button type="submit" class="btn btn-white border border-dark">тражи</button>
+                <div class="spinner-border text-secondary spinner-border-sm m-2" id="stavka_search_cekanje"
+                    role="status" style="visibility: hidden;">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Odobravanje Stavki -->
+    <div id="urednik_odobravanje_stavki" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>одобравање ставки</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_odobravanje_stavki_podaci"></span></span>
+    </div>
+    <div id="urednik_odobravanje_stavki_podaci" class="collapse">
+        <div style="margin-top: 10px;">
+            <!-- Alert/Message Area -->
+            <div id="stavke_approval_alerts" style="color: orange; margin-bottom: 10px;"></div>
+
+            <!-- 1. Summary View: List of themes with pending items -->
+            <div id="stavke_approval_summary">
+                <p id="stavke_summary_empty" style="padding: 10px; margin: 5px 0; display: none;">Нема ставки за
+                    одобрење.</p>
+                <div id="stavke_summary_list" class="list-group list-group-flush" style="font-size: 0.9rem;">
+                    <!-- Theme list will be populated here -->
+                </div>
+            </div>
+
+            <!-- 2. Detailed View: Table of items for a specific theme -->
+            <div id="stavke_approval_detail" style="display: none;">
+                <div
+                    style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; border-bottom: 1px solid #eee; padding-bottom: 5px;">
+                    <span id="stavke_detail_theme_name" style="color: darkorange;"></span>
+                    <button class="btn btn-sm btn-link" id="btn_back_to_stavke_summary"
+                        style="color: grey; text-decoration: none;">&larr; назад на листу</button>
+                </div>
+
+                <div style="overflow-x: auto;">
+                    <table class="table-hover-custom"
+                        style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid #ddd; background-color: #f9f9f9;">
+                                <th style="padding: 3px; text-align: left;">опис</th>
+                                <th style="padding: 3px; text-align: left; width: 80px;">разред</th>
+                                <th style="padding: 3px; text-align: left; width: 100px;">врста</th>
+                                <th style="padding: 3px; text-align: left; width: 100px;">подврста</th>
+                                <th style="padding: 3px; text-align: left; width: 130px;">почетак</th>
+                                <th style="padding: 3px; text-align: left; width: 130px;">крај</th>
+                                <th style="padding: 3px; text-align: left; width: 60px;">корисник</th>
+                                <th style="padding: 3px; text-align: left; width: 100px;">извор</th>
+                                <th style="padding: 3px; text-align: left; width: 60px;">запис</th>
+                                <th style="padding: 3px; text-align: center; width: 20px; background-color: #90EE90;">
+                                    <input type="checkbox" id="stavke_approve_all">
+                                </th>
+                                <th style="padding: 3px; text-align: center; width: 20px; background-color: #FFB6C6;">
+                                    <input type="checkbox" id="stavke_delete_all">
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody id="stavke_approval_body">
+                            <!-- Items will be populated dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button id="btn_izvrsi_stavke" class="btn btn-white border border-dark">изврши</button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="stavke_approval_loading" style="display: none; text-align: center; padding: 20px;">
+                <div class="spinner-border text-secondary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Odobravanje Događaja -->
+    <div id="urednik_odobravanje_dogadjaja" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>одобравање догађаја</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_odobravanje_dogadjaja_podaci"></span></span>
+    </div>
+    <div id="urednik_odobravanje_dogadjaja_podaci" class="collapse">
+        <div style="margin-top: 10px;">
+            <!-- Alert/Message Area -->
+            <div id="dogadjaji_approval_alerts" style="color: orange; margin-bottom: 10px;"></div>
+
+            <!-- Results Table -->
+            <div id="dogadjaji_approval_results" style="display: none;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <th style="padding: 3px; text-align: left; width: 50px;">ID</th>
+                            <th style="padding: 3px; text-align: left;">опис</th>
+                            <th style="padding: 3px; text-align: left; width: 140px;">почетак</th>
+                            <th style="padding: 3px; text-align: left; width: 140px;">крај</th>
+                            <th style="padding: 3px; text-align: left; width: 70px;">корисник</th>
+                            <th style="padding: 3px; text-align: center; width: 30px;"></th>
+                            <th style="padding: 3px; text-align: center; width: 20px; background-color: #90EE90;">
+                                <input type="checkbox" id="dogadjaji_approve_all">
+                            </th>
+                            <th style="padding: 3px; text-align: center; width: 20px; background-color: #FFB6C6;">
+                                <input type="checkbox" id="dogadjaji_delete_all">
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="dogadjaji_approval_body">
+                        <!-- Results will be populated dynamically -->
+                    </tbody>
+                </table>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button id="btn_izvrsi_dogadjaji" class="btn btn-white border border-dark">изврши</button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="dogadjaji_approval_loading" style="display: none; text-align: center; padding: 20px;">
+                <div class="spinner-border text-secondary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Odobravanje Zapisa -->
+    <div id="urednik_odobravanje_zapisa" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>одобравање записа</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_odobravanje_zapisa_podaci"></span></span>
+    </div>
+    <div id="urednik_odobravanje_zapisa_podaci" class="collapse">
+        <div style="margin-top: 10px;">
+            <!-- Alert/Message Area -->
+            <div id="zapisi_approval_alerts" style="color: orange; margin-bottom: 10px;"></div>
+
+            <!-- Results Table -->
+            <div id="zapisi_approval_results" style="display: none;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #ddd;">
+                            <th style="padding: 3px; text-align: left; width: 50px;">ID</th>
+                            <th style="padding: 3px; text-align: left; width: 150px;">назив</th>
+                            <th style="padding: 3px; text-align: left;">опис</th>
+                            <th style="padding: 3px; text-align: left; width: 120px;">тема</th>
+                            <th style="padding: 3px; text-align: left; width: 70px;">корисник</th>
+                            <th style="padding: 3px; text-align: center; width: 20px; background-color: #90EE90;">
+                                <input type="checkbox" id="zapisi_approve_all">
+                            </th>
+                            <th style="padding: 3px; text-align: center; width: 20px; background-color: #FFB6C6;">
+                                <input type="checkbox" id="zapisi_delete_all">
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="zapisi_approval_body">
+                        <!-- Results will be populated dynamically -->
+                    </tbody>
+                </table>
+                <div style="margin-top: 10px; text-align: right;">
+                    <button id="btn_izvrsi_zapisi" class="btn btn-white border border-dark">изврши</button>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="zapisi_approval_loading" style="display: none; text-align: center; padding: 20px;">
+                <div class="spinner-border text-secondary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pokretanje Bekapa -->
+    <div id="urednik_pokretanje_bekapa" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>покретање бекапа</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_pokretanje_bekapa_podaci"></span></span>
+    </div>
+    <div id="urednik_pokretanje_bekapa_podaci" class="collapse">
+        <p style="padding: 10px; margin: 5px 0;">Садржај за покретање бекапа...</p>
+    </div>
+
+    <!-- Pokretanje Brojača -->
+    <div id="urednik_pokretanje_brojaca" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>покретање бројача</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_pokretanje_brojaca_podaci"></span></span>
+    </div>
+    <div id="urednik_pokretanje_brojaca_podaci" class="collapse">
+        <div style="margin-top: 10px;">
+            <!-- Alert/Message Area -->
+            <div id="brojaca_alerts" style="margin-bottom: 10px;"></div>
+
+            <!-- Sync Button -->
+            <div style="margin-bottom: 10px;">
+                <button id="btn_sync_counters" class="btn btn-white border border-dark">усклади бројаче</button>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div id="brojaca_loading" style="display: none; text-align: center; padding: 20px;">
+                <div class="spinner-border text-secondary" role="status">
+                    <span class="sr-only">Loading...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>

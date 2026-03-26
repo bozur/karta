@@ -1,0 +1,144 @@
+<span style="display: block">
+    <span class="naslov">Записи</span>
+</span>
+
+<style>
+    #zapisi_results table tr:hover {
+        background-color: rgba(0, 0, 0, 0.05);
+    }
+
+    #zapisi_results {
+        margin-top: 15px;
+    }
+
+    /* Custom file input styling */
+    .custom-file-label::after {
+        content: "изабери запис";
+    }
+
+    .custom-file-input:lang(sr)~.custom-file-label::after {
+        content: "изабери запис";
+    }
+
+    .zapis-link {
+        color: darkorange;
+        text-decoration: none;
+    }
+
+    .zapis-link:hover {
+        text-decoration: underline;
+        color: darkorange;
+    }
+</style>
+
+<div id="zapisi_accordion">
+    <!-- Унос Section -->
+    <div id="zapisi_unos" class="mt-2"><strong>унос</strong> <span class="bi bi-arrows-expand ml-2"
+            data-toggle="collapse" data-target="#zapisi_unos_sadrzaj"></span>
+    </div>
+    <div id="zapisi_unos_sadrzaj" class="collapse">
+        <div style="margin-top: 10px;">
+            <form id="zapisi_unos_form" enctype="multipart/form-data" novalidate>
+                <!-- Hidden field for username -->
+                <input type="hidden" id="unos_korisnik" name="korisnik">
+
+                <div class="form-row">
+                    <div class="col">
+                        <input type="text" class="form-control" id="unos_naziv" name="naziv" placeholder="назив *">
+                    </div>
+                    <div class="col">
+                        <select id="unos_tema" name="tema_id" class="form-control">
+                            <option value="">-- изаберите тему --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="col">
+                        <textarea class="form-control" id="unos_opis" name="opis" placeholder="опис *" rows="3"
+                            style="resize: both;"></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="col">
+                        <input type="text" class="form-control" id="unos_tagovi" name="tagovi"
+                            placeholder="тагови (одвојени зарезом) *">
+                    </div>
+                    <div class="col-7">
+                        <div class="custom-file">
+                            <input type="file" class="custom-file-input" id="unos_file" name="file"
+                                accept=".pdf,.jpg,.jpeg,.png">
+                            <label class="custom-file-label" for="unos_file">запис није изабран</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-row mt-2">
+                    <div class="col">
+                        <div id="unos_error" style="color: orange; display: none;"></div>
+                    </div>
+                    <button type="submit" class="btn btn-white border border-dark">додај</button>
+                    <div class="spinner-border text-secondary spinner-border-sm m-2" id="unos_cekanje" role="status"
+                        style="visibility: hidden;">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Тражи Section -->
+    <div id="zapisi_trazi" class="mt-2"><strong>тражи</strong> <span class="bi bi-arrows-expand ml-2"
+            data-toggle="collapse" data-target="#zapisi_trazi_sadrzaj"></span>
+    </div>
+    <div id="zapisi_trazi_sadrzaj" class="collapse show">
+        <div style="margin-top: 10px;">
+            <form id="zapisi_trazi_form">
+                <div class="form-row">
+                    <div class="col">
+                        <input type="text" class="form-control" id="trazi_naziv" name="naziv" placeholder="назив">
+                    </div>
+                    <div class="col">
+                        <select id="trazi_tema" name="tema" class="form-control">
+                            <option value="">-- све теме --</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <input type="text" class="form-control" id="trazi_korisnik" name="korisnik"
+                            placeholder="корисник">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="col">
+                        <input type="text" class="form-control" id="trazi_opis" name="opis" placeholder="опис">
+                    </div>
+                    <div class="col">
+                        <input type="text" class="form-control" id="trazi_tagovi" name="tagovi" placeholder="тагови">
+                    </div>
+                </div>
+
+                <div class="form-row mt-2">
+                    <div class="col">
+                        <div id="trazi_error" style="color: orange; display: none;"></div>
+                    </div>
+                    <button type="submit" class="btn btn-white border border-dark">тражи</button>
+                    <div class="spinner-border text-secondary spinner-border-sm m-2" id="trazi_cekanje" role="status"
+                        style="visibility: hidden;">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Results Table -->
+        <div id="zapisi_results" style="display: none;">
+            <table style="width: 100%; border-collapse: collapse;">
+                <tbody id="zapisi_results_body">
+                    <!-- Results will be populated dynamically -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

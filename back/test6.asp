@@ -1,4 +1,0 @@
-<%
-
-Response.write "dddddddddddd"
-%>
