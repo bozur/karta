@@ -104,6 +104,32 @@ html {
   color: #f5a615;
 }
 
+#custom-google-btn {
+  background-color: transparent !important;
+  border: 1px solid #ffffff !important;
+  color: #ffffff !important;
+  border-radius: 4px;
+  padding: 8px 16px;
+  width: 100%;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+#custom-google-btn:hover {
+  background-color: rgba(245, 166, 21, 0.15) !important;
+  border-color: #f5a615 !important;
+  color: #f5a615 !important;
+}
+
+#custom-google-btn svg {
+  margin-right: 10px;
+  flex-shrink: 0;
+}
+
 /* Karta page specific styles */
 #kartaid {
   height: 100%;

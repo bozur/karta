@@ -24,7 +24,8 @@ The korisnik tab allows logged-in users to view their profile statistics and edi
 | `prezime` | NVARCHAR(20) | NULL | Last name (4-20 chars) |
 | `korisnik` | NVARCHAR(20) | NULL | Username (4-20 chars) |
 | `eposta` | NVARCHAR(50) | NOT NULL, UNIQUE | Email address (7-50 chars) |
-| `lozinka` | NVARCHAR(255) | NOT NULL | Bcrypt hashed password |
+| `lozinka` | NVARCHAR(255) | NULL | Bcrypt hashed password (NULL for Google-only users) |
+| `google_id` | VARCHAR(255) | NULL, UNIQUE | Google OAuth 2.0 unique subject identifier |
 | `slika_url` | NVARCHAR(255) | NULL | Profile picture URL (min 5 chars) |
 | `pristup0` | DATETIME2 | NULL | First login timestamp |
 | `pristup1` | DATETIME2 | NULL | Last login timestamp |

@@ -163,6 +163,14 @@ const poolPromise = (async () => {
             CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON "session" ("expire");
         `);
         console.log('✓ Session table verified');
+
+        // Ensure google_id column exists on korisnik table
+        console.log('Ensuring google_id column exists on korisnik table...');
+        await client.query(`
+            ALTER TABLE "korisnik" ADD COLUMN IF NOT EXISTS "google_id" VARCHAR(255) UNIQUE;
+        `);
+        console.log('✓ google_id column verified on korisnik');
+
         client.release();
 
         // Return a mock pool object that server.js expects

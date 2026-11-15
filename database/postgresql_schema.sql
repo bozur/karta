@@ -208,6 +208,7 @@ CREATE TABLE "korisnik" (
   "eposta" VARCHAR(50) UNIQUE,
   "slika_url" VARCHAR(255),
   "lozinka" VARCHAR(255),
+  "google_id" VARCHAR(255) UNIQUE,
   "stavka" INTEGER,
   "stavka_cekanje" INTEGER,
   "stavka_obrisano" INTEGER,

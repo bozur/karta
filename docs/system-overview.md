@@ -213,6 +213,37 @@ req.session.user = {
 - User not found: "корисник није пронађен"
 - Success: "нова лозинка је прослијеђена на е-пошту"
 
+### Google Sign-In Flow (OAuth 2.0 / OpenID Connect)
+
+**Frontend:**
+- SDK: Google Identity Services (`https://accounts.google.com/gsi/client`)
+- Trigger: Custom transparent button (`#custom-google-btn`) via `google.accounts.oauth2.initTokenClient`
+- Scope: `email profile openid`
+
+**Endpoint:** `POST /api/auth/google`
+
+**Payload:**
+```json
+{
+  "access_token": "ya29.a0..." 
+}
+```
+*(Also supports direct JWT `credential`)*
+
+**Process:**
+1. User clicks custom transparent button "Настави са Google налогом".
+2. Google Identity Services displays the official account selection popup.
+3. On user confirmation, Google returns an `access_token` (or ID token `credential`).
+4. Frontend sends token to `POST /api/auth/google`.
+5. Server verifies token against Google API (`/tokeninfo` & `/userinfo`) and checks `GOOGLE_CLIENT_ID`.
+6. Checks database (`korisnik` table) for matching `google_id` or `eposta`:
+   - **Existing user:** Links `google_id` if not already set, updates profile picture if empty.
+   - **New user:** Automatically creates a new user with `google_id`, `eposta`, username, and avatar URL.
+7. Checks if account is blocked (`blokiran` / `zabranjen`).
+8. Updates access statistics (`pristup0`, `pristup1`, `brojac_pristupa`).
+9. Creates session `req.session.user` with 30-day persistence.
+10. Returns `{ success: true, redirect: '/karta.html' }`.
+
 ### Logout Flow
 
 **Endpoint:** `POST /api/logout`
@@ -258,6 +289,10 @@ req.session.user = {
 **Container:** Centered, bordered with warning color  
 **Width:** 400px  
 **Background:** Transparent with border
+
+**Primary Quick Access:**
+- **Google Sign-In Button** (`#custom-google-btn`): Transparent button with official Google SVG icon and white text ("Настави са Google налогом"). Triggers OAuth popup via Google Identity Services.
+- **Divider:** "— или класично —"
 
 **Sections (Toggle-able):**
 
@@ -440,7 +475,7 @@ req.session.user = {
 ### Mapbox Access Token
 
 **Location:** Hardcoded in `karta.js`  
-**Token:** `pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ`
+**Token:** `[MAPBOX_PUBLIC_TOKEN]` (configured in karta.js)
 
 **Tile Layers:**
 1. **Terrain (Regular):** `mapbox/streets-v12`
@@ -808,6 +843,10 @@ flatpickr(".flatpickr-datetime", {
 - `SESSION_SECRET` - Auto-generated
 - `NODE_ENV` - production
 - `RESEND_API_KEY` - Manual configuration
+- `GOOGLE_CLIENT_ID` - Google OAuth 2.0 Web Client ID
+- `GOOGLE_CLIENT_SECRET` - Google OAuth 2.0 Client Secret
+- `RECAPTCHA_SECRET_KEY` - Google reCAPTCHA v3 Secret
+- `VIRUSTOTAL_API_KEY` - VirusTotal scan API key
 
 ### Persistent Disk
 
@@ -828,6 +867,8 @@ flatpickr(".flatpickr-datetime", {
 
 | Date | Changes | Modified By |
 |------|---------|-------------|
+| 2026-11-15 | Added Google OAuth 2.0 / OpenID Connect authentication & registration, custom transparent UI button | Antigravity AI |
+| 2025-12-31 | Initial system overview documentation | Development Team |
 | 2025-12-04 | Initial documentation created | AI Assistant |
 | 2025-12-04 | Added Serbian Cyrillic localization for drawing tools and zoom controls | AI Assistant |
 | 2025-12-31 | Major update: PostgreSQL migration, Render deployment, email system (Resend), comments system, Flatpickr integration, urednik tab, updated file structure | AI Assistant |

@@ -2119,6 +2119,9 @@ app.post('/api/login', authLimiter, async (req, res) => {
         }
 
         // Verify password
+        if (!user.lozinka) {
+            return res.status(401).json({ error: 'Овај налог је регистрован путем Google-а. Пријавите се преко Google дугмета.' });
+        }
 
         const match = await bcrypt.compare(password, user.lozinka);
         if (!match) {
@@ -2169,6 +2172,153 @@ app.post('/api/login', authLimiter, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal server error' });
+    }
+});
+
+// POST /api/auth/google - Google OAuth 2.0 / OpenID Connect Login & Registration
+app.post('/api/auth/google', authLimiter, async (req, res) => {
+    const { credential, access_token } = req.body;
+
+    if (!credential && !access_token) {
+        return res.status(400).json({ error: 'Недостаје Google акредитив.' });
+    }
+
+    try {
+        let email, googleId, picture, givenName;
+
+        if (credential) {
+            // Verify Google token via Google OAuth2 tokeninfo endpoint
+            const tokenRes = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+            const payload = tokenRes.data;
+
+            // Verify audience matches our Client ID
+            if (payload.aud !== process.env.GOOGLE_CLIENT_ID) {
+                console.error('Google Auth: Invalid aud:', payload.aud);
+                return res.status(401).json({ error: 'Неважећи Google ID клијента.' });
+            }
+
+            email = payload.email;
+            googleId = payload.sub;
+            picture = payload.picture;
+            givenName = payload.given_name;
+        } else if (access_token) {
+            // Verify access_token via Google tokeninfo endpoint
+            const tokeninfoRes = await axios.get(`https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(access_token)}`);
+            if (tokeninfoRes.data.aud !== process.env.GOOGLE_CLIENT_ID && tokeninfoRes.data.azp !== process.env.GOOGLE_CLIENT_ID) {
+                console.error('Google Auth: Invalid access_token aud:', tokeninfoRes.data.aud);
+                return res.status(401).json({ error: 'Неважећи Google ID клијента.' });
+            }
+
+            // Fetch user info from Google userinfo endpoint
+            const userinfoRes = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { Authorization: `Bearer ${access_token}` }
+            });
+            const payload = userinfoRes.data;
+
+            email = payload.email;
+            googleId = payload.sub;
+            picture = payload.picture;
+            givenName = payload.given_name || payload.name;
+        }
+
+        if (!email) {
+            return res.status(400).json({ error: 'Google није испоручио адресу е-поште.' });
+        }
+
+        const pool = await poolPromise;
+
+        // 1. Check if user already exists (by google_id or email)
+        const userResult = await pool.request()
+            .input('googleId', sql.NVarChar, googleId)
+            .input('email', sql.NVarChar, email)
+            .query('SELECT * FROM korisnik WHERE google_id = @googleId OR eposta = @email');
+
+        let user;
+
+        if (userResult.recordset.length > 0) {
+            user = userResult.recordset[0];
+
+            // If account existed by email without google_id, link it now
+            if (!user.google_id) {
+                await pool.request()
+                    .input('id', sql.Int, user.id)
+                    .input('googleId', sql.NVarChar, googleId)
+                    .query('UPDATE korisnik SET google_id = @googleId WHERE id = @id');
+                user.google_id = googleId;
+            }
+
+            // Update profile picture if user doesn't have one and Google provides one
+            if (!user.slika_url && picture) {
+                await pool.request()
+                    .input('id', sql.Int, user.id)
+                    .input('picture', sql.NVarChar, picture)
+                    .query('UPDATE korisnik SET slika_url = @picture WHERE id = @id');
+            }
+        } else {
+            // 2. New user registration via Google
+            const baseUsername = (givenName || email.split('@')[0]).replace(/[^a-zA-Z0-9а-яА-ЯёЁ_]/g, '');
+            const username = (baseUsername.length > 0 ? baseUsername : 'korisnik').substring(0, 20);
+
+            const insertResult = await pool.request()
+                .input('email', sql.NVarChar, email)
+                .input('username', sql.NVarChar, username)
+                .input('googleId', sql.NVarChar, googleId)
+                .input('picture', sql.NVarChar, picture || null)
+                .query(`
+                    INSERT INTO korisnik (eposta, korisnik, google_id, slika_url, pristup0, brojac_pristupa)
+                    VALUES (@email, @username, @googleId, @picture, GETUTCDATE(), 0)
+                    RETURNING *
+                `);
+            user = insertResult.recordset[0];
+        }
+
+        // Check if user is blocked or banned
+        if (user.blokiran === 1 || user.blokiran === true || user.zabranjen === true) {
+            return res.status(403).json({ error: 'Ваш налог је блокиран. Обратите се уреднику.' });
+        }
+
+        const previousVisit = user.pristup1;
+
+        // Update access timestamps and counter
+        await pool.request()
+            .input('id', sql.Int, user.id)
+            .query(`
+                UPDATE korisnik 
+                SET pristup0 = CASE WHEN pristup0 IS NULL THEN GETUTCDATE() ELSE pristup0 END,
+                    pristup1 = GETUTCDATE(),
+                    brojac_pristupa = ISNULL(brojac_pristupa, 0) + 1 
+                WHERE id = @id
+            `);
+
+        // Set session with standard or extended timeout (30 days)
+        req.session.cookie.maxAge = 30 * 24 * 60 * 60 * 1000;
+
+        req.session.user = {
+            id: user.id,
+            username: user.korisnik,
+            email: user.eposta,
+            urednik: user.urednik,
+            previousVisit: previousVisit,
+            statsAtLogin: {
+                stavki: user.brojac_stavki || 0,
+                zapisi: user.brojac_zapisa || 0,
+                dogadjaji: user.brojac_dogadjaja || 0
+            }
+        };
+
+        console.log(`✓ Google User ${user.id} (${user.eposta}) authenticated. Saving session...`);
+        req.session.save(err => {
+            if (err) {
+                console.error('CRITICAL: Session save error during Google login:', err);
+                return res.status(500).json({ error: 'Internal server error' });
+            }
+            console.log(`✓ Session saved for Google user ${user.id}. Redirecting to /karta.html`);
+            res.json({ success: true, redirect: '/karta.html' });
+        });
+
+    } catch (err) {
+        console.error('Google Auth Error:', err.response?.data || err.message);
+        res.status(500).json({ error: 'Грешка приликом провере Google налога.' });
     }
 });
 

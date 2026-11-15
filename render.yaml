@@ -18,6 +18,10 @@ services:
         value: production
       - key: RESEND_API_KEY
         sync: false # User must set this manually in Render dashboard
+      - key: GOOGLE_CLIENT_ID
+        sync: false # Google OAuth Client ID
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false # Google OAuth Client Secret
     disk:
       name: karta-uploads
       mountPath: /opt/render/project/src/uploads

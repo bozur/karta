@@ -181,4 +181,57 @@ $(document).ready(function () {
         });
     });
 
+    // --- Google Sign-In Integration (Custom Transparent Button) ---
+    let googleTokenClient = null;
+
+    function initGoogleSignIn() {
+        if (typeof google !== 'undefined' && google.accounts && google.accounts.oauth2) {
+            googleTokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: '757790338568-trsirv20rq325n3skevc3mj0immi2q16.apps.googleusercontent.com',
+                scope: 'email profile openid',
+                callback: function (tokenResponse) {
+                    if (tokenResponse && tokenResponse.access_token) {
+                        $('#loggingenter0').text('Пријављивање путем Google-а...').css('color', '#ffc107');
+
+                        $.ajax({
+                            url: '/api/auth/google',
+                            type: 'POST',
+                            contentType: 'application/json',
+                            data: JSON.stringify({ access_token: tokenResponse.access_token }),
+                            success: function (res) {
+                                if (res.success) {
+                                    window.location.href = res.redirect || '/karta.html';
+                                }
+                            },
+                            error: function (xhr) {
+                                let errorMsg = 'Грешка приликом Google пријаве.';
+                                if (xhr.responseJSON && xhr.responseJSON.error) {
+                                    errorMsg = xhr.responseJSON.error;
+                                }
+                                $('#loggingenter0').text(errorMsg).css('color', '#f5a615');
+                                $('#newuserenter0').text(errorMsg).css('color', '#f5a615');
+                            }
+                        });
+                    } else if (tokenResponse && tokenResponse.error) {
+                        console.warn('Google Auth popup closed or cancelled:', tokenResponse.error);
+                    }
+                }
+            });
+        } else {
+            setTimeout(initGoogleSignIn, 150);
+        }
+    }
+
+    initGoogleSignIn();
+
+    $(document).on('click', '#custom-google-btn', function (e) {
+        e.preventDefault();
+        if (googleTokenClient) {
+            googleTokenClient.requestAccessToken();
+        } else {
+            console.warn('Google client not initialized yet, retrying...');
+            initGoogleSignIn();
+        }
+    });
+
 });
