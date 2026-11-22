@@ -424,3 +424,7 @@ div {
 .custom-file-label::after {
   content: "изабери сличицу" !important;
 }
+
+#zapisi_unos_form .custom-file-label::after {
+  content: "изабери запис" !important;
+}
