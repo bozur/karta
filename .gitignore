@@ -5,3 +5,15 @@ npm-debug.log*
 .DS_Store
 Thumbs.db
 scraper/output2.xlsx
+
+# Veliki podaci, bekapi i pomocni fajlovi iz scraper/database/uploads
+scraper/*.pdf
+scraper/*.xlsx
+scraper/*.geojson
+scraper/*.htm
+scraper/osm_greece_places.json
+scraper/pdf_pages.json
+scraper/vasmer_entries_complete.json
+scraper/recovered_user_opisi.json
+database/prod_table2_backup_*.json
+uploads/zapisi/Die_Slaven_in_Griechenland.pdf
