@@ -4,6 +4,7 @@ function initUrednikSection() {
     console.log('Urednik section initialized');
     initReportedComments();
     initThemeLocking();
+    initUplateAdmin();
 
     // Novosti insertion logic
     const btnUnesi = document.getElementById('btn_unesi_novosti');
@@ -2147,4 +2148,136 @@ function deleteStavka(id, tabela) {
                 $('#edit_stavka_msg').css('color', 'red').text(res.error || 'Грешка');
             }
         });
+}
+
+// ============================================
+// Uplate (Monthly Support Donations) Management
+// ============================================
+
+const UPLATE_MESECI_NAZIVI = [
+    'јануар', 'фебруар', 'март', 'април', 'мај', 'јун',
+    'јул', 'август', 'септембар', 'октобар', 'новембар', 'децембар'
+];
+
+function initUplateAdmin() {
+    $('#urednik_uplate_podaci').off('shown.bs.collapse').on('shown.bs.collapse', function () {
+        loadUplateAdmin();
+    });
+
+    const btnSacuvaj = document.getElementById('btn_sacuvaj_uplate');
+    if (btnSacuvaj) {
+        btnSacuvaj.onclick = saveUplateAdmin;
+    }
+}
+
+async function loadUplateAdmin() {
+    const loadingDiv = document.getElementById('uplate_loading');
+    const formaDiv = document.getElementById('uplate_forma');
+    const alertsDiv = document.getElementById('uplate_alerts');
+    const troskoviInput = document.getElementById('uplate_troskovi_input');
+    const tbody = document.getElementById('uplate_meseci_body');
+
+    if (!tbody) return;
+
+    if (alertsDiv) {
+        alertsDiv.innerText = '';
+        alertsDiv.style.display = 'none';
+    }
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (formaDiv) formaDiv.style.display = 'none';
+
+    try {
+        const response = await fetch('/api/podrska/uplate');
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.error || 'Грешка при учитавању уплата.');
+        }
+
+        if (troskoviInput) {
+            troskoviInput.value = data.mesecniTroskovi;
+        }
+
+        tbody.innerHTML = '';
+        (data.meseci || []).forEach((m, index) => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid #eee';
+            if (index === 0) {
+                tr.style.backgroundColor = 'rgba(245, 166, 21, 0.12)';
+            }
+
+            const mesecNaziv = UPLATE_MESECI_NAZIVI[(m.mesec || 1) - 1] || m.mesec;
+            const oznaka = index === 0
+                ? `<strong>${mesecNaziv} ${m.godina}</strong> <span style="color: #b57600; font-size: 0.78rem;">(текући)</span>`
+                : `${mesecNaziv} ${m.godina}`;
+
+            tr.innerHTML = `
+                <td style="padding: 5px; text-align: left;">${oznaka}</td>
+                <td style="padding: 4px 5px; text-align: right;">
+                    <input type="number" class="form-control form-control-sm uplate-mesec-input"
+                        data-godina="${m.godina}" data-mesec="${m.mesec}"
+                        value="${m.iznos}" min="0" step="1"
+                        style="width: 120px; display: inline-block; text-align: right; font-size: 0.85rem;">
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (formaDiv) formaDiv.style.display = 'block';
+    } catch (err) {
+        console.error('Error loading uplate admin:', err);
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (alertsDiv) {
+            showAlert(alertsDiv, err.message || 'Грешка при учитавању података.', 'danger');
+        }
+    }
+}
+
+async function saveUplateAdmin() {
+    const alertsDiv = document.getElementById('uplate_alerts');
+    const troskoviInput = document.getElementById('uplate_troskovi_input');
+    const inputs = document.querySelectorAll('.uplate-mesec-input');
+    const btnSacuvaj = document.getElementById('btn_sacuvaj_uplate');
+
+    const mesecniTroskovi = parseInt(troskoviInput ? troskoviInput.value : '', 10);
+    if (isNaN(mesecniTroskovi) || mesecniTroskovi < 0) {
+        showAlert(alertsDiv, 'Унесите исправан износ за месечне техничке трошкове (0 или више).', 'danger');
+        return;
+    }
+
+    const meseci = [];
+    for (const input of inputs) {
+        const godina = parseInt(input.getAttribute('data-godina'), 10);
+        const mesec = parseInt(input.getAttribute('data-mesec'), 10);
+        const iznos = parseInt(input.value === '' ? '0' : input.value, 10);
+
+        if (isNaN(iznos) || iznos < 0) {
+            showAlert(alertsDiv, 'Сви месечни износи морају бити ненегативни бројеви.', 'danger');
+            return;
+        }
+        meseci.push({ godina, mesec, iznos });
+    }
+
+    if (btnSacuvaj) btnSacuvaj.disabled = true;
+
+    try {
+        const response = await fetch('/api/urednik/uplate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ mesecniTroskovi, meseci })
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            showAlert(alertsDiv, data.message || 'Подаци су успешно сачувани.', 'success');
+        } else {
+            showAlert(alertsDiv, data.error || 'Грешка при чувању података.', 'danger');
+        }
+    } catch (err) {
+        console.error('Error saving uplate:', err);
+        showAlert(alertsDiv, 'Грешка на серверу при чувању података.', 'danger');
+    } finally {
+        if (btnSacuvaj) btnSacuvaj.disabled = false;
+    }
 }

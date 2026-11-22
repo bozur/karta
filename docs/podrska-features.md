@@ -1,456 +1,85 @@
 # Podrska (Support) Tab - Feature Documentation
 
-This document describes all features and behaviors of the "podrska" (support) tab for displaying donation and support information.
+This document describes all features and behaviors of the "podrska" (support) tab for supporting the project (`карта.срб`) through data entry, document uploads, social media sharing, and financial contributions.
 
-**Last Updated:** 2025-12-04  
-**Files:** `sections/podrska.html`, `sections/podrska.js`
+**Last Updated:** 2026-11-22  
+**Files:** `sections/podrska.html`, `sections/podrska.js`, `karta.html`, `karta.js`, `server.js`, `database/create_podrska_uplate_tables.sql`
 
 ---
 
 ## Overview
 
-The podrska tab displays information about supporting the project, including contribution methods, donation options, and the project's mission. It's a static informational page with no interactive elements.
+The `podrska` tab uses an accordion-style layout matching the `opste` tab. The introductory paragraph is always visible, followed by four collapsible sections (`унос података`, `унос записа`, `друштвене мреже`, and `новчана подршка`).
 
 ---
 
-## 1. Tab Structure
+## 1. Accordion Structure
 
-### HTML Structure
-
-**File:** `podrska.html`
-
-**Layout:**
-- Title: "Подршка"
-- Three informational paragraphs
-- Static content (no forms or interactive elements)
+- **Introductory paragraph**: Always visible below the `"Подршка"` title.
+- **Collapsible sections** (all collapsed by default, toggled via Bootstrap 4 `data-toggle="collapse"` with `bi-arrows-expand` icon):
+  1. `унос података` (`#podrska_unos_podataka_sadrzaj`)
+  2. `унос записа` (`#podrska_unos_zapisa_sadrzaj`)
+  3. `друштвене мреже` (`#podrska_drustvene_mreze_sadrzaj`)
+  4. `новчана подршка` (`#podrska_novcana_sadrzaj`) — includes a live inline status badge (`#podrska_novcana_status`) right next to the expand icon showing current month progress (e.g., `3.200 РСД / 5.500 РСД (58%)`), colored orange when below technical costs and green when covered.
 
 ---
 
-## 2. Content
+## 2. Social Media Sharing & Map Export (`друштвене мреже`)
 
-### Paragraph 1: Project Mission
+Allows users to export the currently visible Leaflet map area directly in platform-ready formats, branded with **`карта.срб`** and the default slogan `"карта кроз векове, изнад митова и легенди"` (or a custom/active-theme caption via `#podrska_mreze_natpis`).
 
-**Theme:** Community contribution and data preservation
+### Supported Export Formats
+- **Facebook / Viber / WhatsApp**: `1200×630` PNG (`karta-srb-facebook-viber.png`)
+- **Instagram Post**: `1080×1080` PNG (`karta-srb-instagram.png`)
+- **Story / TikTok**: `1080×1920` (9:16) PNG (`karta-srb-story-tiktok.png`)
+- **TikTok / Reels Video**: `720×1280` (9:16) 10-second silent Ken Burns zoom + pan animation (`MediaRecorder` + `canvas.captureStream(30)`), ready for users to add background music inside TikTok/Instagram.
 
-**Key Points:**
-- Project is independent and unbiased
-- Community support is welcome
-- Data contribution is the most valuable support
-- Focus on preserving heritage
-- Educating new generations
+### Map Rendering Requirements
+- All four Mapbox tile layers in `karta.js` use `crossOrigin: 'anonymous'` so map tiles, SVG overlays, marker icons, and marker clusters can be composited cleanly onto an HTML5 Canvas.
+- When the right-side panel (`#section-content`) is open on desktop, cropping automatically centers on the visible portion of the map to the left of the panel.
 
-**Text:**
-```
-Овај подухват је покренут самостално како би превасходно био непристрасан 
-и слободан у представљању тако да је свака подршка добродошла а највише 
-се радујемо подршци која се огледа у Вашем уносу података те чувању наших 
-тековина од заборава и васпитању нових нараштаја!
-```
-
-### Paragraph 2: Non-Financial Support
-
-**Theme:** Sharing and recommendations
-
-**Key Points:**
-- Recommend to friends and acquaintances
-- Share on social media
-- Spread awareness
-
-**Text:**
-```
-Додатно, можете нас подржати тако што ћете нас препоручити вашим познаницима 
-и пријатељима којима би ово могло да буде занимљиво или поделом адресе 
-стране на друштвеним мрежама.
-```
-
-### Paragraph 3: Financial Support (Placeholder)
-
-**Theme:** Future donation options
-
-**Key Points:**
-- Placeholder for donation instructions
-- Server costs, domain, hosting
-- Internet and development costs
-- Currently self-funded
-- Reserved for future needs
-
-**Text:**
-```
-На овој страни би требало да стоји упутство на који начин можете да новчано 
-подржите рад страна. Плаћање трошкова у вези сервера, домена, меморије, 
-интернета и надокнаде људима који раде на развоју и одржавању програма 
-тренутно можемо да покријемо из личних средстава али ако дође до већих 
-потреба просто смо предвидјели да би можда и оваква могућност била од 
-користи у даљем раду па смо оставили овај дио за ту намјену.
-```
+### Quick Share Buttons
+- **Viber**, **WhatsApp**, **Facebook**, and **Подели / Копирај** (uses native `navigator.share` on supported devices, with clipboard fallback).
 
 ---
 
-## 3. JavaScript Functionality
+## 3. Financial Support (`новчана подршка`)
 
-### File: `podrska.js`
+### Payment Tabs (`#podrska_placanje_blok`)
 
-**Implementation:**
-```javascript
-function initPodrskaSection() {
-    console.log('Podrska section initialized');
-}
-```
+1. **Уплате из Србије** (default tab)
+   - **Desktop**: Dynamically generates a **National Bank of Serbia (NBS) IPS QR code** (`qrcode-generator` loaded in `karta.html`) using Latin ASCII text (`Bozur Vujicic`, `podrska za razvoj karta.srb`, payment code `289`, and 18-digit account auto-formatted from `racunPrikaz`). Includes an optional amount input (`#podrska_iznos_input`) that updates the QR payload live, plus a toggle link to view manual payment details.
+   - **Mobile**: Automatically displays formatted payment slip details with one-tap Copy buttons (copying Latin text without diacritics for banking app compatibility) and a **"Преузми IPS QR код (за галерију)"** button for m-banking gallery import, plus a toggle to view the QR code directly.
 
-**Current State:**
-- Minimal implementation
-- No interactive features
-- Only console logging
-- No event handlers
+2. **Уплате из иностранства**
+   - **Primary**: **Ko-fi** button (`https://ko-fi.com/kartasrb`) with inline Ko-fi SVG icon, recommended for donations up to ~400 € (card / PayPal, lowest fees).
+   - **Secondary (collapsible)**: Direct international bank transfer (**IBAN / SWIFT**) recommended for amounts over 400 €, with one-tap Copy buttons for Beneficiary, IBAN, SWIFT/BIC, and Reference.
 
----
-
-## 4. Styling
-
-### Default Styling
-
-**Container:** Standard panel styling  
-**Paragraphs:** Default `<p>` tags with 10px top margin  
-**No Custom CSS:** Uses inherited styles
-
-### Text Formatting
-
-**Font:** Inherited from parent  
-**Alignment:** Left-aligned  
-**Spacing:** 10px margin-top on container  
-**Line Height:** Default
+### Configuration
+All payment details are centralized in `PODRSKA_CONFIG` at the top of `sections/podrska.js`:
+- Domestic: `primalac`, `primalacLatinica`, `racunPrikaz`, `sifraPlacanja`, `svrhaPrikaz`, `svrhaLatinica`
+- International (`inostranstvo`): `kofiUrl`, `primalac`, `iban`, `swift`, `banka`, `svrha`
 
 ---
 
-## 5. Future Enhancements
+## 4. 12-Month Transparency Chart
 
-### Recommended Additions
-
-#### 1. Donation Integration
-
-**Payment Methods:**
-- PayPal integration
-- Stripe payment gateway
-- Bank transfer details
-- Cryptocurrency options
-- Local payment methods (Serbia-specific)
-
-**Implementation:**
-```html
-<div class="donation-section mt-3">
-    <h4>Новчана подршка</h4>
-    <p>Изаберите начин плаћања:</p>
-    
-    <button class="btn btn-primary" id="paypal-donate">
-        PayPal
-    </button>
-    <button class="btn btn-primary" id="stripe-donate">
-        Картица
-    </button>
-    
-    <div class="bank-details mt-3">
-        <h5>Банковни подаци:</h5>
-        <p>IBAN: ...</p>
-        <p>SWIFT: ...</p>
-    </div>
-</div>
-```
-
-#### 2. Donation Tiers
-
-**Levels:**
-- **Подржавалац** (Supporter): 5-10 EUR/month
-- **Донатор** (Donor): 10-25 EUR/month
-- **Покровитељ** (Patron): 25+ EUR/month
-
-**Benefits:**
-- Recognition on website
-- Special badge/icon
-- Early access to features
-- Priority support
-
-#### 3. Progress Tracking
-
-**Display:**
-- Monthly funding goal
-- Current amount raised
-- Progress bar
-- Transparent expense breakdown
-
-**Example:**
-```html
-<div class="funding-progress">
-    <h4>Месечни циљ: 100 EUR</h4>
-    <div class="progress">
-        <div class="progress-bar" style="width: 65%">65 EUR</div>
-    </div>
-    <p>35 EUR до циља</p>
-</div>
-```
-
-#### 4. Expense Transparency
-
-**Categories:**
-- Server hosting
-- Domain registration
-- Database storage
-- Development tools
-- Maintenance costs
-
-**Display:**
-```html
-<div class="expenses">
-    <h4>Месечни трошкови:</h4>
-    <ul>
-        <li>Сервер: 30 EUR</li>
-        <li>Домен: 5 EUR</li>
-        <li>База података: 20 EUR</li>
-        <li>Развој: 45 EUR</li>
-    </ul>
-    <p><strong>Укупно: 100 EUR</strong></p>
-</div>
-```
-
-#### 5. Donor Recognition
-
-**Options:**
-- Public donor list (with permission)
-- Thank you messages
-- Donor wall/hall of fame
-- Monthly highlights
-
-#### 6. Social Sharing
-
-**Features:**
-- Share buttons for social media
-- Pre-filled share text
-- Referral tracking
-- Social proof (X people shared)
-
-**Implementation:**
-```html
-<div class="social-share mt-3">
-    <h4>Подијелите са другима:</h4>
-    <button class="btn btn-outline-primary" onclick="shareOnFacebook()">
-        <i class="bi bi-facebook"></i> Facebook
-    </button>
-    <button class="btn btn-outline-info" onclick="shareOnTwitter()">
-        <i class="bi bi-twitter"></i> Twitter
-    </button>
-</div>
-```
+- Fetches live data from `GET /api/podrska/uplate` (with local fallback if unavailable).
+- Displays a legend (`покривени трошкови`, `испод трошкова`, `технички мјесечни трошкови: ... (хостинг+база+домен)`) and the note: *"Уплате мање од 1.000 РСД ће бити приказане збирно на крају месеца."*
+- Renders **12 stacked horizontal bars** for the past 12 months (current month highlighted at the top), scaled from `0 РСД` to `max(monthlyTechnicalCosts, maxMonthlyIncome)`, with a vertical dashed red reference line indicating monthly technical costs.
 
 ---
 
-## 6. Database Schema (Optional)
+## 5. Database Tables & API Endpoints
 
-### Donation Tracking
+### PostgreSQL Tables
+Auto-created on first request by `ensurePodrskaTables(pool)` in `server.js` (SQL also saved in `database/create_podrska_uplate_tables.sql`):
+- `podrska_podesavanja (kljuc VARCHAR(100) PRIMARY KEY, vrednost VARCHAR(255), azurirano TIMESTAMP)` — stores `mesecni_troskovi` (default `'5500'`).
+- `uplate_mesecne (godina INTEGER, mesec INTEGER, iznos INTEGER, azurirano TIMESTAMP, PRIMARY KEY (godina, mesec))` — stores monthly donation totals in RSD.
 
-```sql
-CREATE TABLE donacije (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    korisnik_id INT NULL,
-    iznos DECIMAL(10,2) NOT NULL,
-    valuta NVARCHAR(3) DEFAULT 'EUR',
-    nacin_placanja NVARCHAR(50), -- 'paypal', 'stripe', 'bank'
-    datum DATETIME2 DEFAULT GETDATE(),
-    status NVARCHAR(20) DEFAULT 'pending', -- 'pending', 'completed', 'failed'
-    poruka NVARCHAR(500) NULL,
-    javno_prikazati BIT DEFAULT 0,
-    
-    CONSTRAINT FK_donacije_korisnik FOREIGN KEY (korisnik_id) 
-        REFERENCES korisnik(id)
-);
-
-CREATE INDEX idx_donacije_datum ON donacije(datum DESC);
-CREATE INDEX idx_donacije_status ON donacije(status);
-```
-
-### Expense Tracking
-
-```sql
-CREATE TABLE troskovi (
-    id INT IDENTITY(1,1) PRIMARY KEY,
-    kategorija NVARCHAR(50) NOT NULL,
-    opis NVARCHAR(255) NOT NULL,
-    iznos DECIMAL(10,2) NOT NULL,
-    valuta NVARCHAR(3) DEFAULT 'EUR',
-    datum DATETIME2 DEFAULT GETDATE(),
-    period NVARCHAR(20) -- 'mesecno', 'godisnje', 'jednokratno'
-);
-```
-
----
-
-## 7. API Endpoints (Proposed)
-
-### POST /api/donacije/create
-
-**Purpose:** Process donation
-
-**Request:**
-```json
-{
-  "iznos": 10.00,
-  "nacin_placanja": "paypal",
-  "poruka": "Optional message",
-  "javno_prikazati": true
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "payment_url": "https://paypal.com/...",
-  "donation_id": 123
-}
-```
-
-### GET /api/donacije/stats
-
-**Purpose:** Get donation statistics
-
-**Response:**
-```json
-{
-  "success": true,
-  "mesecni_cilj": 100.00,
-  "prikupljeno": 65.00,
-  "broj_donatora": 12,
-  "top_donatori": [...]
-}
-```
-
-### GET /api/troskovi/mesecni
-
-**Purpose:** Get monthly expenses
-
-**Response:**
-```json
-{
-  "success": true,
-  "troskovi": [
-    {"kategorija": "server", "iznos": 30.00},
-    {"kategorija": "domain", "iznos": 5.00}
-  ],
-  "ukupno": 100.00
-}
-```
-
----
-
-## 8. Legal Considerations
-
-### Required Information
-
-**If Accepting Donations:**
-- Legal entity information
-- Tax ID / Registration number
-- Terms and conditions
-- Refund policy
-- Privacy policy for donor data
-- GDPR compliance (if EU donors)
-
-### Transparency
-
-**Best Practices:**
-- Clear expense breakdown
-- Regular financial reports
-- Donor acknowledgment
-- Audit trail
-- Public accountability
-
----
-
-## 9. Payment Integration
-
-### PayPal
-
-**Library:** PayPal JavaScript SDK  
-**Flow:** Redirect to PayPal → Return to site  
-**Fees:** ~2.9% + fixed fee
-
-### Stripe
-
-**Library:** Stripe.js  
-**Flow:** On-site payment form  
-**Fees:** ~2.9% + fixed fee  
-**Benefits:** Better UX, more payment methods
-
-### Bank Transfer
-
-**Information Needed:**
-- Bank name
-- Account holder
-- IBAN
-- SWIFT/BIC
-- Reference number
-
----
-
-## 10. Critical Behaviors Summary
-
-### ✅ DO (When Implementing Donations):
-- Use secure payment gateways
-- Comply with financial regulations
-- Provide receipts/confirmations
-- Protect donor privacy
-- Be transparent about expenses
-- Thank donors appropriately
-- Keep accurate records
-- Follow GDPR/privacy laws
-
-### ❌ DON'T:
-- Don't store credit card details
-- Don't make false promises
-- Don't hide expenses
-- Don't spam donors
-- Don't share donor info without permission
-- Don't forget tax implications
-- Don't skip legal requirements
-
----
-
-## 11. Content Guidelines
-
-### Tone
-
-**Current:** Humble and grateful  
-**Maintain:** Appreciation for support  
-**Avoid:** Aggressive fundraising, guilt-tripping
-
-### Messaging
-
-**Emphasize:**
-- Community value
-- Transparency
-- Non-profit nature
-- Voluntary support
-- Multiple ways to help
-
-**De-emphasize:**
-- Financial need (unless critical)
-- Pressure to donate
-- Comparison with others
-
----
-
-## 12. Analytics (Recommended)
-
-### Track:
-- Page views
-- Donation conversion rate
-- Average donation amount
-- Donor retention
-- Referral sources
-- Social shares
-
-### Tools:
-- Google Analytics
-- Custom event tracking
-- Donation funnel analysis
-- A/B testing for messaging
+### API Endpoints (`server.js`)
+- `GET /api/podrska/uplate` — Public endpoint returning `{ success, mesecniTroskovi, meseci }` for the past 12 months.
+- `POST /api/urednik/uplate` — Editor-only endpoint (managed from `Уредник → уплате`) to update `mesecniTroskovi` and monthly RSD totals.
 
 ---
 
@@ -459,3 +88,4 @@ CREATE TABLE troskovi (
 | Date | Changes | Modified By |
 |------|---------|-------------|
 | 2025-12-04 | Initial documentation created | AI Assistant |
+| 2026-11-22 | Documented accordion layout, NBS IPS QR & Ko-fi/SWIFT payment tabs, 12-month chart, DB/API, and social media map image/video export | AI Assistant |

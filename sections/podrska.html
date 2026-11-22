@@ -1,31 +1,738 @@
 <span style="display: block">
     <span class="naslov">Подршка</span>
 </span>
-<div style="margin-top: 10px;">
-    <p>
-        Да би били непристрасни и слободни у представљању података ослањамо се на подршку вас као корисника ових страна
-        због чега је свака подршка добродошла а највише се радујемо подршци која се огледа у вашем уносу података те
-        чувању наших тековина од заборава и васпитању нових нараштаја!
-    </p>
-    <p>
-        На страни "опште" можете наћи приједлоге за рад на уносу података на основу предложених записа. Ако немате
-        времена
-        да радите на уносу података можете нас подржати и уносом докумената у дијелу "записи" које би онда препоручили
-        осталим корисницима за унос и обраду.
-    </p>
-    <p>
-        Додатно, можете нас подржати тако што ћете нас препоручити вашим познаницима и пријатељима којима би ово могло
-        да буде занимљиво или поделом адресе ове стране на друштвеним мрежама.
-    </p>
-    <p>
-        Сваког месеца потребно је да покријемо основне трошкове у вези сервера, интернет домена, додатне меморије,
-        дозвола ("лиценце" за коришћење позадинских карти, неких функционалности) и другог а волели бисмо да
-        обезбедимо и сталан свакодневни рад неколико људи на одржавању и развоју страна као и обради унетих података
-        ради бржег раста.
-    </p>
-    <p>
-        Овај дио треба да пружи податке на које све начине можете да подржите наш и ваш рад, али још није довршен.
-        Вијест о томе
-        биће прослијеђена или е-поштом или путем стране "опште".
-    </p>
+
+<style>
+    .podrska-header {
+        cursor: pointer;
+        user-select: none;
+        text-align: left;
+    }
+
+    .podrska-header:hover {
+        color: #d98a00;
+    }
+
+    .podrska-novcana-status {
+        font-size: 0.82rem;
+        font-weight: 600;
+        margin-left: 6px;
+    }
+
+    .podrska-novcana-status.ispod {
+        color: #d98a00;
+    }
+
+    .podrska-novcana-status.pokriveno {
+        color: #28a745;
+    }
+
+    .podrska-placanje-kartica {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 0 12px 12px 12px;
+        margin: 12px 0;
+        text-align: left;
+        overflow: hidden;
+    }
+
+    .podrska-tabovi {
+        display: flex;
+        margin: 0 -12px 12px -12px;
+        border-bottom: 1px solid #dee2e6;
+        background: #eef0f2;
+    }
+
+    .podrska-tab-btn {
+        flex: 1;
+        border: none;
+        background: transparent;
+        padding: 8px 6px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #555;
+        cursor: pointer;
+        text-align: center;
+        border-bottom: 2px solid transparent;
+        transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+    }
+
+    .podrska-tab-btn:first-child {
+        border-right: 1px solid #dee2e6;
+    }
+
+    .podrska-tab-btn:hover {
+        color: #000;
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    .podrska-tab-btn.aktivan {
+        background: #f8f9fa;
+        color: #000;
+        border-bottom-color: #f5a615;
+    }
+
+    .podrska-paypal-blok {
+        text-align: center;
+        padding-bottom: 10px;
+        margin-bottom: 10px;
+        border-bottom: 1px solid #dee2e6;
+    }
+
+    .podrska-mreze-kartica {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        padding: 12px;
+        margin: 10px 0 12px 0;
+        text-align: left;
+    }
+
+    .podrska-mreze-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .podrska-mreze-btn {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 8px 6px;
+        background: #ffffff;
+        border: 1px solid #ced4da;
+        border-radius: 5px;
+        cursor: pointer;
+        text-align: center;
+        transition: border-color 0.15s, background-color 0.15s;
+        color: #222;
+        font-size: 0.8rem;
+        line-height: 1.3;
+    }
+
+    .podrska-mreze-btn:hover {
+        border-color: #f5a615;
+        background: #fff9ee;
+    }
+
+    .podrska-mreze-btn:disabled {
+        opacity: 0.6;
+        cursor: wait;
+    }
+
+    .podrska-mreze-btn i {
+        font-size: 1.15rem;
+        margin-bottom: 3px;
+        color: #d98a00;
+    }
+
+    .podrska-mreze-btn small {
+        font-size: 0.7rem;
+        color: #666;
+        margin-top: 2px;
+    }
+
+    .podrska-deljenje-red {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px solid #dee2e6;
+        align-items: center;
+    }
+
+    .podrska-deljenje-btn {
+        font-size: 0.78rem;
+        padding: 4px 9px;
+        border-radius: 4px;
+        border: 1px solid #ced4da;
+        background: #fff;
+        color: #222;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+
+    .podrska-deljenje-btn:hover {
+        border-color: #f5a615;
+        background: #fff9ee;
+        color: #000;
+        text-decoration: none;
+    }
+
+    .podrska-qr-okvir {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+
+    .podrska-qr-slika {
+        background: #ffffff;
+        padding: 8px;
+        border: 1px solid #dee2e6;
+        border-radius: 6px;
+        display: inline-block;
+        margin: 8px 0;
+    }
+
+    .podrska-qr-slika img {
+        display: block;
+        width: 170px;
+        height: 170px;
+        image-rendering: pixelated;
+    }
+
+    .podrska-iznos-red {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        margin-top: 6px;
+        width: 100%;
+        text-align: left;
+    }
+
+    .podrska-iznos-red input {
+        width: 145px;
+        font-size: 0.85rem;
+        padding: 3px 8px;
+        height: auto;
+    }
+
+    .podrska-podaci-red {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+        border-bottom: 1px solid #ececec;
+        gap: 8px;
+        text-align: left;
+    }
+
+    .podrska-podaci-red:last-of-type {
+        border-bottom: none;
+    }
+
+    .podrska-podaci-oznaka {
+        color: #555;
+        font-size: 0.82rem;
+        white-space: nowrap;
+    }
+
+    .podrska-podaci-vrednost {
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-align: right;
+        word-break: break-word;
+    }
+
+    .podrska-kopiraj-btn {
+        font-size: 0.75rem;
+        padding: 2px 6px;
+        margin-left: 6px;
+        cursor: pointer;
+    }
+
+    .podrska-toggle-link {
+        font-size: 0.82rem;
+        color: #007bff;
+        cursor: pointer;
+        text-decoration: underline;
+        display: inline-block;
+        margin-top: 8px;
+    }
+
+    .podrska-toggle-link:hover {
+        color: #d98a00;
+    }
+
+    .podrska-napomena {
+        font-size: 0.82rem;
+        color: #555;
+        background: #fff8eb;
+        border-left: 3px solid #f5a615;
+        padding: 7px 10px;
+        margin: 10px 0 12px 0;
+        border-radius: 0 4px 4px 0;
+        text-align: left;
+    }
+
+    .podrska-grafikon-okvir {
+        margin-top: 10px;
+        text-align: left;
+    }
+
+    .podrska-tekuci-rezime {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-radius: 5px;
+        padding: 8px 10px;
+        margin-bottom: 10px;
+        font-size: 0.85rem;
+        text-align: left;
+    }
+
+    .podrska-legenda {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        font-size: 0.76rem;
+        color: #555;
+        margin-bottom: 8px;
+        align-items: center;
+        text-align: left;
+    }
+
+    .podrska-legenda-stavka {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .podrska-legenda-boja {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 2px;
+    }
+
+    .podrska-legenda-linija {
+        display: inline-block;
+        width: 0;
+        height: 12px;
+        border-left: 2px dashed #dc3545;
+    }
+
+    .podrska-grafikon-redovi {
+        position: relative;
+        text-align: left;
+    }
+
+    .podrska-mesec-red {
+        display: flex;
+        align-items: center;
+        margin-bottom: 5px;
+        font-size: 0.8rem;
+        text-align: left;
+    }
+
+    .podrska-mesec-red.tekuci {
+        background: rgba(245, 166, 21, 0.12);
+        border-radius: 4px;
+        padding: 2px 3px;
+        margin-left: -3px;
+        margin-right: -3px;
+    }
+
+    .podrska-mesec-oznaka {
+        width: 64px;
+        flex-shrink: 0;
+        color: #333;
+        font-size: 0.78rem;
+        text-align: left;
+    }
+
+    .podrska-mesec-red.tekuci .podrska-mesec-oznaka {
+        font-weight: 700;
+        color: #000;
+    }
+
+    .podrska-traka-okvir {
+        position: relative;
+        flex: 1;
+        height: 14px;
+        background: #e9ecef;
+        border-radius: 3px;
+        overflow: visible;
+        margin: 0 8px;
+    }
+
+    .podrska-traka-ispuna {
+        height: 100%;
+        border-radius: 3px;
+        transition: width 0.35s ease;
+    }
+
+    .podrska-traka-ispuna.pokriveno {
+        background: #28a745;
+    }
+
+    .podrska-traka-ispuna.ispod {
+        background: #f5a615;
+    }
+
+    .podrska-troskovi-linija {
+        position: absolute;
+        top: -3px;
+        bottom: -3px;
+        width: 0;
+        border-left: 2px dashed #dc3545;
+        z-index: 2;
+        pointer-events: none;
+    }
+
+    .podrska-mesec-iznos {
+        width: 72px;
+        flex-shrink: 0;
+        text-align: right;
+        font-size: 0.78rem;
+        color: #222;
+        white-space: nowrap;
+    }
+
+    .podrska-mesec-red.tekuci .podrska-mesec-iznos {
+        font-weight: 700;
+    }
+
+    .podrska-skala-red {
+        display: flex;
+        align-items: center;
+        margin-top: 4px;
+        font-size: 0.72rem;
+        color: #666;
+        text-align: left;
+    }
+
+    .podrska-skala-traka {
+        position: relative;
+        flex: 1;
+        height: 16px;
+        margin: 0 8px;
+    }
+
+    .podrska-skala-nula {
+        position: absolute;
+        left: 0;
+        top: 0;
+    }
+
+    .podrska-skala-troskovi {
+        position: absolute;
+        top: 0;
+        transform: translateX(-50%);
+        color: #dc3545;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .podrska-skala-maks {
+        position: absolute;
+        right: 0;
+        top: 0;
+        white-space: nowrap;
+    }
+</style>
+
+
+<div id="podrska_accordion">
+    <!-- Унос података -->
+    <div id="podrska_unos_podataka" class="mt-2 podrska-header" data-toggle="collapse"
+        data-target="#podrska_unos_podataka_sadrzaj">
+        <strong>унос података</strong> <span class="bi bi-arrows-expand ml-2"></span>
+    </div>
+    <div id="podrska_unos_podataka_sadrzaj" class="collapse">
+        <div style="margin-top: 10px; line-height: 1.6;">
+            <p>
+                У дијелу "теме" избором одговарајуће можете да предложите нове ставке као и да унесете примједбе на
+                постојеће.</br>
+                На страни "опште" можете наћи приједлоге за рад на уносу података на основу предложених записа.
+            </p>
+        </div>
+    </div>
+
+    <!-- Унос записа -->
+    <div id="podrska_unos_zapisa" class="mt-2 podrska-header" data-toggle="collapse"
+        data-target="#podrska_unos_zapisa_sadrzaj">
+        <strong>унос записа</strong> <span class="bi bi-arrows-expand ml-2"></span>
+    </div>
+    <div id="podrska_unos_zapisa_sadrzaj" class="collapse">
+        <div style="margin-top: 10px; line-height: 1.6;">
+            <p>
+                Можете нас подржати и уносом докумената у дијелу "записи" које би онда препоручили осталим корисницима
+                за унос и обраду. Наравно ту треба бити пажљив и предлагати само оне записе до којих се тешко долази или
+                нису познати као могући извор података.
+            </p>
+        </div>
+    </div>
+
+    <!-- Друштвене мреже -->
+    <div id="podrska_drustvene_mreze" class="mt-2 podrska-header" data-toggle="collapse"
+        data-target="#podrska_drustvene_mreze_sadrzaj">
+        <strong>друштвене мреже</strong> <span class="bi bi-arrows-expand ml-2"></span>
+    </div>
+    <div id="podrska_drustvene_mreze_sadrzaj" class="collapse">
+        <div style="margin-top: 10px; line-height: 1.6;">
+            <p>
+                Поделите приказе на карти особама којима би то било занимљиво.
+            </p>
+
+            <div class="podrska-mreze-kartica">
+                <div style="font-weight: 600; font-size: 0.86rem; margin-bottom: 6px;">
+                    Направи слику или видео тренутног приказа карте
+                </div>
+                <div style="margin-bottom: 8px;">
+                    <input type="text" id="podrska_mreze_natpis" class="form-control form-control-sm" maxlength="90"
+                        placeholder="Натпис на слици (опционо, нпр. назив теме)" style="font-size: 0.82rem;">
+                </div>
+
+                <div class="podrska-mreze-grid">
+                    <button type="button" class="podrska-mreze-btn" id="podrska_btn_slika_fb">
+                        <i class="bi bi-facebook"></i>
+                        <strong>Facebook / Viber / WA</strong>
+                        <small>Слика 1200×630</small>
+                    </button>
+                    <button type="button" class="podrska-mreze-btn" id="podrska_btn_slika_ig">
+                        <i class="bi bi-instagram"></i>
+                        <strong>Instagram објава</strong>
+                        <small>Слика 1080×1080</small>
+                    </button>
+                    <button type="button" class="podrska-mreze-btn" id="podrska_btn_slika_story">
+                        <i class="bi bi-phone"></i>
+                        <strong>Story / TikTok</strong>
+                        <small>Слика 1080×1920 (9:16)</small>
+                    </button>
+                    <button type="button" class="podrska-mreze-btn" id="podrska_btn_video_tiktok">
+                        <i class="bi bi-film"></i>
+                        <strong>TikTok / Reels видео</strong>
+                        <small>Анимација 10 сек (9:16)</small>
+                    </button>
+                </div>
+
+                <div style="font-size: 0.74rem; color: #666; margin-top: 6px;">
+                    Савет: Подесите жељени део карте пре клика. За TikTok / Reels видео додајте музику по избору
+                    директно у апликацији.
+                </div>
+
+                <div id="podrska_mreze_status"
+                    style="font-size: 0.8rem; margin-top: 6px; min-height: 18px; color: #28a745; font-weight: 600;">
+                </div>
+
+                <div class="podrska-deljenje-red">
+                    <button type="button" class="podrska-deljenje-btn" id="podrska_deli_viber" title="Подели на Viber">
+                        <i class="bi bi-chat-dots" style="color: #7360f2;"></i> Viber
+                    </button>
+                    <button type="button" class="podrska-deljenje-btn" id="podrska_deli_wa" title="Подели на WhatsApp">
+                        <i class="bi bi-whatsapp" style="color: #25d366;"></i> WhatsApp
+                    </button>
+                    <button type="button" class="podrska-deljenje-btn" id="podrska_deli_fb" title="Подели на Facebook">
+                        <i class="bi bi-facebook" style="color: #1877f2;"></i> Facebook
+                    </button>
+                    <button type="button" class="podrska-deljenje-btn" id="podrska_deli_link"
+                        title="Копирај или подели линк">
+                        <i class="bi bi-share"></i> Подели
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Новчана подршка -->
+    <div id="podrska_novcana" class="mt-2 podrska-header" data-toggle="collapse" data-target="#podrska_novcana_sadrzaj">
+        <strong>новчана подршка</strong> <span class="bi bi-arrows-expand ml-2"></span>
+        <span id="podrska_novcana_status" class="podrska-novcana-status"></span>
+    </div>
+    <div id="podrska_novcana_sadrzaj" class="collapse">
+        <div style="margin-top: 10px; line-height: 1.6;">
+            <!-- Плаћање (табови: Србија / Иностранство) -->
+            <div class="podrska-placanje-kartica" id="podrska_placanje_blok">
+                <div class="podrska-tabovi" role="tablist">
+                    <button type="button" id="podrska_tab_srbija" class="podrska-tab-btn aktivan" role="tab"
+                        aria-selected="true">Уплате из Србије</button>
+                    <button type="button" id="podrska_tab_inostranstvo" class="podrska-tab-btn" role="tab"
+                        aria-selected="false">Уплате из иностранства</button>
+                </div>
+
+                <!-- Таб 1: Уплате из Србије -->
+                <div id="podrska_sadrzaj_srbija">
+                    <!-- Десктоп приказ: IPS QR код -->
+                    <div id="podrska_desktop_qr" class="podrska-qr-okvir">
+                        <div style="font-weight: 600; font-size: 0.88rem; text-align: center;">
+                            НБС IPS QR код за уплату
+                        </div>
+                        <div id="podrska_qr_kontejner" class="podrska-qr-slika">
+                            <!-- QR код се генерише динамички -->
+                        </div>
+                        <div class="podrska-iznos-red">
+                            <label for="podrska_iznos_input" style="margin: 0; font-size: 0.8rem; color: #555;">
+                                Износ (опционо):
+                            </label>
+                            <input type="number" id="podrska_iznos_input" class="form-control form-control-sm" min="1"
+                                step="1" placeholder="произвољан (РСД)">
+                        </div>
+                        <span id="podrska_prikazi_podatke_btn" class="podrska-toggle-link">
+                            Прикажи податке за уплату
+                        </span>
+                    </div>
+
+                    <!-- Мобилни приказ: подаци за копирање + преузимање IPS QR кода -->
+                    <div id="podrska_mobile_placanje" style="display: none;">
+                        <div style="font-weight: 600; font-size: 0.88rem; margin-bottom: 6px; text-align: left;">
+                            Подаци за уплату (м-банкинг)
+                        </div>
+                        <div class="podrska-podaci-red">
+                            <span class="podrska-podaci-oznaka">Прималац:</span>
+                            <span class="podrska-podaci-vrednost">
+                                <span id="podrska_primalac_tekst"></span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm podrska-kopiraj-btn"
+                                    id="podrska_kopiraj_primalac" title="Копирај примаоца">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </span>
+                        </div>
+                        <div class="podrska-podaci-red">
+                            <span class="podrska-podaci-oznaka">Број рачуна:</span>
+                            <span class="podrska-podaci-vrednost">
+                                <span id="podrska_racun_tekst"></span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm podrska-kopiraj-btn"
+                                    id="podrska_kopiraj_racun" title="Копирај број рачуна">
+                                    <i class="bi bi-clipboard"></i> Копирај
+                                </button>
+                            </span>
+                        </div>
+                        <div class="podrska-podaci-red">
+                            <span class="podrska-podaci-oznaka">Шифра плаћања:</span>
+                            <span class="podrska-podaci-vrednost" id="podrska_sifra_tekst"></span>
+                        </div>
+                        <div class="podrska-podaci-red">
+                            <span class="podrska-podaci-oznaka">Сврха уплате:</span>
+                            <span class="podrska-podaci-vrednost">
+                                <span id="podrska_svrha_tekst"></span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm podrska-kopiraj-btn"
+                                    id="podrska_kopiraj_svrhu" title="Копирај сврху уплате">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </span>
+                        </div>
+                        <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                            <button type="button" class="btn btn-sm btn-warning" id="podrska_preuzmi_qr_btn"
+                                style="font-size: 0.8rem;">
+                                <i class="bi bi-qr-code"></i> Преузми IPS QR код (за галерију)
+                            </button>
+                        </div>
+                        <div style="font-size: 0.76rem; color: #666; margin-top: 5px; text-align: left;">
+                            Савет: У м-банкинг апликацији изаберите <em>IPS Скенирај &rarr; Учитај из галерије</em> и
+                            изаберите преузету слику, или копирајте број рачуна.
+                        </div>
+                        <span id="podrska_prikazi_qr_btn" class="podrska-toggle-link">
+                            Прикажи QR код
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Таб 2: Уплате из иностранства -->
+                <div id="podrska_sadrzaj_inostranstvo" style="display: none;">
+                    <!-- Главна опција: Ko-fi -->
+                    <div id="podrska_kofi_blok" class="podrska-paypal-blok"
+                        style="border-bottom: none; margin-bottom: 4px; padding-bottom: 6px;">
+                        <a id="podrska_kofi_link" href="#" target="_blank" rel="noopener noreferrer"
+                            class="btn btn-sm btn-warning"
+                            style="font-size: 0.85rem; font-weight: 600; padding: 6px 14px; display: inline-flex; align-items: center; gap: 7px;">
+                            <svg width="20" height="18" viewBox="0 0 24 20" fill="none"
+                                xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="flex-shrink: 0;">
+                                <path
+                                    d="M18.2 3.2H2.8C2.1 3.2 1.6 3.7 1.6 4.4V12.2C1.6 15.8 4.4 18.6 8 18.6H12.2C15.5 18.6 18.2 16.2 18.6 13H19.4C21.5 13 23.2 11.3 23.2 9.2V7C23.2 4.9 21.5 3.2 19.4 3.2H18.2ZM18.6 10.6V5.6H19.4C20.2 5.6 20.8 6.2 20.8 7V9.2C20.8 10 20.2 10.6 19.4 10.6H18.6Z"
+                                    fill="#FFFFFF" stroke="#222222" stroke-width="1.3" stroke-linejoin="round" />
+                                <path
+                                    d="M10.1 14.3C10.1 14.3 6.2 11.9 6.2 9.2C6.2 7.8 7.3 6.8 8.5 6.8C9.3 6.8 9.8 7.2 10.1 7.7C10.4 7.2 10.9 6.8 11.7 6.8C12.9 6.8 14 7.8 14 9.2C14 11.9 10.1 14.3 10.1 14.3Z"
+                                    fill="#FF5E5B" />
+                            </svg>
+                            <span>Подржи преко Ko-fi</span>
+                        </a>
+                        <div style="font-size: 0.76rem; color: #555; margin-top: 6px; text-align: center;">
+                            Препоручено за уплате до ~400 € (најниже провизије, картица или PayPal).
+                        </div>
+                    </div>
+
+                    <!-- Секундарна опција: Непосредан банковни трансфер за веће износе -->
+                    <div style="text-align: center; border-top: 1px solid #dee2e6; padding-top: 6px; margin-top: 6px;">
+                        <span id="podrska_prikazi_swift_btn" class="podrska-toggle-link" style="margin-top: 0;">
+                            Непосредан банковни трансфер (IBAN / SWIFT) — преко 400 €
+                        </span>
+                    </div>
+
+                    <div id="podrska_ino_swift_blok" style="display: none; margin-top: 10px;">
+                        <div style="font-size: 0.76rem; color: #666; margin-bottom: 6px; text-align: left;">
+                            Због фиксних банкарских провизија код SWIFT трансфера, овај начин се препоручује за веће
+                            износе (преко 400 €).
+                        </div>
+                        <div class="podrska-podaci-red">
+                            <span class="podrska-podaci-oznaka">Прималац:</span>
+                            <span class="podrska-podaci-vrednost">
+                                <span id="podrska_ino_primalac"></span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm podrska-kopiraj-btn"
+                                    id="podrska_kopiraj_ino_primalac" title="Копирај примаоца">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </span>
+                        </div>
+                        <div class="podrska-podaci-red">
+                            <span class="podrska-podaci-oznaka">IBAN:</span>
+                            <span class="podrska-podaci-vrednost">
+                                <span id="podrska_ino_iban"></span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm podrska-kopiraj-btn"
+                                    id="podrska_kopiraj_iban" title="Копирај IBAN">
+                                    <i class="bi bi-clipboard"></i> Копирај
+                                </button>
+                            </span>
+                        </div>
+                        <div class="podrska-podaci-red">
+                            <span class="podrska-podaci-oznaka">SWIFT / BIC:</span>
+                            <span class="podrska-podaci-vrednost">
+                                <span id="podrska_ino_swift"></span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm podrska-kopiraj-btn"
+                                    id="podrska_kopiraj_swift" title="Копирај SWIFT">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </span>
+                        </div>
+                        <div class="podrska-podaci-red" id="podrska_ino_banka_red">
+                            <span class="podrska-podaci-oznaka">Банка:</span>
+                            <span class="podrska-podaci-vrednost" id="podrska_ino_banka"></span>
+                        </div>
+                        <div class="podrska-podaci-red">
+                            <span class="podrska-podaci-oznaka">Сврха уплате:</span>
+                            <span class="podrska-podaci-vrednost">
+                                <span id="podrska_ino_svrha"></span>
+                                <button type="button" class="btn btn-outline-secondary btn-sm podrska-kopiraj-btn"
+                                    id="podrska_kopiraj_ino_svrhu" title="Копирај сврху уплате">
+                                    <i class="bi bi-clipboard"></i>
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Преглед за протеклих 12 месеци -->
+            <div class="podrska-grafikon-okvir">
+                <div class="podrska-legenda">
+                    <span class="podrska-legenda-stavka">
+                        <span class="podrska-legenda-boja" style="background: #28a745;"></span> покривени трошкови
+                    </span>
+                    <span class="podrska-legenda-stavka">
+                        <span class="podrska-legenda-boja" style="background: #f5a615;"></span> испод трошкова
+                    </span>
+                    <span class="podrska-legenda-stavka">
+                        <span class="podrska-legenda-linija"></span>
+                        <span id="podrska_legenda_troskovi">технички мјесечни трошкови: 5.500 РСД
+                            (хостинг+база+домен)</span>
+                    </span>
+                </div>
+                <div style="font-size: 0.76rem; color: #555; margin-bottom: 8px; text-align: left;">
+                    Уплате мање од 1.000 РСД ће бити приказане збирно на крају месеца.
+                </div>
+
+                <div id="podrska_grafikon_12m" class="podrska-grafikon-redovi">
+                    <!-- 12 месеци се генерише динамички -->
+                </div>
+            </div>
+        </div>
+    </div>
 </div>

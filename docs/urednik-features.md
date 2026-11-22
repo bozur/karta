@@ -2,7 +2,7 @@
 
 This document describes all features and behaviors of the "urednik" (editor/admin) tab for managing content approval, user administration, and system maintenance.
 
-**Last Updated:** 2025-12-31  
+**Last Updated:** 2026-11-22  
 **Files:** `sections/urednik.html`, `sections/urednik.js`
 
 ---
@@ -429,6 +429,25 @@ WHERE id = @user_id
 
 ---
 
+## 12b. Uplate (Monthly Support Donations & Technical Costs)
+
+### Purpose
+Manage the monthly technical cost threshold (RSD) and monthly collected donation totals for the past 12 months (including the current month), which directly drive the progress badge and 12-month bar chart in the `Podrska` tab.
+
+### UI Elements (`sections/urednik.html`)
+- **Collapse section:** `#urednik_uplate` / `#urednik_uplate_podaci`
+- **Technical costs input:** `#uplate_troskovi_input` (`Месечни технички трошкови (РСД)`)
+- **12-month table:** `#uplate_meseci_body` (current month highlighted at the top with `(текући)`)
+- **Save button:** `#btn_sacuvaj_uplate` (`сачувај`)
+- **Alerts / Loading:** `#uplate_alerts`, `#uplate_loading`
+
+### Behavior (`sections/urednik.js`)
+- `initUplateAdmin()` binds `shown.bs.collapse` to `loadUplateAdmin()` (`GET /api/podrska/uplate`) and click handler to `saveUplateAdmin()` (`POST /api/urednik/uplate`).
+- Validates non-negative integer amounts on both frontend and backend.
+- Database tables `podrska_podesavanja` and `uplate_mesecne` are auto-created via `ensurePodrskaTables(pool)` in `server.js` (also documented in `database/create_podrska_uplate_tables.sql`).
+
+---
+
 ## 13. Global Functions
 
 ### showAlert(container, message, type)
@@ -485,3 +504,4 @@ showAlert($('#novosti_alerts'), 'Success!', 'success');
 | Date | Changes | Modified By |
 |------|---------|-------------|
 | 2025-12-31 | Initial documentation created | AI Assistant |
+| 2026-11-22 | Added Uplate (monthly donations & technical costs) admin section | AI Assistant |

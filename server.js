@@ -3272,6 +3272,156 @@ app.get('/api/urednik/comments/reported', async (req, res) => {
     }
 });
 
+// ============================================
+// Podrska & Urednik API Routes - Uplate (Donations)
+// ============================================
+
+let podrskaTablesInitialized = false;
+
+async function ensurePodrskaTables(pool) {
+    if (podrskaTablesInitialized) return;
+    await pool.request().query(`
+        CREATE TABLE IF NOT EXISTS podrska_podesavanja (
+            kljuc VARCHAR(100) PRIMARY KEY,
+            vrednost VARCHAR(255) NOT NULL,
+            azurirano TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    `);
+    await pool.request().query(`
+        INSERT INTO podrska_podesavanja (kljuc, vrednost)
+        VALUES ('mesecni_troskovi', '5500')
+        ON CONFLICT (kljuc) DO NOTHING
+    `);
+    await pool.request().query(`
+        CREATE TABLE IF NOT EXISTS uplate_mesecne (
+            godina INTEGER NOT NULL,
+            mesec INTEGER NOT NULL CHECK (mesec >= 1 AND mesec <= 12),
+            iznos INTEGER NOT NULL DEFAULT 0 CHECK (iznos >= 0),
+            azurirano TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (godina, mesec)
+        )
+    `);
+    podrskaTablesInitialized = true;
+}
+
+// GET /api/podrska/uplate - Fetch monthly technical costs and last 12 months of donations
+app.get('/api/podrska/uplate', async (req, res) => {
+    try {
+        const pool = await poolPromise;
+        await ensurePodrskaTables(pool);
+
+        const settingsRes = await pool.request().query(`
+            SELECT vrednost FROM podrska_podesavanja WHERE kljuc = 'mesecni_troskovi'
+        `);
+        const mesecniTroskovi = settingsRes.recordset.length > 0
+            ? Math.max(0, parseInt(settingsRes.recordset[0].vrednost, 10) || 0)
+            : 5500;
+
+        // Build list of last 12 months (current month first)
+        const now = new Date();
+        const meseci = [];
+        for (let i = 0; i < 12; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            meseci.push({
+                godina: d.getFullYear(),
+                mesec: d.getMonth() + 1,
+                iznos: 0
+            });
+        }
+
+        const oldest = meseci[meseci.length - 1];
+        const uplateRes = await pool.request()
+            .input('minGodina', sql.Int, oldest.godina)
+            .query(`
+                SELECT godina, mesec, iznos
+                FROM uplate_mesecne
+                WHERE godina >= @minGodina
+            `);
+
+        const mapa = {};
+        for (const row of uplateRes.recordset) {
+            mapa[`${row.godina}-${row.mesec}`] = parseInt(row.iznos, 10) || 0;
+        }
+
+        for (const m of meseci) {
+            const key = `${m.godina}-${m.mesec}`;
+            if (Object.prototype.hasOwnProperty.call(mapa, key)) {
+                m.iznos = mapa[key];
+            }
+        }
+
+        res.json({
+            success: true,
+            mesecniTroskovi,
+            meseci
+        });
+    } catch (err) {
+        console.error('Error fetching podrska uplate:', err);
+        res.status(500).json({ error: 'Грешка при учитавању података о уплатама.' });
+    }
+});
+
+// POST /api/urednik/uplate - Save monthly technical costs and 12 months of donations (admin only)
+app.post('/api/urednik/uplate', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { mesecniTroskovi, meseci } = req.body;
+        const troskoviInt = parseInt(mesecniTroskovi, 10);
+
+        if (isNaN(troskoviInt) || troskoviInt < 0) {
+            return res.status(400).json({ error: 'Месечни технички трошкови морају бити ненегативан број.' });
+        }
+
+        if (!Array.isArray(meseci) || meseci.length === 0) {
+            return res.status(400).json({ error: 'Недостају подаци за месеце.' });
+        }
+
+        const pool = await poolPromise;
+        await ensurePodrskaTables(pool);
+
+        await pool.request()
+            .input('vrednost', sql.VarChar, String(troskoviInt))
+            .query(`
+                INSERT INTO podrska_podesavanja (kljuc, vrednost, azurirano)
+                VALUES ('mesecni_troskovi', @vrednost, CURRENT_TIMESTAMP)
+                ON CONFLICT (kljuc)
+                DO UPDATE SET vrednost = EXCLUDED.vrednost, azurirano = CURRENT_TIMESTAMP
+            `);
+
+        for (const item of meseci) {
+            const godina = parseInt(item.godina, 10);
+            const mesec = parseInt(item.mesec, 10);
+            const iznos = parseInt(item.iznos, 10);
+
+            if (isNaN(godina) || isNaN(mesec) || mesec < 1 || mesec > 12 || isNaN(iznos) || iznos < 0) {
+                return res.status(400).json({ error: 'Неисправан формат података за месец или износ.' });
+            }
+
+            await pool.request()
+                .input('godina', sql.Int, godina)
+                .input('mesec', sql.Int, mesec)
+                .input('iznos', sql.Int, iznos)
+                .query(`
+                    INSERT INTO uplate_mesecne (godina, mesec, iznos, azurirano)
+                    VALUES (@godina, @mesec, @iznos, CURRENT_TIMESTAMP)
+                    ON CONFLICT (godina, mesec)
+                    DO UPDATE SET iznos = EXCLUDED.iznos, azurirano = CURRENT_TIMESTAMP
+                `);
+        }
+
+        res.json({
+            success: true,
+            message: 'Подаци о уплатама и техничким трошковима су успешно сачувани.'
+        });
+    } catch (err) {
+        console.error('Error saving podrska uplate:', err);
+        res.status(500).json({ error: 'Грешка при чувању података о уплатама.' });
+    }
+});
+
 // POST /api/upload-profile-picture
 app.post('/api/upload-profile-picture', (req, res) => {
     // Check for upload directory existence - moved to consolidated /uploads path

@@ -460,4 +460,45 @@
         </div>
     </div>
 
+    <!-- Uplate -->
+    <div id="urednik_uplate" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>уплате</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_uplate_podaci" style="cursor: pointer;"></span></span>
+    </div>
+    <div id="urednik_uplate_podaci" class="collapse">
+        <div style="margin-top: 10px; text-align: left;">
+            <div id="uplate_alerts" style="color: orange; margin-bottom: 10px; display: none;"></div>
+
+            <div id="uplate_loading" style="display: none; text-align: center; padding: 15px;">
+                <div class="spinner-border text-secondary spinner-border-sm" role="status"></div>
+            </div>
+
+            <div id="uplate_forma" style="display: none;">
+                <div class="form-group mb-2" style="display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #fff8eb; border: 1px solid #f5d28b; border-radius: 4px; padding: 8px 10px;">
+                    <label for="uplate_troskovi_input" style="margin: 0; font-weight: 600; font-size: 0.85rem;">
+                        Месечни технички трошкови (РСД):
+                    </label>
+                    <input type="number" id="uplate_troskovi_input" class="form-control form-control-sm" min="0"
+                        step="1" style="width: 120px; text-align: right; font-size: 0.85rem;">
+                </div>
+
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; margin-top: 8px;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #ddd; background-color: #f9f9f9;">
+                            <th style="padding: 5px; text-align: left;">месец</th>
+                            <th style="padding: 5px; text-align: right; width: 145px;">приход (РСД)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="uplate_meseci_body">
+                        <!-- 12 месеци се учитава динамички -->
+                    </tbody>
+                </table>
+
+                <div class="d-flex align-items-center mt-2">
+                    <button id="btn_sacuvaj_uplate" class="btn btn-white border border-dark ml-auto">сачувај</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div>

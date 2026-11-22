@@ -69,7 +69,8 @@ $(document).ready(function () {
             'Imagery © <a target="_blank" href="https://www.mapbox.com/">Mapbox</a>',
         id: 'mapbox/streets-v11',
         tileSize: 512,
-        zoomOffset: -1
+        zoomOffset: -1,
+        crossOrigin: 'anonymous'
     });
     tilelayer2 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
         maxZoom: 18,
@@ -77,7 +78,8 @@ $(document).ready(function () {
             'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
         id: 'mapbox/streets-v11',
         tileSize: 512,
-        zoomOffset: -1
+        zoomOffset: -1,
+        crossOrigin: 'anonymous'
     });
 
     // Clean terrain layer (terenx)
@@ -86,7 +88,8 @@ $(document).ready(function () {
         attribution: '<a target="_blank" href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
             'Imagery © <a target="_blank" href="https://www.mapbox.com/">Mapbox</a>',
         tileSize: 512,
-        zoomOffset: -1
+        zoomOffset: -1,
+        crossOrigin: 'anonymous'
     });
 
     // Clean satellite layer (satelitx)
@@ -95,7 +98,8 @@ $(document).ready(function () {
         attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
             'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
         tileSize: 512,
-        zoomOffset: -1
+        zoomOffset: -1,
+        crossOrigin: 'anonymous'
     });
 
     // Toggle function
