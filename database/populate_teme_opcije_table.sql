@@ -72,7 +72,7 @@ INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (3, 'vrsta', 4
 -- podvrsta options: empty (no entries)
 
 -- Theme 4: логори за Србе (ID=4)
--- razred: хрватски/бугарски/њемачки/турски/шиптарски/талијански/комунистички
+-- razred: хрватски/бугарски/њемачки/турски/шиптарски/талијански/комунистички/аустроугарски
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 0, N'хрватски');
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 1, N'бугарски');
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 2, N'њемачки');
@@ -80,6 +80,7 @@ INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 4, N'шиптарски');
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 5, N'талијански');
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 6, N'комунистички');
+INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'razred', 7, N'аустроугарски');
 
 -- vrsta: војни/политички/цивилни/општи
 INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (4, 'vrsta', 0, N'војни');

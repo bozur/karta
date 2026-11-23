@@ -171,6 +171,17 @@ const poolPromise = (async () => {
         `);
         console.log('✓ google_id column verified on korisnik');
 
+        // Ensure "аустроугарски" razred exists for Theme 4 ("логори за Србе")
+        await client.query(`
+            INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost)
+            SELECT 4, 'razred', 7, 'аустроугарски'
+            WHERE NOT EXISTS (
+                SELECT 1 FROM teme_opcije
+                WHERE tema_id = 4 AND tip = 'razred' AND (redosled = 7 OR vrednost = 'аустроугарски')
+            );
+        `);
+        console.log('✓ Theme 4 razred "аустроугарски" verified');
+
         client.release();
 
         // Return a mock pool object that server.js expects
