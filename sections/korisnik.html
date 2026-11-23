@@ -1,3 +1,48 @@
+<style>
+    .avatar-picker-toggle:hover {
+        color: darkorange !important;
+    }
+
+    #clear_slika_btn:hover {
+        color: darkorange !important;
+        text-decoration: underline;
+    }
+
+    .avatar-picker-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(42px, 1fr));
+        gap: 8px;
+        max-height: 170px;
+        overflow-y: auto;
+        padding: 8px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        background-color: #fff;
+    }
+
+    .avatar-option {
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid transparent;
+        padding: 1px;
+        object-fit: cover;
+        transition: transform 0.15s ease, border-color 0.15s ease;
+        justify-self: center;
+    }
+
+    .avatar-option:hover {
+        transform: scale(1.1);
+        border-color: #f5a615;
+    }
+
+    .avatar-option.selected {
+        border-color: darkorange;
+        box-shadow: 0 0 0 2px rgba(255, 140, 0, 0.3);
+        transform: scale(1.05);
+    }
+</style>
 <span class="naslov">Корисник</span>
 <img id="user-profile-img" src="" alt=""
     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-left: 10px; display: none;">
@@ -27,6 +72,8 @@
                 <input type="email" class="form-control" id="edit_eposta" name="eposta" placeholder="е-пошта *"
                     minlength="7" maxlength="50">
             </div>
+        </div>
+        <div class="form-row mt-1">
             <div class="col">
                 <!-- Hidden input to store the actual URL -->
                 <input type="hidden" id="edit_slika_url" name="slika_url">
@@ -35,8 +82,27 @@
                 <div class="custom-file">
                     <input type="file" class="custom-file-input" id="edit_slika_file" accept=".jpg,.jpeg,.png,.gif">
                     <label class="custom-file-label" for="edit_slika_file" id="edit_slika_label"
-                        style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">Слика (max
+                        style="overflow: hidden; white-space: nowrap; text-overflow: ellipsis; padding-right: 140px;">Слика (max
                         100KB)</label>
+                </div>
+            </div>
+        </div>
+        <div class="form-row mt-1">
+            <div class="col">
+                <div class="d-flex align-items-center justify-content-between ml-1">
+                    <span class="avatar-picker-toggle" data-toggle="collapse" data-target="#avatar_picker_collapse"
+                        style="cursor: pointer; font-size: 0.85rem; color: #555;">
+                        или изаберите понуђену сличицу <span class="bi bi-arrows-expand ml-1"></span>
+                    </span>
+                    <span id="clear_slika_btn" title="Уклони профилну сличицу"
+                        style="cursor: pointer; font-size: 0.8rem; color: #888; display: none;">
+                        уклони сличицу
+                    </span>
+                </div>
+                <div id="avatar_picker_collapse" class="collapse mt-1">
+                    <div id="avatar_picker_grid" class="avatar-picker-grid">
+                        <!-- Preset avatars loaded dynamically -->
+                    </div>
                 </div>
             </div>
         </div>

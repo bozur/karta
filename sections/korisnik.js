@@ -85,12 +85,19 @@ function populateEditForm(user) {
     $('#edit_eposta').val(user.email || user.eposta || '');
     $('#edit_slika_url').val(user.slika_url || '');
     if (user.slika_url) {
-        // Extract filename from URL for display
-        const filename = user.slika_url.split('/').pop();
-        $('#edit_slika_label').text(filename);
+        if (user.slika_url.startsWith('/slike/avatari/')) {
+            $('#edit_slika_label').text('Понуђена сличица');
+        } else {
+            // Extract filename from URL for display
+            const filename = user.slika_url.split('/').pop();
+            $('#edit_slika_label').text(filename);
+        }
+        $('#clear_slika_btn').show();
     } else {
         $('#edit_slika_label').text('Слика (max 100KB)');
+        $('#clear_slika_btn').hide();
     }
+    syncSelectedAvatar(user.slika_url || '');
     // Set notifications checkbox
     $('#edit_obavjestenja').prop('checked', user.obavjestenja == 1);
 
@@ -192,9 +199,86 @@ function showError(fieldId) {
     $(`#${fieldId}`).css('border-color', 'red');
 }
 
+// Highlight matching preset avatar in the grid
+function syncSelectedAvatar(url) {
+    $('#avatar_picker_grid .avatar-option').removeClass('selected');
+    if (url) {
+        $('#avatar_picker_grid .avatar-option').each(function () {
+            if ($(this).attr('data-url') === url) {
+                $(this).addClass('selected');
+            }
+        });
+    }
+}
+
+// Render preset avatars into the picker grid
+function renderPresetAvatars(avatars) {
+    const grid = $('#avatar_picker_grid');
+    grid.empty();
+
+    if (!avatars || avatars.length === 0) {
+        grid.append('<div class="text-muted small" style="grid-column: 1 / -1;">Нема понуђених сличица.</div>');
+        return;
+    }
+
+    const currentUrl = $('#edit_slika_url').val().trim();
+    avatars.forEach(function (url, idx) {
+        const img = $('<img>')
+            .attr('src', url)
+            .attr('alt', 'Аватар ' + (idx + 1))
+            .attr('data-url', url)
+            .addClass('avatar-option');
+
+        if (currentUrl === url) {
+            img.addClass('selected');
+        }
+
+        img.on('click', function () {
+            $('#edit_slika_url').val(url);
+            $('#edit_slika_file').val('');
+            $('#edit_slika_label').text('Понуђена сличица');
+            $('#user-profile-img').attr('src', url).show();
+            $('#clear_slika_btn').show();
+            syncSelectedAvatar(url);
+            $('#form_error').hide();
+        });
+
+        grid.append(img);
+    });
+}
+
+// Load preset avatars from server (cached on window)
+function loadPresetAvatars() {
+    if (Array.isArray(window.presetAvatarsList)) {
+        renderPresetAvatars(window.presetAvatarsList);
+        return;
+    }
+
+    $.get('/api/avatars', function (data) {
+        const list = (data && Array.isArray(data.avatars)) ? data.avatars : [];
+        window.presetAvatarsList = list;
+        renderPresetAvatars(list);
+    }).fail(function () {
+        console.error('Failed to load preset avatars');
+    });
+}
+
 // Initialization function that runs each time section is loaded
 function initKorisnikSection() {
     console.log('Korisnik section initialized');
+
+    // Load preset avatars into picker
+    loadPresetAvatars();
+
+    // Clear profile picture handler
+    $('#clear_slika_btn').off('click').on('click', function () {
+        $('#edit_slika_url').val('');
+        $('#edit_slika_file').val('');
+        $('#edit_slika_label').text('Слика (max 100KB)');
+        $('#user-profile-img').hide().attr('src', '');
+        $('#clear_slika_btn').hide();
+        syncSelectedAvatar('');
+    });
 
     // Restore user display if data exists
     if (window.korisnikUserData) {
@@ -332,6 +416,9 @@ function initKorisnikSection() {
                         hiddenInput.val(response.url);
                         // Optional: Show success indicator
                         label.text(file.name + ' (Успјешно)');
+                        $('#user-profile-img').attr('src', response.url).show();
+                        $('#clear_slika_btn').show();
+                        syncSelectedAvatar('');
                         $('#submit_izmjeni').prop('disabled', false).text('измјени');
 
                         // Show success message
@@ -460,7 +547,7 @@ function initKorisnikSection() {
                     prezime: prezime || null,
                     korisnik: korisnik || null,
                     eposta: eposta,
-                    slika_url: slika_url || null,
+                    slika_url: slika_url,
                     lozinka: lozinka,
                     nova_lozinka: nova_lozinka || null,
                     obavjestenja: obavjestenja

@@ -1974,12 +1974,15 @@ app.put('/api/user/update', async (req, res) => {
             await request.query(updateQuery);
         }
 
-        // Update session if email or username changed
+        // Update session if email, username, or profile picture changed
         if (eposta) {
             req.session.user.email = eposta;
         }
         if (korisnik) {
             req.session.user.username = korisnik;
+        }
+        if (slika_url !== null && slika_url !== undefined) {
+            req.session.user.slika_url = slika_url || null;
         }
 
         res.json({ success: true, message: 'Подаци су успјешно ажурирани' });
@@ -3533,6 +3536,26 @@ app.post('/api/upload-profile-picture', (req, res) => {
         const fileUrl = '/slike/users/' + req.file.filename;
         res.json({ url: fileUrl });
     });
+});
+
+// GET /api/avatars - List built-in preset avatars from slike/avatari
+app.get('/api/avatars', (req, res) => {
+    const avatarsDir = path.join(__dirname, 'slike', 'avatari');
+    if (!fs.existsSync(avatarsDir)) {
+        return res.json({ avatars: [] });
+    }
+    try {
+        const allowedExts = /\.(svg|png|jpe?g|gif|webp)$/i;
+        const files = fs.readdirSync(avatarsDir)
+            .filter(f => allowedExts.test(f))
+            .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+        res.json({
+            avatars: files.map(f => '/slike/avatari/' + f)
+        });
+    } catch (err) {
+        console.error('Error reading avatars directory:', err);
+        res.status(500).json({ error: 'Грешка при учитавању аватара' });
+    }
 });
 
 // Serve static files from the new relocated icon folder for backwards compatibility
