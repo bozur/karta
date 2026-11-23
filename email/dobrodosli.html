@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <style>
+        body {
+            background: #949494 center center no-repeat fixed;
+            background-size: cover;
+            /* background-size is often specified separately */
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            justify-content: center;
+            /* Centers child horizontally */
+            /* Ensures container takes up the full height of the viewport 
+     so content within it doesn't cause a vertical scroll unless it overflows this height */
+            height: 100vh;
+            /* Hides potential vertical overflow, just in case */
+            overflow-y: hidden;
+        }
+
+        .centered-div {
+            /* No specific width required, but you can add one */
+            width: 50%;
+            padding: 10px;
+            margin-top: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #f5a615;
+            text-align: center;
+            background-color: rgba(255, 255, 255, 0.4);
+            /* Centers text/inline content inside the div itself */
+        }
+
+        .text {
+            color: black;
+            font-family: Lato, sans-serif;
+        }
+
+        .text2 {
+            color: black;
+            font-family: Lato, sans-serif;
+            font-size: small;
+        }
+
+        ul {
+            text-align: left;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="centered-div text">
+            <h1>Добродошли на стране <span style="color:gold;">КАРТА.СРБ</span> <img src="../slike/icon.png">!</h1>
+            <p>Лозинка за приступ је :
+            <h1> </h1>
+            </p>
+            <hr>
+            <ul>
+                <li>Након што се улогујете на дијелу "корисник" у горњем десном углу можете да унесете ваше корисничко
+                    име и да промијените лозинку.</li>
+
+                <li>У дијелу "упутство" да се упознате са основним могућностима на странама.</li>
+
+                <li>У дијелу "теме" претражите и/или унесите нове ставке.</li>
+
+                <li>Притиском на сличицу на карти да добијете више података о изабраној ставки.</li>
+
+                <li>У дијелу "опште" да се упознате са новостима и плановима.</li>
+
+                <li>Можете да унесете ваше примједбе на поједине ставке и догађаје.</li>
+
+                <li>... и још много другог.</li>
+            </ul>
+
+            <hr><span class="text2">Ако не желите да примате е-обавјештења са ових страна, то можете да урадите у дијелу
+                "корисник" код измјене података!</span>
+        </div>
+    </div>
+
+
+</body>
+
+</html>

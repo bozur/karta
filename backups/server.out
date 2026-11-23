@@ -1,0 +1,16 @@
+[dotenv@17.2.3] injecting env (5) from .env -- tip: 📡 add observability to secrets: https://dotenvx.com/ops
+Server running on http://localhost:3000
+Connected to SQL Server via mssql/msnodesqlv8
+[MOCK EMAIL]To: testuser_1764184509492@example.com, Password: p6fya22b 
+[0mPOST /api/register [32m200[0m 394.181 ms - 51[0m
+[0mPOST /api/login [33m401[0m 187.088 ms - 31[0m
+[0mPOST /api/register [33m409[0m 21.235 ms - 32[0m
+[0mGET /api/check-auth [33m401[0m 7.205 ms - 29[0m
+[0mGET /index.html [32m200[0m 20.896 ms - 36071[0m
+[0mGET /slike/icon.png [36m304[0m 4.181 ms - -[0m
+[0mGET /slike/naslovna.jpg [36m304[0m 3.765 ms - -[0m
+[0mGET /slike/icon.ico [36m304[0m 4.490 ms - -[0m
+[0mGET /index.html [32m200[0m 11.555 ms - 36071[0m
+[0mGET /slike/icon.png [32m200[0m 3.688 ms - 3250[0m
+[0mGET /slike/naslovna.jpg [32m200[0m 5.239 ms - 390010[0m
+[0mGET /slike/icon.ico [32m200[0m 6.432 ms - 4946[0m

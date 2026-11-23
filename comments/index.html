@@ -1,111 +1,147 @@
 <!doctype html>
 <html>
-	<head>
-		<meta charset=utf-8>
-		<meta name=description content="">
-		<meta name=viewport content="width=device-width, initial-scale=1">
-		<title>Jquery Comments Plugin</title>
 
-		<!-- Styles -->
-		<link rel="stylesheet" type="text/css" href="css/jquery-comments.css">
-		<link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
+<head>
+	<meta charset=utf-8>
+	<meta name=description content="">
+	<meta name=viewport content="width=device-width, initial-scale=1">
+	<title>Jquery Comments Plugin</title>
 
-		<!-- Data -->
-		<script type="text/javascript" src="data/comments-data.js"></script>
+	<!-- Styles -->
+	<link rel="stylesheet" type="text/css" href="css/jquery-comments.css">
+	<link rel="stylesheet" type="text/css"
+		href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
 
-		<!-- Libraries -->
-		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
-		<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery.textcomplete/1.8.0/jquery.textcomplete.js"></script>
-		<script type="text/javascript" src="js/jquery-comments.js"></script>
+	<!-- Data -->
+	<script type="text/javascript" src="data/comments-data.js"></script>
 
-		<style type="text/css">
-			body {
-				padding: 20px;
-				margin: 0px;
-				font-size: 14px;
-				font-family: "Arial", Georgia, Serif;
-			}
-		</style>
+	<!-- Libraries -->
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+	<script type="text/javascript"
+		src="https://cdnjs.cloudflare.com/ajax/libs/jquery.textcomplete/1.8.0/jquery.textcomplete.js"></script>
+	<script type="text/javascript" src="js/jquery-comments.js"></script>
 
-		<!-- Init jquery-comments -->
-		<script type="text/javascript">
-			$(function() {
-				var saveComment = function(data) {
+	<style type="text/css">
+		body {
+			padding: 20px;
+			margin: 0px;
+			font-size: 14px;
+			font-family: "Arial", Georgia, Serif;
+		}
+	</style>
 
-					// Convert pings to human readable format
-					$(Object.keys(data.pings)).each(function(index, userId) {
-					    var fullname = data.pings[userId];
-					    var pingText = '@' + fullname;
-					    data.content = data.content.replace(new RegExp('@' + userId, 'g'), pingText);
-					});
+	<!-- Init jquery-comments -->
+	<script type="text/javascript">
+		$(function () {
+			var saveComment = function (data) {
 
-					return data;
-				}
-				$('#comments-container').comments({
-					profilePictureURL: 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png',
-					currentUserId: 1,
-					roundProfilePictures: true,
-					textareaRows: 1,
-					enableAttachments: false,
-					enableHashtags: true,
-					enablePinging: true,
-					scrollContainer: $(window),
-					searchUsers: function(term, success, error) {
-					    setTimeout(function() {
-					        success(usersArray.filter(function(user) {
-					            var containsSearchTerm = user.fullname.toLowerCase().indexOf(term.toLowerCase()) != -1;
-					            var isNotSelf = user.id != 1;
-					            return containsSearchTerm && isNotSelf;
-					        }));
-					    }, 500);
-					},
-					getComments: function(success, error) {
-
-
-					$.ajax({
-                        type: 'get',
-						dataType: 'json',
-                        contentType: 'application/json',
-                        url: '../back/comments-get.asp',
-                        success: function(commentsArray) {
-                          success(commentsArray)
-                        },
-                        error: error
-                      });
-
-
-					},
-					postComment: function(data, success, error) {
-						setTimeout(function() {
-							success(saveComment(data));
-						}, 500);
-					},
-					putComment: function(data, success, error) {
-						setTimeout(function() {
-							success(saveComment(data));
-						}, 500);
-					},
-					deleteComment: function(data, success, error) {
-						setTimeout(function() {
-							success();
-						}, 500);
-					},
-					upvoteComment: function(data, success, error) {
-						setTimeout(function() {
-							success(data);
-						}, 500);
-					},
-					validateAttachments: function(attachments, callback) {
-						setTimeout(function() {
-							callback(attachments);
-						}, 500);
-					},
+				// Convert pings to human readable format
+				$(Object.keys(data.pings)).each(function (index, userId) {
+					var fullname = data.pings[userId];
+					var pingText = '@' + fullname;
+					data.content = data.content.replace(new RegExp('@' + userId, 'g'), pingText);
 				});
-			});
-		</script>
 
-	</head>
-	<body>
-		<div id="comments-container"></div>
-	</body>
+				return data;
+			}
+			$('#comments-container').comments({
+				profilePictureURL: 'https://viima-app.s3.amazonaws.com/media/public/defaults/user-icon.png',
+				currentUserId: 1,
+				roundProfilePictures: true,
+				textareaRows: 1,
+				enableAttachments: false,
+				enableHashtags: true,
+				enablePinging: true,
+				scrollContainer: $(window),
+				searchUsers: function (term, success, error) {
+					$.ajax({
+						type: 'get',
+						dataType: 'json',
+						url: '/api/users',
+						success: function (usersArray) {
+							success(usersArray.filter(function (user) {
+								var containsSearchTerm = user.fullname.toLowerCase().indexOf(term.toLowerCase()) != -1;
+								var isNotSelf = user.id != 1;
+								return containsSearchTerm && isNotSelf;
+							}));
+						},
+						error: error
+					});
+				},
+				getComments: function (success, error) {
+					$.ajax({
+						type: 'get',
+						dataType: 'json',
+						contentType: 'application/json',
+						url: '/api/comments',
+						success: function (commentsArray) {
+							success(commentsArray)
+						},
+						error: error
+					});
+				},
+				postComment: function (data, success, error) {
+					$.ajax({
+						type: 'post',
+						dataType: 'json',
+						contentType: 'application/json',
+						url: '/api/comments',
+						data: JSON.stringify(data),
+						success: function (comment) {
+							success(comment);
+						},
+						error: error
+					});
+				},
+				putComment: function (data, success, error) {
+					$.ajax({
+						type: 'put',
+						dataType: 'json',
+						contentType: 'application/json',
+						url: '/api/comments/' + data.id,
+						data: JSON.stringify(data),
+						success: function (comment) {
+							success(comment);
+						},
+						error: error
+					});
+				},
+				deleteComment: function (data, success, error) {
+					$.ajax({
+						type: 'delete',
+						url: '/api/comments/' + data.id,
+						success: function () {
+							success();
+						},
+						error: error
+					});
+				},
+				upvoteComment: function (data, success, error) {
+					$.ajax({
+						type: 'post',
+						dataType: 'json',
+						contentType: 'application/json',
+						url: '/api/comments/' + data.id + '/upvote',
+						data: JSON.stringify(data),
+						success: function (comment) {
+							success(comment);
+						},
+						error: error
+					});
+				},
+				validateAttachments: function (attachments, callback) {
+					setTimeout(function () {
+						callback(attachments);
+					}, 500);
+				},
+			});
+		});
+	</script>
+
+</head>
+
+<body>
+	<div id="comments-container"></div>
+</body>
+
 </html>

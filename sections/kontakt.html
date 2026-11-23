@@ -1,0 +1,52 @@
+<span style="display: block">
+    <span class="naslov">Контакт</span>
+</span>
+<form id="kontakt-form">
+    <div class="form-group">
+        <label for="kontakt_izbor"><strong>наслов</strong></label>
+        <select class="form-control" id="kontakt_izbor" required>
+            <option value="0">изабери наслов</option>
+            <option value="1">грешка на странама</option>
+            <option value="2">приједлог за нову тему</option>
+            <option value="3">приједлог за побољшање</option>
+            <option value="4">помоћ на странама</option>
+            <option value="5">остало</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="kontakt_poruka"><strong>напис</strong></label>
+        <textarea class="form-control" id="kontakt_poruka" rows="5" required></textarea>
+    </div>
+    <div class="d-flex align-items-center mt-2">
+        <div class="flex-grow-1">
+            <div id="kontakt-status" style="display: none;"></div>
+        </div>
+        <button type="submit" class="btn btn-white border border-dark">пошаљи</button>
+    </div>
+</form>
+<div class="form-group mt-2" id="kontakt_opis">
+    <div id="kontakt_p0" style="display: none;">
+    </div>
+    <div id="kontakt_p1" style="display: none;">
+        <p>Ако примјетите да се страна не понаша на очекивани начин, користите овај наслов за поруку.</p>
+    </div>
+    <div id="kontakt_p2" style="display: none;">
+        <p>Нову тему можете да предложите обраћањем уредницима путем ове стране.
+            Предност ће имати теме које имају већу подршку тј. гласова корисника страна. Ако располажете већом количином
+            података за тему која није подржана, потребно је да нам се обратите под овим насловом како би усагласили
+            наредне
+            кораке односно како би тема била усвојена на основу довољног броја нових ставки.</p>
+    </div>
+    <div id="kontakt_p3" style="display: none;">
+        <p>Приједлози за побољшање су увијек добродошли. Имајте на уму да су за озбиљнија унапређивања потребно и
+            вријеме и новац.</p>
+    </div>
+    <div id="kontakt_p4" style="display: none;">
+        <p>Ако је потребна помоћ прочитајте део на страни упутство <i class="bi-question-circle mx-2" title="упутство"
+                data-toggle="tooltip" data-placement="bottom" title2="#uputstvo"></i>
+            Ваше питање може бити употребљено за унапређење упутства.</p>
+    </div>
+    <div id="kontakt_p5" style="display: none;">
+        <p>Само под условом да не одговара ни једна од претходних ставки</p>
+    </div>
+</div>
