@@ -174,12 +174,14 @@
     }
 
     .podrska-qr-slika {
+        position: relative;
         background: #ffffff;
         padding: 8px;
         border: 1px solid #dee2e6;
         border-radius: 6px;
         display: inline-block;
         margin: 8px 0;
+        overflow: hidden;
     }
 
     .podrska-qr-slika img {
@@ -187,6 +189,55 @@
         width: 170px;
         height: 170px;
         image-rendering: pixelated;
+        transition: filter 0.2s ease, opacity 0.2s ease;
+    }
+
+    .podrska-qr-slika.zamucen img {
+        filter: blur(6px);
+        opacity: 0.32;
+        pointer-events: none;
+    }
+
+    .podrska-qr-poruka {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 12px;
+        text-align: center;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #333;
+        background: rgba(255, 255, 255, 0.45);
+        cursor: pointer;
+    }
+
+    .podrska-iznos-brzi {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 5px;
+        margin-top: 6px;
+    }
+
+    .podrska-iznos-cip {
+        font-size: 0.75rem;
+        padding: 2px 8px;
+        border: 1px solid #ced4da;
+        border-radius: 12px;
+        background: #ffffff;
+        color: #333;
+        cursor: pointer;
+        transition: border-color 0.15s, background-color 0.15s;
+    }
+
+    .podrska-iznos-cip:hover,
+    .podrska-iznos-cip.aktivan {
+        border-color: #f5a615;
+        background: #fff4dd;
+        color: #000;
+        font-weight: 600;
     }
 
     .podrska-iznos-red {
@@ -544,9 +595,9 @@
             <div class="podrska-placanje-kartica" id="podrska_placanje_blok">
                 <div class="podrska-tabovi" role="tablist">
                     <button type="button" id="podrska_tab_srbija" class="podrska-tab-btn aktivan" role="tab"
-                        aria-selected="true">Уплате из Србије</button>
+                        aria-selected="true">Динарске уплате</button>
                     <button type="button" id="podrska_tab_inostranstvo" class="podrska-tab-btn" role="tab"
-                        aria-selected="false">Уплате из иностранства</button>
+                        aria-selected="false">Девизне уплате</button>
                 </div>
 
                 <!-- Таб 1: Уплате из Србије -->
@@ -556,15 +607,21 @@
                         <div style="font-weight: 600; font-size: 0.88rem; text-align: center;">
                             НБС IPS QR код за уплату
                         </div>
-                        <div id="podrska_qr_kontejner" class="podrska-qr-slika">
-                            <!-- QR код се генерише динамички -->
-                        </div>
                         <div class="podrska-iznos-red">
                             <label for="podrska_iznos_input" style="margin: 0; font-size: 0.8rem; color: #555;">
-                                Износ (опционо):
+                                Износ (РСД):
                             </label>
                             <input type="number" id="podrska_iznos_input" class="form-control form-control-sm" min="1"
-                                step="1" placeholder="произвољан (РСД)">
+                                step="1" placeholder="унесите износ">
+                        </div>
+                        <div class="podrska-iznos-brzi">
+                            <button type="button" class="podrska-iznos-cip" data-iznos="500">500</button>
+                            <button type="button" class="podrska-iznos-cip" data-iznos="1000">1.000</button>
+                            <button type="button" class="podrska-iznos-cip" data-iznos="2000">2.000</button>
+                            <button type="button" class="podrska-iznos-cip" data-iznos="5000">5.000</button>
+                        </div>
+                        <div id="podrska_qr_kontejner" class="podrska-qr-slika zamucen">
+                            <!-- QR код се генерише динамички -->
                         </div>
                         <span id="podrska_prikazi_podatke_btn" class="podrska-toggle-link">
                             Прикажи податке за уплату
@@ -611,10 +668,17 @@
                             </span>
                         </div>
                         <div style="margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center;">
+                            <input type="number" id="podrska_mobile_iznos_input" class="form-control form-control-sm"
+                                min="1" step="1" placeholder="Износ (РСД)"
+                                style="width: 115px; font-size: 0.8rem; padding: 3px 8px; height: auto;">
                             <button type="button" class="btn btn-sm btn-warning" id="podrska_preuzmi_qr_btn"
                                 style="font-size: 0.8rem;">
-                                <i class="bi bi-qr-code"></i> Преузми IPS QR код (за галерију)
+                                <i class="bi bi-qr-code"></i> Преузми IPS QR код
                             </button>
+                        </div>
+                        <div id="podrska_mobile_qr_upozorenje"
+                            style="display: none; font-size: 0.76rem; color: #d98a00; margin-top: 4px; text-align: left;">
+                            Унесите износ (РСД) да би НБС IPS QR код био исправан за преузимање.
                         </div>
                         <div style="font-size: 0.76rem; color: #666; margin-top: 5px; text-align: left;">
                             Савет: У м-банкинг апликацији изаберите <em>IPS Скенирај &rarr; Учитај из галерије</em> и

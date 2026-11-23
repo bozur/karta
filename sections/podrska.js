@@ -96,7 +96,10 @@ function generisiIpsQr(iznosRsd) {
     var kontejner = document.getElementById('podrska_qr_kontejner');
     if (!kontejner) return;
 
-    var ipsTekst = kreirajIpsQrString(iznosRsd);
+    var num = parseFloat(iznosRsd);
+    var imaIznos = !isNaN(num) && num > 0;
+    // За замућени преглед користимо примерак износа како би позадински QR изгледао реално, али га не шаљемо за преузимање
+    var ipsTekst = kreirajIpsQrString(imaIznos ? num : 1000);
 
     if (typeof window.qrcode !== 'function') {
         kontejner.innerHTML = '<div style="font-size: 0.8rem; color: #666; padding: 12px;">QR библиотека се учитава...</div>';
@@ -112,8 +115,25 @@ function generisiIpsQr(iznosRsd) {
         qr.make();
 
         var dataUrl = qr.createDataURL(6, 4);
-        podrskaTrenutniQrDataUrl = dataUrl;
-        kontejner.innerHTML = '<img src="' + dataUrl + '" alt="НБС IPS QR код за уплату">';
+
+        if (imaIznos) {
+            podrskaTrenutniQrDataUrl = dataUrl;
+            kontejner.classList.remove('zamucen');
+            kontejner.innerHTML = '<img src="' + dataUrl + '" alt="НБС IPS QR код за уплату">';
+        } else {
+            podrskaTrenutniQrDataUrl = '';
+            kontejner.classList.add('zamucen');
+            kontejner.innerHTML =
+                '<img src="' + dataUrl + '" alt="Унесите износ за QR код">' +
+                '<div class="podrska-qr-poruka" id="podrska_qr_poruka_overlay">Унесите износ да бисте приказали QR код</div>';
+            var overlay = document.getElementById('podrska_qr_poruka_overlay');
+            if (overlay) {
+                overlay.onclick = function () {
+                    var inp = document.getElementById('podrska_iznos_input');
+                    if (inp) inp.focus();
+                };
+            }
+        }
     } catch (err) {
         console.error('Грешка при генерисању QR кода:', err);
         kontejner.innerHTML = '<div style="font-size: 0.8rem; color: #dc3545; padding: 10px;">Није могуће генерисати QR код.</div>';
@@ -186,9 +206,43 @@ function pripremiPlacanje() {
     generisiIpsQr('');
 
     var iznosInput = document.getElementById('podrska_iznos_input');
+    var mobileIznosInput = document.getElementById('podrska_mobile_iznos_input');
+    var mobileQrUpozorenje = document.getElementById('podrska_mobile_qr_upozorenje');
+    var cipovi = document.querySelectorAll('.podrska-iznos-cip');
+
+    function osveziAktivniCip(vrednost) {
+        for (var i = 0; i < cipovi.length; i++) {
+            if (cipovi[i].getAttribute('data-iznos') === String(vrednost).trim()) {
+                cipovi[i].classList.add('aktivan');
+            } else {
+                cipovi[i].classList.remove('aktivan');
+            }
+        }
+    }
+
+    function postaviIznos(vrednost, izvor) {
+        if (iznosInput && izvor !== iznosInput) iznosInput.value = vrednost;
+        if (mobileIznosInput && izvor !== mobileIznosInput) mobileIznosInput.value = vrednost;
+        if (mobileQrUpozorenje) mobileQrUpozorenje.style.display = 'none';
+        osveziAktivniCip(vrednost);
+        generisiIpsQr(vrednost);
+    }
+
     if (iznosInput) {
         iznosInput.oninput = function () {
-            generisiIpsQr(this.value);
+            postaviIznos(this.value, iznosInput);
+        };
+    }
+
+    if (mobileIznosInput) {
+        mobileIznosInput.oninput = function () {
+            postaviIznos(this.value, mobileIznosInput);
+        };
+    }
+
+    for (var c = 0; c < cipovi.length; c++) {
+        cipovi[c].onclick = function () {
+            postaviIznos(this.getAttribute('data-iznos'), null);
         };
     }
 
@@ -236,14 +290,21 @@ function pripremiPlacanje() {
     var preuzmiQrBtn = document.getElementById('podrska_preuzmi_qr_btn');
     if (preuzmiQrBtn) {
         preuzmiQrBtn.onclick = function () {
+            var trenutniIznos = (mobileIznosInput && mobileIznosInput.value) || (iznosInput && iznosInput.value) || '';
+            var num = parseFloat(trenutniIznos);
+            if (isNaN(num) || num <= 0) {
+                if (mobileQrUpozorenje) mobileQrUpozorenje.style.display = 'block';
+                if (mobileIznosInput) mobileIznosInput.focus();
+                return;
+            }
             if (!podrskaTrenutniQrDataUrl) {
-                generisiIpsQr(iznosInput ? iznosInput.value : '');
+                generisiIpsQr(num);
             }
             if (!podrskaTrenutniQrDataUrl) return;
 
             var link = document.createElement('a');
             link.href = podrskaTrenutniQrDataUrl;
-            link.download = 'ips-qr-podrska.png';
+            link.download = 'ips-qr-podrska-' + Math.round(num) + 'rsd.png';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
