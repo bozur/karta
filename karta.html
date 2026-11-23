@@ -3,6 +3,7 @@
 
 <head>
   <title>Карта</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="shortcut icon" href="slike/icon.ico">
 
   <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.1.3/css/bootstrap.min.css"
@@ -15,7 +16,7 @@
   <link rel="stylesheet" type="text/css"
     href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
   <link rel="stylesheet" type="text/css" href="css/jquery-comments.css">
-  <link rel="stylesheet" href="css/custom.css">
+  <link rel="stylesheet" href="css/custom.css?v=2">
   <link rel="stylesheet" href="leaflet-sidebar-master/src/L.Control.Sidebar.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -43,26 +44,44 @@
   <div id="radna">
     <div id="izbor_karte" class="izbor_karte">
       <i class="mx-2" title="промјена карте" data-toggle="tooltip" data-placement="bottom" id="promjena_karte"
-        style="cursor: context-menu; font-style: normal;">терен/сателит</i>
+        style="cursor: pointer; font-style: normal;">терен/сателит</i>
     </div>
+    <button type="button" id="mobile-menu-toggle" class="mobile-menu-toggle" aria-label="Мени" aria-expanded="false">
+      <i class="bi bi-list"></i>
+    </button>
     <div id="navodi" class="navodi">
-      <i class="bi bi-menu-app-fill mx-2 izbor" id="urednik_tab_icon" style="display: none;" title="уредник"
-        data-toggle="tooltip" data-placement="bottom" title2="urednik"></i>
-      <i class="bi-layers mx-2 izbor" title="теме" data-toggle="tooltip" data-placement="bottom" title2="teme"></i>
-      <i class="bi-calendar3 mx-2 izbor" title="догађаји" data-toggle="tooltip" data-placement="bottom"
-        title2="dogadjaji"></i>
-      <i class="bi-folder mx-2 izbor" title="записи" data-toggle="tooltip" data-placement="bottom" title2="zapisi"></i>
-      <i class="bi-lightbulb mx-2 izbor" title="опште" data-toggle="tooltip" data-placement="bottom" title2="opste"></i>
-      <i class="bi-person mx-2 izbor" title="корисник" data-toggle="tooltip" data-placement="bottom"
-        title2="korisnik"></i>
-      <i class="bi bi-cash-coin mx-2 izbor" title="подршка" data-toggle="tooltip" data-placement="bottom"
-        title2="podrska"></i>
-      <i class="bi-envelope mx-2 izbor" title="контакт" data-toggle="tooltip" data-placement="bottom"
-        title2="kontakt"></i>
-      <i class="bi-question-circle mx-2 izbor" title="упутство" data-toggle="tooltip" data-placement="bottom"
-        title2="uputstvo"></i>
-      <i class="bi-box-arrow-right mx-2" id="logout-link" title="излаз" data-toggle="tooltip" data-placement="bottom"
-        style="cursor: pointer;"></i>
+      <span class="nav-item izbor" id="urednik_tab_icon" style="display: none;" title="уредник"
+        data-toggle="tooltip" data-placement="bottom" title2="urednik">
+        <i class="bi bi-menu-app-fill mx-2"></i><span class="nav-label">Уредник</span>
+      </span>
+      <span class="nav-item izbor" title="теме" data-toggle="tooltip" data-placement="bottom" title2="teme">
+        <i class="bi-layers mx-2"></i><span class="nav-label">Теме</span>
+      </span>
+      <span class="nav-item izbor" title="догађаји" data-toggle="tooltip" data-placement="bottom" title2="dogadjaji">
+        <i class="bi-calendar3 mx-2"></i><span class="nav-label">Догађаји</span>
+      </span>
+      <span class="nav-item izbor" title="записи" data-toggle="tooltip" data-placement="bottom" title2="zapisi">
+        <i class="bi-folder mx-2"></i><span class="nav-label">Записи</span>
+      </span>
+      <span class="nav-item izbor" title="опште" data-toggle="tooltip" data-placement="bottom" title2="opste">
+        <i class="bi-lightbulb mx-2"></i><span class="nav-label">Опште</span>
+      </span>
+      <span class="nav-item izbor" title="корисник" data-toggle="tooltip" data-placement="bottom" title2="korisnik">
+        <i class="bi-person mx-2"></i><span class="nav-label">Корисник</span>
+      </span>
+      <span class="nav-item izbor" title="подршка" data-toggle="tooltip" data-placement="bottom" title2="podrska">
+        <i class="bi bi-cash-coin mx-2"></i><span class="nav-label">Подршка</span>
+      </span>
+      <span class="nav-item izbor" title="контакт" data-toggle="tooltip" data-placement="bottom" title2="kontakt">
+        <i class="bi-envelope mx-2"></i><span class="nav-label">Контакт</span>
+      </span>
+      <span class="nav-item izbor" title="упутство" data-toggle="tooltip" data-placement="bottom" title2="uputstvo">
+        <i class="bi-question-circle mx-2"></i><span class="nav-label">Упутство</span>
+      </span>
+      <span class="nav-item" id="logout-link" title="излаз" data-toggle="tooltip" data-placement="bottom"
+        style="cursor: pointer;">
+        <i class="bi-box-arrow-right mx-2"></i><span class="nav-label">Излаз</span>
+      </span>
     </div>
     <!-- Dogadjaj detail layer - top positioned -->
     <div id="dogadjaj_layer" class="dogadjaj_layer">
@@ -96,6 +115,9 @@
     <div id="kartaid" style="width: 100%;"></div>
     <!-- Dynamic content container for navigation sections -->
     <div id="section-content" class="sloj_vidi"></div>
+    <button type="button" id="mobile-panel-close" class="mobile-panel-close" aria-label="Затвори панел">
+      <i class="bi bi-x-lg"></i> Затвори
+    </button>
   </div>
 
   <script src="js/config/theme_config.js"></script>
@@ -103,7 +125,7 @@
   <script type="text/javascript"
     src="https://cdnjs.cloudflare.com/ajax/libs/jquery.textcomplete/1.8.0/jquery.textcomplete.js"></script>
   <script src="js/jquery-comments.js"></script>
-  <script src="karta.js"></script>
+  <script src="karta.js?v=2"></script>
 </body>
 
 </html>

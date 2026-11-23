@@ -48,8 +48,40 @@ $(document).ready(function () {
         $('#kartaid').height(window.innerHeight)
         $('.sloj_vidi').height(window.innerHeight - 78)
     });
-    //za gornji desni ugao tumačenja
-    $('[data-toggle="tooltip"]').tooltip();
+    //za gornji desni ugao tumačenja (samo na većim ekranima)
+    if (window.innerWidth > 768) {
+        $('[data-toggle="tooltip"]').tooltip();
+    }
+
+    // Mobile hamburger menu toggle
+    function closeMobileMenu() {
+        $('#navodi').removeClass('open');
+        $('#mobile-menu-toggle').attr('aria-expanded', 'false');
+        $('#mobile-menu-toggle i').removeClass('bi-x-lg').addClass('bi-list');
+    }
+
+    $('#mobile-menu-toggle').on('click', function (e) {
+        e.stopPropagation();
+        var isOpen = $('#navodi').toggleClass('open').hasClass('open');
+        $(this).attr('aria-expanded', isOpen ? 'true' : 'false');
+        $(this).find('i').toggleClass('bi-list', !isOpen).toggleClass('bi-x-lg', isOpen);
+    });
+
+    $(document).on('click', '#navodi .nav-item', function () {
+        closeMobileMenu();
+    });
+
+    $(document).on('click', function (e) {
+        if ($('#navodi').hasClass('open') &&
+            !$(e.target).closest('#navodi, #mobile-menu-toggle').length) {
+            closeMobileMenu();
+        }
+    });
+
+    $('#mobile-panel-close').on('click', function () {
+        $('#section-content').removeClass('in');
+        currentSection = null;
+    });
 
     // Initialize map after height is set - centered on Skadar
     // Disable default zoom control to add custom Serbian one
