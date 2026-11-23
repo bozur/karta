@@ -193,13 +193,36 @@ const uploadDir = path.join(__dirname, 'uploads', 'zapisi');
 if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
 }
+function buildSafeFilename(rawOriginalName, uniqueSuffix, fallbackBase = 'file', maxBaseBytes = 100) {
+    // Multer/busboy decodes multipart filenames as latin1; recover original UTF-8
+    const decoded = Buffer.from(rawOriginalName || '', 'latin1').toString('utf8');
+    const rawExt = path.extname(decoded);
+    const ext = rawExt.toLowerCase().replace(/[^a-z0-9.]/g, '');
+    let base = path.basename(decoded, rawExt)
+        .replace(/[<>:"/\\|?*\x00-\x1F]+/g, '_')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    // Truncate by UTF-8 byte length so the final filename always stays well under Linux's 255-byte NAME_MAX
+    let truncated = '';
+    let byteLen = 0;
+    for (const ch of base) {
+        const chBytes = Buffer.byteLength(ch, 'utf8');
+        if (byteLen + chBytes > maxBaseBytes) break;
+        truncated += ch;
+        byteLen += chBytes;
+    }
+    truncated = truncated.trim().replace(/\.+$/, '');
+    if (!truncated) truncated = fallbackBase;
+
+    return `${truncated}_${uniqueSuffix}${ext}`;
+}
+
 const storage = multer.diskStorage({
     destination: function (req, file, cb) { cb(null, uploadDir); },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '_' + Math.round(Math.random() * 1E9);
-        const ext = path.extname(file.originalname);
-        const basename = path.basename(file.originalname, ext);
-        cb(null, basename + '_' + uniqueSuffix + ext);
+        cb(null, buildSafeFilename(file.originalname, uniqueSuffix, 'zapis', 100));
     }
 });
 const upload = multer({
@@ -1264,7 +1287,24 @@ app.get('/api/urednik/all-zapisi', async (req, res) => {
     }
 });
 
-app.post('/api/zapisi/upload', uploadLimiter, upload.single('file'), async (req, res) => {
+const handleZapisUpload = (req, res, next) => {
+    upload.single('file')(req, res, (err) => {
+        if (!err) return next();
+        console.error('Multer upload error:', err);
+        if (err instanceof multer.MulterError) {
+            if (err.code === 'LIMIT_FILE_SIZE') {
+                return res.status(400).json({ error: 'Фајл је превелик (максимално 10MB)' });
+            }
+            return res.status(400).json({ error: 'Грешка при учитавању фајла: ' + err.message });
+        }
+        if (err.message && err.message.includes('врсте записа')) {
+            return res.status(400).json({ error: err.message });
+        }
+        return res.status(500).json({ error: 'Грешка при чувању фајла на серверу' });
+    });
+};
+
+app.post('/api/zapisi/upload', uploadLimiter, handleZapisUpload, async (req, res) => {
     try {
         // 1. Authentication check
         if (!req.session.user) {
@@ -3444,8 +3484,11 @@ app.post('/api/upload-profile-picture', (req, res) => {
             cb(null, uploadDir);
         },
         filename: function (req, file, cb) {
-            const cleanName = file.originalname.replace(/[^a-zA-Z0-9.]/g, "_");
-            cb(null, Date.now() + '-' + cleanName);
+            const ext = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '');
+            const base = path.basename(file.originalname, path.extname(file.originalname))
+                .replace(/[^a-zA-Z0-9_-]/g, '_')
+                .slice(0, 80) || 'avatar';
+            cb(null, Date.now() + '-' + base + ext);
         }
     });
 

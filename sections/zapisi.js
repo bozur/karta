@@ -15,7 +15,9 @@ function initializeZapisi() {
 
     $('#unos_file').off('change').on('change', function () {
         const fileName = $(this).val().split('\\').pop();
-        $(this).next('.custom-file-label').html(fileName || 'запис није изабран');
+        $(this).next('.custom-file-label')
+            .text(fileName || 'запис није изабран')
+            .attr('title', fileName || '');
     });
 
     $('#zapisi_unos_form').off('submit').on('submit', function (e) {
@@ -133,7 +135,7 @@ function handleFileUpload() {
                 errorDiv.css('color', 'green').text(data.message || 'запис је учитан').show(); /**/
                 $('#zapisi_unos_form')[0].reset();
                 $('#unos_korisnik').val(sessionStorage.getItem('username') || 'TestUser');
-                $('.custom-file-label').html('запис није изабран');
+                $('.custom-file-label').text('запис није изабран').attr('title', '');
 
                 // Hide success message after 3 seconds
                 setTimeout(() => {
