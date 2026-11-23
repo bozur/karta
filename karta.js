@@ -63,7 +63,9 @@ $(document).ready(function () {
         zoomOutTitle: 'Удаљи'
     }).addTo(karta);
 
-    tilelayer1 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
+    // Load Mapbox public tokens from backend (.env) so no tokens are hardcoded in git
+    function initMapboxTileLayers(tokenDefault, tokenClean) {
+        tilelayer1 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=' + encodeURIComponent(tokenDefault), {
         maxZoom: 18,
         attribution: '<a target="_blank" href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
             'Imagery © <a target="_blank" href="https://www.mapbox.com/">Mapbox</a>',
@@ -72,7 +74,7 @@ $(document).ready(function () {
         zoomOffset: -1,
         crossOrigin: 'anonymous'
     });
-    tilelayer2 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNrdnk1dGQ1ZTA4Mzkyb212anpteGJrY2UifQ.006iyvR0wTD7O-S6r4_4IQ', {
+        tilelayer2 = L.tileLayer('https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/{z}/{x}/{y}?access_token=' + encodeURIComponent(tokenDefault), {
         maxZoom: 18,
         attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
             'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -83,7 +85,7 @@ $(document).ready(function () {
     });
 
     // Clean terrain layer (terenx)
-    tilelayer1_clean = L.tileLayer('https://api.mapbox.com/styles/v1/krajisnik/cmioh6qyt00n601s96mry52fh/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNtaW44dHJiNjAzdmgzZXNhM2RoZDZydmwifQ.ZQ99gNhQJ-ZAJtmjLzogLQ', {
+        tilelayer1_clean = L.tileLayer('https://api.mapbox.com/styles/v1/krajisnik/cmioh6qyt00n601s96mry52fh/tiles/{z}/{x}/{y}?access_token=' + encodeURIComponent(tokenClean), {
         maxZoom: 18,
         attribution: '<a target="_blank" href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a target="_blank" href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
             'Imagery © <a target="_blank" href="https://www.mapbox.com/">Mapbox</a>',
@@ -93,7 +95,7 @@ $(document).ready(function () {
     });
 
     // Clean satellite layer (satelitx)
-    tilelayer2_clean = L.tileLayer('https://api.mapbox.com/styles/v1/krajisnik/cmiogi93c015f01s61utu9qg8/tiles/{z}/{x}/{y}?access_token=pk.eyJ1Ijoia3JhamlzbmlrIiwiYSI6ImNtaW44dHJiNjAzdmgzZXNhM2RoZDZydmwifQ.ZQ99gNhQJ-ZAJtmjLzogLQ', {
+        tilelayer2_clean = L.tileLayer('https://api.mapbox.com/styles/v1/krajisnik/cmiogi93c015f01s61utu9qg8/tiles/{z}/{x}/{y}?access_token=' + encodeURIComponent(tokenClean), {
         maxZoom: 18,
         attribution: '<a href="https://mapicons.mapsmarker.com/">Map Icons Collection</a> | Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, ' +
             'Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -102,9 +104,12 @@ $(document).ready(function () {
         crossOrigin: 'anonymous'
     });
 
+        (window.layersVisible ? tilelayer1 : tilelayer1_clean).addTo(karta);
+    }
+
     // Toggle function
     window.toggleMapLayers = function () {
-        if (!karta) return;
+        if (!karta || !tilelayer1 || !tilelayer2 || !tilelayer1_clean || !tilelayer2_clean) return;
         var isSatellite = karta.hasLayer(tilelayer2) || karta.hasLayer(tilelayer2_clean);
         if (karta.hasLayer(tilelayer1)) karta.removeLayer(tilelayer1);
         if (karta.hasLayer(tilelayer1_clean)) karta.removeLayer(tilelayer1_clean);
@@ -117,7 +122,14 @@ $(document).ready(function () {
         }
     };
 
-    tilelayer1.addTo(karta);
+    fetch('/api/config/mapbox')
+        .then(function (r) { return r.json(); })
+        .then(function (cfg) {
+            initMapboxTileLayers(cfg.tokenDefault || '', cfg.tokenClean || cfg.tokenDefault || '');
+        })
+        .catch(function (err) {
+            console.error('Failed to load Mapbox config:', err);
+        });
 
     var idpointinfo = 0;
     var sidebar = L.control.sidebar('sidebar', {

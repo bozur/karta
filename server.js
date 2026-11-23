@@ -3272,6 +3272,14 @@ app.get('/api/urednik/comments/reported', async (req, res) => {
     }
 });
 
+// GET /api/config/mapbox - Provide Mapbox public tokens from environment variables
+app.get('/api/config/mapbox', (req, res) => {
+    res.json({
+        tokenDefault: process.env.MAPBOX_TOKEN_DEFAULT || '',
+        tokenClean: process.env.MAPBOX_TOKEN_CLEAN || process.env.MAPBOX_TOKEN_DEFAULT || ''
+    });
+});
+
 // ============================================
 // Podrska & Urednik API Routes - Uplate (Donations)
 // ============================================
