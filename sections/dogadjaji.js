@@ -9,6 +9,12 @@ $(document).ready(function () {
 });
 
 function initializeDogadjaji() {
+    const accordion = $('#dogadjaji_accordion');
+    if (accordion.data('initialized')) {
+        return;
+    }
+    accordion.data('initialized', true);
+
     console.log('Initializing dogadjaji section...');
 
     const currentUser = sessionStorage.getItem('username') || 'TestUser';
@@ -67,6 +73,9 @@ function initializeDogadjaji() {
     } else {
         console.error("Flatpickr not loaded!");
     }
+
+    // Load latest 10 events automatically on tab open
+    loadLatestDogadjaji();
 }
 
 window.initDogadjajiSection = initializeDogadjaji;
@@ -214,6 +223,11 @@ function handleDogadjajiInsert() {
                 setTimeout(() => {
                     errorDiv.hide().css('color', 'orange');
                 }, 3000);
+
+                // Refresh latest events if no search filters are active
+                if (!hasDogadjajiFilters()) {
+                    loadLatestDogadjaji();
+                }
             } else {
                 errorDiv.text(data.error || 'Грешка при додавању догађаја').show();
             }
@@ -222,6 +236,47 @@ function handleDogadjajiInsert() {
             spinner.css('visibility', 'hidden');
             console.error('Error:', error);
             errorDiv.text('Грешка при комуникацији са сервером').show();
+        });
+}
+
+function hasDogadjajiFilters() {
+    return Boolean(
+        ($('#dogadjaji_trazi_opis').val() || '').trim() ||
+        ($('#dogadjaji_trazi_pocetak').val() || '').trim() ||
+        ($('#dogadjaji_trazi_kraj').val() || '').trim() ||
+        $('#dogadjaji_trazi_izvor').val() ||
+        $('#dogadjaji_trazi_prostorno').val() ||
+        $('#dogadjaji_trazi_vremenski').val()
+    );
+}
+
+function loadLatestDogadjaji() {
+    const errorDiv = $('#dogadjaji_trazi_error');
+    const spinner = $('#dogadjaji_trazi_cekanje');
+
+    errorDiv.hide().text('');
+    spinner.css('visibility', 'visible');
+
+    fetch('/api/dogadjaji/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ limit: 10 })
+    })
+        .then(response => response.json())
+        .then(data => {
+            spinner.css('visibility', 'hidden');
+            if (data.success) {
+                displayDogadjajiResults(data.results, 'Последњих 10 догађаја');
+            } else {
+                errorDiv.text(data.error || 'Грешка при учитавању догађаја').show();
+            }
+        })
+        .catch(error => {
+            spinner.css('visibility', 'hidden');
+            console.error('Error:', error);
+            errorDiv.text('Грешка при учитавању догађаја').show();
         });
 }
 
@@ -235,8 +290,11 @@ function handleDogadjajiSearch() {
         vremenski: $('#dogadjaji_trazi_vremenski').val()
     };
 
+    const filtered = hasDogadjajiFilters();
     const errorDiv = $('#dogadjaji_trazi_error');
     const spinner = $('#dogadjaji_trazi_cekanje');
+
+    $('#dogadjaji_trazi_kraj').css('border-color', '');
 
     if (searchData.pocetak && searchData.kraj) {
         if (new Date(searchData.kraj) < new Date(searchData.pocetak)) {
@@ -260,7 +318,10 @@ function handleDogadjajiSearch() {
         .then(data => {
             spinner.css('visibility', 'hidden');
             if (data.success) {
-                displayDogadjajiResults(data.results);
+                const title = filtered
+                    ? `Резултати претраге (${data.results.length})`
+                    : `Сви догађаји (${data.results.length})`;
+                displayDogadjajiResults(data.results, title);
             } else {
                 errorDiv.text(data.error || 'Грешка при претрази').show();
             }
@@ -272,11 +333,18 @@ function handleDogadjajiSearch() {
         });
 }
 
-function displayDogadjajiResults(results) {
+function displayDogadjajiResults(results, titleText) {
     const resultsBody = $('#dogadjaji_results_body');
     const resultsContainer = $('#dogadjaji_results');
+    const resultsTitle = $('#dogadjaji_results_title');
 
     resultsBody.empty();
+
+    if (titleText) {
+        resultsTitle.text(titleText).show();
+    } else {
+        resultsTitle.hide().text('');
+    }
 
     if (results.length === 0) {
         resultsBody.append(`
@@ -293,9 +361,9 @@ function displayDogadjajiResults(results) {
 
             resultsBody.append(`
                 <tr style="cursor: pointer;" onclick="viewDogadjaj(${result.id})">
-                    <td style="padding: 5px; width: 60px;">${result.id}</td>
-                    <td style="padding: 5px;">${result.opis || ''}</td>
-                    <td style="padding: 5px; width: 30px; text-align: center;">${locationIcon}</td>
+                    <td style="padding: 5px 8px 5px 5px; width: 1%; white-space: nowrap; vertical-align: top;">${result.id}</td>
+                    <td style="padding: 5px; vertical-align: top;">${result.opis || ''}</td>
+                    <td style="padding: 5px; width: 1%; white-space: nowrap; text-align: center; vertical-align: top;">${locationIcon}</td>
                 </tr>
             `);
         });

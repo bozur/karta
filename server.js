@@ -1404,7 +1404,7 @@ app.post('/api/zapisi/upload', uploadLimiter, handleZapisUpload, async (req, res
 // POST /api/zapisi/search
 app.post('/api/zapisi/search', async (req, res) => {
     try {
-        const { naziv, tema_id, korisnik, opis, tagovi } = req.body;
+        const { naziv, tema_id, korisnik, opis, tagovi, limit } = req.body;
         const pool = await poolPromise;
         const request = pool.request();
         let query = `
@@ -1440,6 +1440,11 @@ app.post('/api/zapisi/search', async (req, res) => {
             query += " WHERE " + conditions.join(" AND ");
         }
         query += " ORDER BY z.created_at DESC";
+        const parsedLimit = parseInt(limit, 10);
+        if (!isNaN(parsedLimit) && parsedLimit > 0 && parsedLimit <= 100) {
+            query += " LIMIT @limit";
+            request.input('limit', sql.Int, parsedLimit);
+        }
         const result = await request.query(query);
         res.json({
             success: true,
@@ -1589,7 +1594,7 @@ app.post('/api/dogadjaji/insert', async (req, res) => {
 // POST /api/dogadjaji/search
 app.post('/api/dogadjaji/search', async (req, res) => {
     try {
-        const { id, opis, pocetak, kraj, izvor, prostorno, vremenski } = req.body;
+        const { id, opis, pocetak, kraj, izvor, prostorno, vremenski, limit } = req.body;
         const pool = await poolPromise;
         const request = pool.request();
 
@@ -1648,6 +1653,12 @@ app.post('/api/dogadjaji/search', async (req, res) => {
         }
 
         query += " ORDER BY d.id DESC";
+
+        const parsedLimit = parseInt(limit, 10);
+        if (!isNaN(parsedLimit) && parsedLimit > 0 && parsedLimit <= 100) {
+            query += " LIMIT @limit";
+            request.input('limit', sql.Int, parsedLimit);
+        }
 
         const result = await request.query(query);
 

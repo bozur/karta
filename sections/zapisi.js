@@ -6,6 +6,12 @@ $(document).ready(function () {
 });
 
 function initializeZapisi() {
+    const accordion = $('#zapisi_accordion');
+    if (accordion.data('initialized')) {
+        return;
+    }
+    accordion.data('initialized', true);
+
     console.log('Initializing zapisi section...');
 
     const currentUser = sessionStorage.getItem('username') || 'TestUser';
@@ -29,6 +35,9 @@ function initializeZapisi() {
         e.preventDefault();
         handleSearch();
     });
+
+    // Load latest 10 records automatically on tab open
+    loadLatestZapisi();
 }
 
 window.initZapisiSection = initializeZapisi;
@@ -141,6 +150,11 @@ function handleFileUpload() {
                 setTimeout(() => {
                     errorDiv.hide().css('color', 'orange');
                 }, 3000);
+
+                // Refresh latest records if no search filters are active
+                if (!hasZapisiFilters()) {
+                    loadLatestZapisi();
+                }
             } else {
                 errorDiv.css('color', 'orange').text(data.error || 'Грешка при додавању фајла').show();
             }
@@ -149,6 +163,46 @@ function handleFileUpload() {
             spinner.css('visibility', 'hidden');
             console.error('Error:', error);
             errorDiv.css('color', 'orange').text('Грешка при комуникацији са сервером').show();
+        });
+}
+
+function hasZapisiFilters() {
+    return Boolean(
+        ($('#trazi_naziv').val() || '').trim() ||
+        $('#trazi_tema').val() ||
+        ($('#trazi_korisnik').val() || '').trim() ||
+        ($('#trazi_opis').val() || '').trim() ||
+        ($('#trazi_tagovi').val() || '').trim()
+    );
+}
+
+function loadLatestZapisi() {
+    const errorDiv = $('#trazi_error');
+    const spinner = $('#trazi_cekanje');
+
+    errorDiv.hide().text('');
+    spinner.css('visibility', 'visible');
+
+    fetch('/api/zapisi/search', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ limit: 10 })
+    })
+        .then(response => response.json())
+        .then(data => {
+            spinner.css('visibility', 'hidden');
+            if (data.success) {
+                displaySearchResults(data.results, 'Последњих 10 записа');
+            } else {
+                errorDiv.text(data.error || 'Грешка при учитавању записа').show();
+            }
+        })
+        .catch(error => {
+            spinner.css('visibility', 'hidden');
+            console.error('Error:', error);
+            errorDiv.text('Грешка при учитавању записа').show();
         });
 }
 
@@ -161,6 +215,7 @@ function handleSearch() {
         tagovi: $('#trazi_tagovi').val()
     };
 
+    const filtered = hasZapisiFilters();
     const errorDiv = $('#trazi_error');
     const spinner = $('#trazi_cekanje');
 
@@ -178,7 +233,10 @@ function handleSearch() {
         .then(data => {
             spinner.css('visibility', 'hidden');
             if (data.success) {
-                displaySearchResults(data.results);
+                const title = filtered
+                    ? `Резултати претраге (${data.results.length})`
+                    : `Сви записи (${data.results.length})`;
+                displaySearchResults(data.results, title);
             } else {
                 errorDiv.text(data.error || 'Грешка при претрази').show();
             }
@@ -190,11 +248,18 @@ function handleSearch() {
         });
 }
 
-function displaySearchResults(results) {
+function displaySearchResults(results, titleText) {
     const resultsBody = $('#zapisi_results_body');
     const resultsContainer = $('#zapisi_results');
+    const resultsTitle = $('#zapisi_results_title');
 
     resultsBody.empty();
+
+    if (titleText) {
+        resultsTitle.text(titleText).show();
+    } else {
+        resultsTitle.hide().text('');
+    }
 
     if (results.length === 0) {
         resultsBody.append(`
@@ -208,11 +273,11 @@ function displaySearchResults(results) {
         results.forEach(result => {
             resultsBody.append(`
                 <tr>
-                    <td style="padding: 5px; width: 60px;">${result.id}</td>
-                    <td style="padding: 5px; width: 200px;">
+                    <td style="padding: 5px 8px 5px 5px; width: 1%; white-space: nowrap; vertical-align: top;">${result.id}</td>
+                    <td style="padding: 5px; width: 35%; vertical-align: top;">
                         <a href="#" class="zapis-link" onclick="viewZapis(${result.id}); return false;">${result.naziv}</a>
                     </td>
-                    <td style="padding: 5px;">${result.opis || ''}</td>
+                    <td style="padding: 5px; vertical-align: top;">${result.opis || ''}</td>
                 </tr>
             `);
         });
