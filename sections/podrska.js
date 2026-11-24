@@ -620,6 +620,146 @@ function ucitajSvgKaoSliku(svgEl) {
     });
 }
 
+function nacrtajZaobljeniPravougaonik(ctx, x, y, w, h, r) {
+    var rad = Math.min(r, w / 2, h / 2);
+    ctx.beginPath();
+    ctx.moveTo(x + rad, y);
+    ctx.lineTo(x + w - rad, y);
+    ctx.quadraticCurveTo(x + w, y, x + w, y + rad);
+    ctx.lineTo(x + w, y + h - rad);
+    ctx.quadraticCurveTo(x + w, y + h, x + w - rad, y + h);
+    ctx.lineTo(x + rad, y + h);
+    ctx.quadraticCurveTo(x, y + h, x, y + h - rad);
+    ctx.lineTo(x, y + rad);
+    ctx.quadraticCurveTo(x, y, x + rad, y);
+    ctx.closePath();
+}
+
+function prelomiTekst(ctx, tekst, maksSirina, maksLinija) {
+    var linije = [];
+    var paragrafi = String(tekst || '').split(/\r?\n/);
+    for (var p = 0; p < paragrafi.length; p++) {
+        var reci = paragrafi[p].trim().split(/\s+/);
+        if (reci.length === 1 && reci[0] === '') continue;
+        var trenutna = '';
+        for (var i = 0; i < reci.length; i++) {
+            var test = trenutna ? trenutna + ' ' + reci[i] : reci[i];
+            if (ctx.measureText(test).width > maksSirina && trenutna) {
+                linije.push(trenutna);
+                trenutna = reci[i];
+                if (maksLinija && linije.length >= maksLinija) {
+                    linije[maksLinija - 1] = linije[maksLinija - 1].replace(/\s*\S*$/, '') + '…';
+                    return linije;
+                }
+            } else {
+                trenutna = test;
+            }
+        }
+        if (trenutna) {
+            linije.push(trenutna);
+            if (maksLinija && linije.length >= maksLinija) {
+                if (p < paragrafi.length - 1) {
+                    linije[maksLinija - 1] = linije[maksLinija - 1] + '…';
+                }
+                return linije;
+            }
+        }
+    }
+    return linije;
+}
+
+function nacrtajLeafletPopup(ctx, popupEl, mapRect) {
+    var wrapper = popupEl.querySelector('.leaflet-popup-content-wrapper');
+    var content = popupEl.querySelector('.leaflet-popup-content');
+    if (!wrapper || !content) return null;
+
+    var wr = wrapper.getBoundingClientRect();
+    if (wr.width <= 0 || wr.height <= 0) return null;
+
+    var x = wr.left - mapRect.left;
+    var y = wr.top - mapRect.top;
+    var w = wr.width;
+    var h = wr.height;
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.28)';
+    ctx.shadowBlur = 12;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 3;
+
+    // Бели заобљени балончић
+    nacrtajZaobljeniPravougaonik(ctx, x, y, w, h, 8);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+
+    // Стрелица на дну балончића
+    var tipX = x + w / 2;
+    var tipY = y + h;
+    ctx.beginPath();
+    ctx.moveTo(tipX - 8, tipY - 1);
+    ctx.lineTo(tipX + 8, tipY - 1);
+    ctx.lineTo(tipX, tipY + 10);
+    ctx.closePath();
+    ctx.fill();
+
+    // Танки оквир без сенке
+    ctx.shadowColor = 'transparent';
+    nacrtajZaobljeniPravougaonik(ctx, x, y, w, h, 8);
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.14)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // Текст унутар балончића
+    var rawText = (content.innerText || content.textContent || '').trim();
+    var padX = 14;
+    var padY = 12;
+    var fontSize = 12;
+    var lineHeight = 16;
+
+    ctx.fillStyle = '#222222';
+    ctx.font = fontSize + 'px Lato, Arial, sans-serif';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'top';
+
+    var maksLinija = Math.max(1, Math.floor((h - padY * 2) / lineHeight));
+    var linije = prelomiTekst(ctx, rawText, Math.max(40, w - padX * 2), maksLinija);
+
+    for (var i = 0; i < linije.length; i++) {
+        ctx.fillText(linije[i], x + padX, y + padY + i * lineHeight);
+    }
+
+    ctx.restore();
+
+    return {
+        centerX: x + w / 2,
+        centerY: y + h / 2 + 12
+    };
+}
+
+function dohvatiInfoDogadjaja() {
+    var dogadjajEl = document.getElementById('dogadjaj_layer');
+    if (dogadjajEl && (dogadjajEl.classList.contains('show') || window.getComputedStyle(dogadjajEl).display !== 'none')) {
+        var opisEl = document.getElementById('dogadjaj_opis');
+        var vremeEl = document.getElementById('dogadjaj_vrijeme');
+        var opis = opisEl ? (opisEl.innerText || opisEl.textContent || '').trim() : '';
+        var vreme = vremeEl ? (vremeEl.innerText || vremeEl.textContent || '').trim() : '';
+        if (opis || vreme) {
+            return { opis: opis, vreme: vreme };
+        }
+    }
+
+    var playbackEl = document.getElementById('playback_info_layer');
+    if (playbackEl && window.getComputedStyle(playbackEl).display !== 'none') {
+        var twEl = document.getElementById('playback_time_window');
+        var tw = twEl ? (twEl.innerText || twEl.textContent || '').trim() : '';
+        if (tw && tw !== '-') {
+            return { opis: '', vreme: tw };
+        }
+    }
+
+    return null;
+}
+
 async function snimiKartuKaoCanvas() {
     var mapEl = document.getElementById('kartaid');
     if (!mapEl) {
@@ -733,6 +873,16 @@ async function snimiKartuKaoCanvas() {
         } catch (e) {}
     }
 
+    // 6. Отворени Leaflet балончић (popup) изнад маркера
+    var focusPoint = null;
+    var popups = mapEl.querySelectorAll('.leaflet-popup-pane .leaflet-popup');
+    for (var p = 0; p < popups.length; p++) {
+        var popupInfo = nacrtajLeafletPopup(ctx, popups[p], mapRect);
+        if (popupInfo) {
+            focusPoint = popupInfo;
+        }
+    }
+
     // Одреди видљиви део карте (лево од отвореног панела Подршка, ако има простора)
     var panelEl = document.getElementById('section-content');
     var vidljivaSirina = w;
@@ -747,7 +897,10 @@ async function snimiKartuKaoCanvas() {
         canvas: srcCanvas,
         dpr: dpr,
         visibleWidth: vidljivaSirina * dpr,
-        visibleHeight: h * dpr
+        visibleHeight: h * dpr,
+        focusX: focusPoint ? focusPoint.centerX * dpr : null,
+        focusY: focusPoint ? focusPoint.centerY * dpr : null,
+        dogadjajInfo: dohvatiInfoDogadjaja()
     };
 }
 
@@ -776,14 +929,84 @@ function nacrtajFrejmZaMreze(outCanvas, snap, natpis, zoomFaktor, alphaNatpisa, 
 
     var px = typeof panXRatio === 'number' ? panXRatio : 0;
     var py = typeof panYRatio === 'number' ? panYRatio : 0;
-    var centerX = visW / 2 + px * (cropW - zCropW) * 0.45;
-    var centerY = visH / 2 + py * (cropH - zCropH) * 0.35;
+    var baseCenterX = snap.focusX !== null && snap.focusX !== undefined ? snap.focusX : visW / 2;
+    var baseCenterY = snap.focusY !== null && snap.focusY !== undefined ? snap.focusY : visH / 2;
+    var centerX = baseCenterX + px * (cropW - zCropW) * 0.45;
+    var centerY = baseCenterY + py * (cropH - zCropH) * 0.35;
     var sx = Math.max(0, Math.min(snap.canvas.width - zCropW, centerX - zCropW / 2));
     var sy = Math.max(0, Math.min(snap.canvas.height - zCropH, centerY - zCropH / 2));
 
     ctx.fillStyle = '#111';
     ctx.fillRect(0, 0, outW, outH);
     ctx.drawImage(snap.canvas, sx, sy, zCropW, zCropH, 0, 0, outW, outH);
+
+    // Горња картица за отворени догађај (ако је слој догађаја отворен)
+    if (snap.dogadjajInfo && (snap.dogadjajInfo.opis || snap.dogadjajInfo.vreme)) {
+        var cardPadX = Math.round(outW * 0.045);
+        var cardTop = Math.round(outH * 0.035);
+        var cardW = outW - cardPadX * 2;
+        var innerPad = Math.round(Math.min(outW, outH) * 0.024);
+        var opisFont = Math.max(18, Math.round(Math.min(outW, outH) * 0.027));
+        var vremeFont = Math.max(15, Math.round(opisFont * 0.85));
+        var opisLH = Math.round(opisFont * 1.32);
+        var vremeLH = Math.round(vremeFont * 1.3);
+
+        ctx.save();
+        ctx.globalAlpha = typeof alphaNatpisa === 'number' ? alphaNatpisa : 1;
+
+        ctx.font = '600 ' + opisFont + 'px Lato, Arial, sans-serif';
+        var opisLinije = snap.dogadjajInfo.opis
+            ? prelomiTekst(ctx, snap.dogadjajInfo.opis, cardW - innerPad * 2, outH > outW ? 5 : 3)
+            : [];
+
+        ctx.font = '500 ' + vremeFont + 'px Lato, Arial, sans-serif';
+        var vremeLinije = snap.dogadjajInfo.vreme
+            ? prelomiTekst(ctx, snap.dogadjajInfo.vreme, cardW - innerPad * 2, 2)
+            : [];
+
+        var cardH = innerPad * 2 + opisLinije.length * opisLH +
+            (opisLinije.length > 0 && vremeLinije.length > 0 ? Math.round(innerPad * 0.45) : 0) +
+            vremeLinije.length * vremeLH;
+
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
+        ctx.shadowBlur = 16;
+        ctx.shadowOffsetY = 4;
+
+        nacrtajZaobljeniPravougaonik(ctx, cardPadX, cardTop, cardW, cardH, 12);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.94)';
+        ctx.fill();
+
+        ctx.shadowColor = 'transparent';
+        nacrtajZaobljeniPravougaonik(ctx, cardPadX, cardTop, cardW, cardH, 12);
+        ctx.strokeStyle = 'rgba(245, 166, 21, 0.85)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        var currY = cardTop + innerPad;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        if (opisLinije.length > 0) {
+            ctx.fillStyle = '#1a1a1a';
+            ctx.font = '600 ' + opisFont + 'px Lato, Arial, sans-serif';
+            for (var oi = 0; oi < opisLinije.length; oi++) {
+                ctx.fillText(opisLinije[oi], cardPadX + innerPad, currY);
+                currY += opisLH;
+            }
+        }
+
+        if (vremeLinije.length > 0) {
+            if (opisLinije.length > 0) currY += Math.round(innerPad * 0.45);
+            ctx.fillStyle = '#b57600';
+            ctx.font = '600 ' + vremeFont + 'px Lato, Arial, sans-serif';
+            for (var vi = 0; vi < vremeLinije.length; vi++) {
+                ctx.fillText(vremeLinije[vi], cardPadX + innerPad, currY);
+                currY += vremeLH;
+            }
+        }
+
+        ctx.restore();
+    }
 
     // Доња градијентна трака са потписом карта.срб
     var barH = Math.round(outH * (outH > outW ? 0.16 : 0.24));
