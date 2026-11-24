@@ -43,12 +43,13 @@ The content is organized into a Bootstrap accordion structure (`#uputstvo_accord
 
 **Sections:**
 1.  **Теме** (Themes)
-2.  **Догађаји** (Events)
-3.  **Записи** (Records)
-4.  **Опште** (General)
-5.  **Корисник** (User)
-6.  **Подршка** (Support)
-7.  **Контакт** (Contact)
+2.  **Мишљења** (Opinions)
+3.  **Догађаји** (Events)
+4.  **Записи** (Records)
+5.  **Опште** (General)
+6.  **Корисник** (User)
+7.  **Подршка** (Support)
+8.  **Контакт** (Contact)
 
 ### Initial State
 - **Introduction:** visible at the top.

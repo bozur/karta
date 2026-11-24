@@ -1,8 +1,7 @@
 <!-- Uputstvo content will be loaded from uputstvo.txt -->
 <h4>Упутство</h4>
-<p id="p0">Карта.СРБ је мрежна страна намијењена представљању просторних одредница.
-    Поимање поједних догађаја, њихове међузависности и размјере је много лакше ако су подаци просторно представљени.<br>
-</p>
+<p id="p0" class="mb-2">Карта.СРБ је намијењена представљању одредница у простору и времену како би поимање појединих догађаја,
+    њихове међузависности и размјере било много лакше.</p>
 
 <div id="uputstvo_accordion">
     <!-- Teme Section -->
@@ -50,6 +49,18 @@
             Притиском на сличицу показивача на карти (или линију или област) појављује се књижица као веза за више
             детаља о самом показивачу
             који се отвара са лијеве стране.
+        </div>
+    </div>
+
+    <!-- Misljenja Section -->
+    <div id="uputstvo_misljenja" class="mt-2"><strong>мишљења</strong> <span class="bi bi-arrows-expand ml-2"
+            data-toggle="collapse" data-target="#uputstvo_misljenja_sadrzaj" data-parent="#uputstvo_accordion"></span>
+    </div>
+    <div id="uputstvo_misljenja_sadrzaj" class="collapse" data-parent="#uputstvo_accordion">
+        <div style="margin-top: 10px;">
+            Ту можете да прегледате мишљења других корисника и да упоредите ставове, пратите најновије осврте и
+            оцењујете постојеће. Притиском на напис, на карти се приказује ставка на коју се унос односи. Будите
+            пристојни у изношењу ставова и пуни поштовања ка другим корисницима са другачијим виђењем.
         </div>
     </div>
 
@@ -150,4 +161,35 @@
         </div>
     </div>
 </div>
+
+<!-- Intro Video Section (Placeholder) -->
+<div id="uputstvo_video" class="mt-2 pt-2 pb-2 border-top">
+    <div class="mb-1">
+        <strong>Кратки видео водич</strong> <small class="text-muted">(~1 мин)</small>
+    </div>
+    <div class="embed-responsive embed-responsive-16by9 rounded shadow-sm"
+        style="background: linear-gradient(135deg, #2c3e50 0%, #1a252f 100%); position: relative; overflow: hidden;">
+        <div class="embed-responsive-item d-flex flex-column align-items-center justify-content-center text-white text-center px-3"
+            style="cursor: default;">
+            <div class="d-flex align-items-center justify-content-center rounded-circle mb-2"
+                style="width: 56px; height: 56px; background: rgba(255, 255, 255, 0.18); border: 2px solid rgba(255, 255, 255, 0.7);">
+                <i class="bi bi-play-fill" style="font-size: 1.9rem; margin-left: 3px;"></i>
+            </div>
+            <div style="font-size: 0.9rem; font-weight: 600;">Уводни видео — ускоро</div>
+            <small style="color: rgba(255, 255, 255, 0.7);">Брзи преглед основних могућности на Карта.СРБ</small>
+        </div>
+        <div style="position: absolute; left: 10px; right: 10px; bottom: 8px; display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: rgba(255, 255, 255, 0.75);">
+            <span>0:00</span>
+            <div style="flex: 1; height: 3px; background: rgba(255, 255, 255, 0.25); border-radius: 2px;"></div>
+            <span>1:00</span>
+        </div>
+    </div>
+    <!-- Када видео буде спреман, заменити блок изнад са:
+    <div class="embed-responsive embed-responsive-16by9 rounded shadow-sm">
+        <video class="embed-responsive-item" controls preload="metadata" poster="slike/uvod-video-poster.jpg">
+            <source src="video/uvod.mp4" type="video/mp4">
+            Ваш прегледач не подржава приказ видеа.
+        </video>
+    </div>
+    -->
 </div>
