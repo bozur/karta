@@ -209,6 +209,20 @@ const poolPromise = (async () => {
         `);
         console.log('✓ dogadjaji.izvor and dogadjaji.opis column lengths verified (>= 500)');
 
+        // Ensure kontakt_poruke table exists (stores only minimal public metadata: id, subject, 10-char snippet, timestamp)
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS kontakt_poruke (
+                id SERIAL PRIMARY KEY,
+                naslov VARCHAR(150) NOT NULL,
+                isecak VARCHAR(20) NOT NULL,
+                poslato_u TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_kontakt_poruke_poslato_u
+                ON kontakt_poruke (poslato_u DESC, id DESC);
+        `);
+        console.log('✓ kontakt_poruke table verified');
+
         client.release();
 
         // Return a mock pool object that server.js expects

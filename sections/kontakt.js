@@ -4,6 +4,75 @@
 $(document).ready(function () {
     console.log('Kontakt section loaded');
 
+    function formatirajVremePoruke(isoString) {
+        if (!isoString) return '';
+        const d = new Date(isoString);
+        if (isNaN(d.getTime())) return '';
+        const dan = String(d.getDate()).padStart(2, '0');
+        const mesec = String(d.getMonth() + 1).padStart(2, '0');
+        const godina = d.getFullYear();
+        const sati = String(d.getHours()).padStart(2, '0');
+        const minuti = String(d.getMinutes()).padStart(2, '0');
+        return `${dan}.${mesec}.${godina}. ${sati}:${minuti}`;
+    }
+
+    function prikaziPoslatePoruke(poruke, ukupno) {
+        const listaEl = $('#kontakt-poslate-lista');
+        const ukupnoEl = $('#kontakt-poslate-ukupno');
+
+        if (!listaEl.length) return;
+
+        if (typeof ukupno === 'number' && ukupno > 0) {
+            ukupnoEl.text(`укупно: ${ukupno}`);
+        } else {
+            ukupnoEl.text('');
+        }
+
+        listaEl.empty();
+
+        if (!Array.isArray(poruke) || poruke.length === 0) {
+            listaEl.append($('<div class="text-muted small">').text('Још увек нема послатих порука.'));
+            return;
+        }
+
+        poruke.forEach(function (poruka) {
+            const stavka = $('<div class="kontakt-poruka-stavka">');
+            const vrh = $('<div class="kontakt-poruka-vrh">');
+            const idNaslov = $('<div class="kontakt-poruka-id-naslov">');
+
+            idNaslov.append($('<span class="kontakt-poruka-id">').text(`#${poruka.id}`));
+            idNaslov.append($('<span class="kontakt-poruka-naslov">').text(poruka.naslov || ''));
+
+            vrh.append(idNaslov);
+            vrh.append($('<span class="kontakt-poruka-vreme">').text(formatirajVremePoruke(poruka.poslato_u)));
+
+            const isecak = $('<div class="kontakt-poruka-isecak">').text(poruka.isecak || '');
+
+            stavka.append(vrh);
+            stavka.append(isecak);
+            listaEl.append(stavka);
+        });
+    }
+
+    function ucitajPoslatePoruke() {
+        const listaEl = $('#kontakt-poslate-lista');
+        if (!listaEl.length) return;
+
+        $.ajax({
+            url: '/api/kontakt/poruke?limit=10',
+            method: 'GET',
+            cache: false,
+            success: function (response) {
+                prikaziPoslatePoruke(response.poruke || [], response.ukupno);
+            },
+            error: function () {
+                listaEl.empty().append(
+                    $('<div class="text-muted small">').text('Није могуће учитати листу порука.')
+                );
+            }
+        });
+    }
+
     // Event handler for contact subject selection
     $('#kontakt_izbor').on('change', function () {
         // Hide all description divs
@@ -13,10 +82,6 @@ $(document).ready(function () {
         const selectedValue = this.value;
         $('#kontakt_p' + selectedValue).show();
     });
-
-    // TODO: Implement contact form submission
-    // TODO: Add form validation
-    // TODO: Send contact message to server
 
     $('#kontakt-form').on('submit', function (e) {
         e.preventDefault();
@@ -44,13 +109,17 @@ $(document).ready(function () {
                 message: message
             }),
             success: function (response) {
-                statusDiv.text('Порука је успјешно послата!').css('color', 'green').show();
+                const porukaBroj = response && response.poruka && response.poruka.id
+                    ? ` (#${response.poruka.id})`
+                    : '';
+                statusDiv.text(`Порука је успјешно послата${porukaBroj}!`).css('color', 'green').show();
                 setTimeout(function () {
                     statusDiv.fadeOut();
                 }, 5000);
                 $('#kontakt-form')[0].reset();
                 $('#kontakt_opis > div').hide();
                 submitBtn.prop('disabled', false).text('пошаљи');
+                ucitajPoslatePoruke();
             },
             error: function (xhr) {
                 const errorMsg = xhr.responseJSON ? xhr.responseJSON.error : 'Грешка при слању поруке.';
@@ -59,4 +128,7 @@ $(document).ready(function () {
             }
         });
     });
+
+    // Load recent sent messages when Kontakt section opens
+    ucitajPoslatePoruke();
 });

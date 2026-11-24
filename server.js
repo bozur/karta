@@ -330,11 +330,47 @@ app.get('/api/health', async (req, res) => {
     }
 });
 
+function napraviKontaktIsecak(message) {
+    const ocisceno = String(message || '').replace(/\s+/g, ' ').trim();
+    const prvihDeset = Array.from(ocisceno).slice(0, 10).join('');
+    return prvihDeset + '...';
+}
+
+// GET /api/kontakt/poruke (Public list of latest sent contact messages - minimal metadata only)
+app.get('/api/kontakt/poruke', async (req, res) => {
+    const parsedLimit = parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(parsedLimit) ? Math.min(Math.max(parsedLimit, 1), 20) : 10;
+
+    try {
+        await poolPromise;
+        const [listResult, countResult] = await Promise.all([
+            pool.query(
+                `SELECT id, naslov, isecak, poslato_u
+                 FROM kontakt_poruke
+                 ORDER BY poslato_u DESC, id DESC
+                 LIMIT $1`,
+                [limit]
+            ),
+            pool.query('SELECT COUNT(*)::int AS ukupno FROM kontakt_poruke')
+        ]);
+
+        res.json({
+            poruke: listResult.rows,
+            ukupno: countResult.rows[0] ? countResult.rows[0].ukupno : 0
+        });
+    } catch (error) {
+        console.error('Error fetching kontakt_poruke:', error.message);
+        res.status(500).json({ error: 'Грешка при учитавању листе порука.' });
+    }
+});
+
 // POST /api/kontakt (Contact form submission via Resend)
 app.post('/api/kontakt', async (req, res) => {
     const { subject, message } = req.body;
+    const cleanSubject = String(subject || '').trim();
+    const cleanMessage = String(message || '').trim();
 
-    if (!subject || !message) {
+    if (!cleanSubject || !cleanMessage) {
         return res.status(400).json({ error: 'Наслов и порука су обавезни.' });
     }
 
@@ -345,16 +381,31 @@ app.post('/api/kontakt', async (req, res) => {
     try {
         const data = await sendEmail({
             to: ownerEmail,
-            subject: `Kontakt obrazac: ${subject}`,
+            subject: `Kontakt obrazac: ${cleanSubject}`,
             html: `
                 <p><strong>Od:</strong> ${userName} (${userEmail})</p>
-                <p><strong>Naslov:</strong> ${subject}</p>
+                <p><strong>Naslov:</strong> ${cleanSubject}</p>
                 <p><strong>Poruka:</strong></p>
-                <p>${message.replace(/\n/g, '<br>')}</p>
+                <p>${cleanMessage.replace(/\n/g, '<br>')}</p>
             `
         });
 
-        res.json({ success: true, data });
+        let poruka = null;
+        try {
+            await poolPromise;
+            const isecak = napraviKontaktIsecak(cleanMessage);
+            const insertResult = await pool.query(
+                `INSERT INTO kontakt_poruke (naslov, isecak)
+                 VALUES ($1, $2)
+                 RETURNING id, naslov, isecak, poslato_u`,
+                [cleanSubject.slice(0, 150), isecak]
+            );
+            poruka = insertResult.rows[0] || null;
+        } catch (dbError) {
+            console.error('Error saving kontakt_poruke entry:', dbError.message);
+        }
+
+        res.json({ success: true, data, poruka });
     } catch (error) {
         res.status(500).json({ error: 'Грешка при слању е-поште.' });
     }

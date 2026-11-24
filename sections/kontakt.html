@@ -50,3 +50,94 @@
         <p>Само под условом да не одговара ни једна од претходних ставки</p>
     </div>
 </div>
+
+<style>
+    #kontakt-poslate-wrapper {
+        margin-top: 16px;
+        padding-top: 12px;
+        border-top: 1px solid #dee2e6;
+        text-align: left;
+    }
+
+    .kontakt-poslate-zaglavlje {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+
+    .kontakt-poslate-napomena {
+        font-size: 0.78rem;
+        color: #6c757d;
+        margin-bottom: 10px;
+        line-height: 1.35;
+    }
+
+    .kontakt-poruka-stavka {
+        background: #f8f9fa;
+        border: 1px solid #dee2e6;
+        border-left: 3px solid #f5a615;
+        border-radius: 5px;
+        padding: 7px 9px;
+        margin-bottom: 7px;
+        font-size: 0.82rem;
+        line-height: 1.35;
+    }
+
+    .kontakt-poruka-vrh {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 3px;
+    }
+
+    .kontakt-poruka-id-naslov {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        min-width: 0;
+        flex: 1;
+    }
+
+    .kontakt-poruka-id {
+        font-weight: 700;
+        color: #b87400;
+        white-space: nowrap;
+        font-size: 0.78rem;
+    }
+
+    .kontakt-poruka-naslov {
+        font-weight: 600;
+        color: #212529;
+        word-break: break-word;
+    }
+
+    .kontakt-poruka-vreme {
+        font-size: 0.74rem;
+        color: #6c757d;
+        white-space: nowrap;
+        flex-shrink: 0;
+    }
+
+    .kontakt-poruka-isecak {
+        font-size: 0.79rem;
+        color: #555;
+        font-style: italic;
+        word-break: break-word;
+    }
+</style>
+
+<div id="kontakt-poslate-wrapper">
+    <div class="kontakt-poslate-zaglavlje">
+        <strong>Последње послате поруке</strong>
+        <small id="kontakt-poslate-ukupno" class="text-muted"></small>
+    </div>
+    <p class="kontakt-poslate-napomena">
+        Приказано је последњих 10 порука (од најновије ка најстаријој). На поруке одговарамо редом пристизања — хвала на стрпљењу.
+    </p>
+    <div id="kontakt-poslate-lista">
+        <div class="text-muted small">Учитавање порука...</div>
+    </div>
+</div>
