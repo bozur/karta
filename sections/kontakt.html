@@ -1,62 +1,17 @@
-<span style="display: block">
-    <span class="naslov">Контакт</span>
-</span>
-<form id="kontakt-form">
-    <div class="form-group">
-        <label for="kontakt_izbor"><strong>наслов</strong></label>
-        <select class="form-control" id="kontakt_izbor" required>
-            <option value="0">изабери наслов</option>
-            <option value="1">грешка на странама</option>
-            <option value="2">приједлог за нову тему</option>
-            <option value="3">приједлог за побољшање</option>
-            <option value="4">помоћ на странама</option>
-            <option value="5">остало</option>
-        </select>
-    </div>
-    <div class="form-group">
-        <label for="kontakt_poruka"><strong>напис</strong></label>
-        <textarea class="form-control" id="kontakt_poruka" rows="5" required></textarea>
-    </div>
-    <div class="d-flex align-items-center mt-2">
-        <div class="flex-grow-1">
-            <div id="kontakt-status" style="display: none;"></div>
-        </div>
-        <button type="submit" class="btn btn-white border border-dark">пошаљи</button>
-    </div>
-</form>
-<div class="form-group mt-2" id="kontakt_opis">
-    <div id="kontakt_p0" style="display: none;">
-    </div>
-    <div id="kontakt_p1" style="display: none;">
-        <p>Ако примјетите да се страна не понаша на очекивани начин, користите овај наслов за поруку.</p>
-    </div>
-    <div id="kontakt_p2" style="display: none;">
-        <p>Нову тему можете да предложите обраћањем уредницима путем ове стране.
-            Предност ће имати теме које имају већу подршку тј. гласова корисника страна. Ако располажете већом количином
-            података за тему која није подржана, потребно је да нам се обратите под овим насловом како би усагласили
-            наредне
-            кораке односно како би тема била усвојена на основу довољног броја нових ставки.</p>
-    </div>
-    <div id="kontakt_p3" style="display: none;">
-        <p>Приједлози за побољшање су увијек добродошли. Имајте на уму да су за озбиљнија унапређивања потребно и
-            вријеме и новац.</p>
-    </div>
-    <div id="kontakt_p4" style="display: none;">
-        <p>Ако је потребна помоћ прочитајте део на страни упутство <i class="bi-question-circle mx-2" title="упутство"
-                data-toggle="tooltip" data-placement="bottom" title2="#uputstvo"></i>
-            Ваше питање може бити употребљено за унапређење упутства.</p>
-    </div>
-    <div id="kontakt_p5" style="display: none;">
-        <p>Само под условом да не одговара ни једна од претходних ставки</p>
-    </div>
-</div>
-
 <style>
     #kontakt-poslate-wrapper {
-        margin-top: 16px;
+        margin-top: 14px;
         padding-top: 12px;
         border-top: 1px solid #dee2e6;
         text-align: left;
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 0;
+        min-height: 150px;
+    }
+
+    #kontakt-poslate-lista {
+        min-height: 0;
     }
 
     .kontakt-poslate-zaglavlje {
@@ -65,6 +20,7 @@
         align-items: baseline;
         gap: 8px;
         margin-bottom: 4px;
+        flex: 0 0 auto;
     }
 
     .kontakt-poslate-napomena {
@@ -72,6 +28,7 @@
         color: #6c757d;
         margin-bottom: 10px;
         line-height: 1.35;
+        flex: 0 0 auto;
     }
 
     .kontakt-poruka-stavka {
@@ -129,15 +86,72 @@
     }
 </style>
 
-<div id="kontakt-poslate-wrapper">
-    <div class="kontakt-poslate-zaglavlje">
-        <strong>Последње послате поруке</strong>
-        <small id="kontakt-poslate-ukupno" class="text-muted"></small>
+<div class="sekcija-fiksni-vrh">
+    <div class="sekcija-fiksni-deo-ogranicen">
+        <span style="display: block">
+            <span class="naslov">Контакт</span>
+        </span>
+        <form id="kontakt-form">
+            <div class="form-group">
+                <label for="kontakt_izbor"><strong>наслов</strong></label>
+                <select class="form-control" id="kontakt_izbor" required>
+                    <option value="0">изабери наслов</option>
+                    <option value="1">грешка на странама</option>
+                    <option value="2">приједлог за нову тему</option>
+                    <option value="3">приједлог за побољшање</option>
+                    <option value="4">помоћ на странама</option>
+                    <option value="5">остало</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="kontakt_poruka"><strong>напис</strong></label>
+                <textarea class="form-control" id="kontakt_poruka" rows="5" required></textarea>
+            </div>
+            <div class="d-flex align-items-center mt-2">
+                <div class="flex-grow-1">
+                    <div id="kontakt-status" style="display: none;"></div>
+                </div>
+                <button type="submit" class="btn btn-white border border-dark">пошаљи</button>
+            </div>
+        </form>
+        <div class="form-group mt-2 mb-0" id="kontakt_opis">
+            <div id="kontakt_p0" style="display: none;">
+            </div>
+            <div id="kontakt_p1" style="display: none;">
+                <p>Ако примјетите да се страна не понаша на очекивани начин, користите овај наслов за поруку.</p>
+            </div>
+            <div id="kontakt_p2" style="display: none;">
+                <p>Нову тему можете да предложите обраћањем уредницима путем ове стране.
+                    Предност ће имати теме које имају већу подршку тј. гласова корисника страна. Ако располажете већом количином
+                    података за тему која није подржана, потребно је да нам се обратите под овим насловом како би усагласили
+                    наредне
+                    кораке односно како би тема била усвојена на основу довољног броја нових ставки.</p>
+            </div>
+            <div id="kontakt_p3" style="display: none;">
+                <p>Приједлози за побољшање су увијек добродошли. Имајте на уму да су за озбиљнија унапређивања потребно и
+                    вријеме и новац.</p>
+            </div>
+            <div id="kontakt_p4" style="display: none;">
+                <p>Ако је потребна помоћ прочитајте део на страни упутство <i class="bi-question-circle mx-2" title="упутство"
+                        data-toggle="tooltip" data-placement="bottom" title2="#uputstvo"></i>
+                    Ваше питање може бити употребљено за унапређење упутства.</p>
+            </div>
+            <div id="kontakt_p5" style="display: none;">
+                <p>Само под условом да не одговара ни једна од претходних ставки</p>
+            </div>
+        </div>
     </div>
-    <p class="kontakt-poslate-napomena">
-        Приказано је последњих 10 порука (од најновије ка најстаријој). На поруке одговарамо редом пристизања — хвала на стрпљењу.
-    </p>
-    <div id="kontakt-poslate-lista">
-        <div class="text-muted small">Учитавање порука...</div>
+
+    <div id="kontakt-poslate-wrapper">
+        <div class="kontakt-poslate-zaglavlje">
+            <strong>Последње послате поруке</strong>
+            <small id="kontakt-poslate-ukupno" class="text-muted"></small>
+        </div>
+        <p class="kontakt-poslate-napomena">
+            Приказано је последњих 10 порука (од најновије ка најстаријој). На поруке одговарамо редом пристизања — хвала на стрпљењу.
+        </p>
+        <div id="kontakt-poslate-lista" class="sekcija-lista-scroll">
+            <div class="text-muted small">Учитавање порука...</div>
+        </div>
     </div>
 </div>

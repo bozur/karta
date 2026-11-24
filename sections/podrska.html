@@ -1,7 +1,3 @@
-<span style="display: block">
-    <span class="naslov">Подршка</span>
-</span>
-
 <style>
     .podrska-header {
         cursor: pointer;
@@ -172,26 +168,43 @@
 
     .podrska-qr-okvir {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
-        text-align: center;
+        justify-content: space-between;
+        gap: 12px;
+        text-align: left;
+    }
+
+    .podrska-qr-levo {
+        display: flex;
+        flex-direction: column;
+        flex: 1 1 0;
+        min-width: 0;
+        gap: 7px;
+    }
+
+    .podrska-qr-desno {
+        flex: 0 0 auto;
+        display: flex;
+        align-items: center;
+        justify-content: center;
     }
 
     .podrska-qr-slika {
         position: relative;
         background: #ffffff;
-        padding: 8px;
+        padding: 6px;
         border: 1px solid #dee2e6;
         border-radius: 6px;
         display: inline-block;
-        margin: 8px 0;
+        margin: 0;
         overflow: hidden;
     }
 
     .podrska-qr-slika img {
         display: block;
-        width: 170px;
-        height: 170px;
+        width: 150px;
+        height: 150px;
         image-rendering: pixelated;
         transition: filter 0.2s ease, opacity 0.2s ease;
     }
@@ -208,9 +221,9 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 12px;
+        padding: 10px;
         text-align: center;
-        font-size: 0.8rem;
+        font-size: 0.76rem;
         font-weight: 600;
         color: #333;
         background: rgba(255, 255, 255, 0.45);
@@ -218,21 +231,21 @@
     }
 
     .podrska-iznos-brzi {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
         gap: 5px;
-        margin-top: 6px;
+        width: 100%;
     }
 
     .podrska-iznos-cip {
-        font-size: 0.75rem;
-        padding: 2px 8px;
+        font-size: 0.76rem;
+        padding: 3px 6px;
         border: 1px solid #ced4da;
         border-radius: 12px;
         background: #ffffff;
         color: #333;
         cursor: pointer;
+        text-align: center;
         transition: border-color 0.15s, background-color 0.15s;
     }
 
@@ -245,20 +258,21 @@
     }
 
     .podrska-iznos-red {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 6px;
-        margin-top: 6px;
         width: 100%;
-        text-align: left;
     }
 
     .podrska-iznos-red input {
-        width: 145px;
-        font-size: 0.85rem;
-        padding: 3px 8px;
+        width: 100%;
+        font-size: 0.83rem;
+        padding: 4px 8px;
         height: auto;
+    }
+
+    @media (max-width: 360px) {
+        .podrska-qr-okvir {
+            flex-direction: column;
+            align-items: stretch;
+        }
     }
 
     .podrska-podaci-red {
@@ -516,13 +530,19 @@
 </style>
 
 
-<div id="podrska_accordion">
-    <!-- Унос података -->
-    <div id="podrska_unos_podataka" class="mt-2 podrska-header" data-toggle="collapse"
-        data-target="#podrska_unos_podataka_sadrzaj">
-        <strong>унос података</strong> <span class="bi bi-arrows-expand ml-2"></span>
-    </div>
-    <div id="podrska_unos_podataka_sadrzaj" class="collapse">
+<div class="sekcija-fiksni-vrh">
+    <span class="sekcija-fiksni-deo" style="display: block">
+        <span class="naslov">Подршка</span>
+    </span>
+
+    <div id="podrska_accordion" class="sekcija-accordion-flex">
+        <div class="sekcija-fiksni-deo-ogranicen">
+            <!-- Унос података -->
+            <div id="podrska_unos_podataka" class="mt-2 podrska-header" data-toggle="collapse"
+                data-target="#podrska_unos_podataka_sadrzaj">
+                <strong>унос података</strong> <span class="bi bi-arrows-expand ml-2"></span>
+            </div>
+            <div id="podrska_unos_podataka_sadrzaj" class="collapse" data-parent="#podrska_accordion">
         <div style="margin-top: 10px; line-height: 1.6;">
             <p>
                 У дијелу "теме" избором одговарајуће можете да предложите нове ставке као и да унесете примједбе на
@@ -537,7 +557,7 @@
         data-target="#podrska_unos_zapisa_sadrzaj">
         <strong>унос записа</strong> <span class="bi bi-arrows-expand ml-2"></span>
     </div>
-    <div id="podrska_unos_zapisa_sadrzaj" class="collapse">
+    <div id="podrska_unos_zapisa_sadrzaj" class="collapse" data-parent="#podrska_accordion">
         <div style="margin-top: 10px; line-height: 1.6;">
             <p>
                 Можете нас подржати и уносом докумената у дијелу "записи" које би онда препоручили осталим корисницима
@@ -552,7 +572,7 @@
         data-target="#podrska_drustvene_mreze_sadrzaj">
         <strong>друштвене мреже</strong> <span class="bi bi-arrows-expand ml-2"></span>
     </div>
-    <div id="podrska_drustvene_mreze_sadrzaj" class="collapse">
+    <div id="podrska_drustvene_mreze_sadrzaj" class="collapse" data-parent="#podrska_accordion">
         <div style="margin-top: 10px; line-height: 1.6;">
             <p>
                 Поделите приказе на карти особама којима би то било занимљиво.
@@ -617,13 +637,14 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- Новчана подршка -->
-    <div id="podrska_novcana" class="mt-2 podrska-header" data-toggle="collapse" data-target="#podrska_novcana_sadrzaj">
+    <div id="podrska_novcana" class="mt-2 podrska-header sekcija-fiksni-deo" data-toggle="collapse" data-target="#podrska_novcana_sadrzaj">
         <strong>новчана подршка</strong> <span class="bi bi-arrows-expand ml-2"></span>
         <span id="podrska_novcana_status" class="podrska-novcana-status"></span>
     </div>
-    <div id="podrska_novcana_sadrzaj" class="collapse">
+    <div id="podrska_novcana_sadrzaj" class="collapse show sekcija-lista-scroll" data-parent="#podrska_accordion">
         <div style="margin-top: 10px; line-height: 1.6;">
             <!-- Плаћање (табови: Србија / Иностранство) -->
             <div class="podrska-placanje-kartica" id="podrska_placanje_blok">
@@ -638,28 +659,29 @@
                 <div id="podrska_sadrzaj_srbija">
                     <!-- Десктоп приказ: IPS QR код -->
                     <div id="podrska_desktop_qr" class="podrska-qr-okvir">
-                        <div style="font-weight: 600; font-size: 0.88rem; text-align: center;">
-                            НБС IPS QR код за уплату
+                        <div class="podrska-qr-levo">
+                            <div style="font-weight: 600; font-size: 0.86rem;">
+                                НБС IPS QR код за уплату
+                            </div>
+                            <div class="podrska-iznos-red">
+                                <input type="number" id="podrska_iznos_input" class="form-control form-control-sm"
+                                    min="1" step="1" placeholder="унесите износ (РСД)" aria-label="Износ (РСД)">
+                            </div>
+                            <div class="podrska-iznos-brzi">
+                                <button type="button" class="podrska-iznos-cip" data-iznos="500">500</button>
+                                <button type="button" class="podrska-iznos-cip" data-iznos="1000">1.000</button>
+                                <button type="button" class="podrska-iznos-cip" data-iznos="2000">2.000</button>
+                                <button type="button" class="podrska-iznos-cip" data-iznos="5000">5.000</button>
+                            </div>
+                            <span id="podrska_prikazi_podatke_btn" class="podrska-toggle-link" style="margin-top: 2px;">
+                                Прикажи податке за уплату
+                            </span>
                         </div>
-                        <div class="podrska-iznos-red">
-                            <label for="podrska_iznos_input" style="margin: 0; font-size: 0.8rem; color: #555;">
-                                Износ (РСД):
-                            </label>
-                            <input type="number" id="podrska_iznos_input" class="form-control form-control-sm" min="1"
-                                step="1" placeholder="унесите износ">
+                        <div class="podrska-qr-desno">
+                            <div id="podrska_qr_kontejner" class="podrska-qr-slika zamucen">
+                                <!-- QR код се генерише динамички -->
+                            </div>
                         </div>
-                        <div class="podrska-iznos-brzi">
-                            <button type="button" class="podrska-iznos-cip" data-iznos="500">500</button>
-                            <button type="button" class="podrska-iznos-cip" data-iznos="1000">1.000</button>
-                            <button type="button" class="podrska-iznos-cip" data-iznos="2000">2.000</button>
-                            <button type="button" class="podrska-iznos-cip" data-iznos="5000">5.000</button>
-                        </div>
-                        <div id="podrska_qr_kontejner" class="podrska-qr-slika zamucen">
-                            <!-- QR код се генерише динамички -->
-                        </div>
-                        <span id="podrska_prikazi_podatke_btn" class="podrska-toggle-link">
-                            Прикажи податке за уплату
-                        </span>
                     </div>
 
                     <!-- Мобилни приказ: подаци за копирање + преузимање IPS QR кода -->
@@ -813,33 +835,26 @@
             <div class="podrska-grafikon-okvir">
                 <div class="podrska-legenda">
                     <span class="podrska-legenda-stavka">
-                        <span class="podrska-legenda-boja" style="background: #dc3545;"></span> испод техничких трошкова
-                    </span>
-                    <span class="podrska-legenda-stavka">
-                        <span class="podrska-legenda-boja" style="background: #f5a615;"></span> покривени технички трошкови
-                    </span>
-                    <span class="podrska-legenda-stavka">
-                        <span class="podrska-legenda-boja" style="background: #0d6efd;"></span> покривено одржавање
-                    </span>
-                    <span class="podrska-legenda-stavka">
                         <span class="podrska-legenda-linija"></span>
                         <span id="podrska_legenda_troskovi">технички мјесечни трошкови: 5.500 РСД
                             (хостинг+база+домен)</span>
                     </span>
                     <span class="podrska-legenda-stavka">
                         <span class="podrska-legenda-linija-odrzavanje"></span>
-                        <span id="podrska_legenda_odrzavanje">минимални трошкови одржавања: 30.000 РСД</span>
+                        <span id="podrska_legenda_odrzavanje">минимални трошкови рада на одржавању: 30.000 РСД</span>
                     </span>
-                </div>
-                <div style="font-size: 0.76rem; color: #555; margin-bottom: 8px; text-align: left;">
-                    Уплате мање од 1.000 РСД ће бити приказане збирно на крају месеца.
-                    Сва средства изнад наведених трошкова биће наменски коришћена за даље унапређење и развој страна.
                 </div>
 
                 <div id="podrska_grafikon_12m" class="podrska-grafikon-redovi">
                     <!-- 12 месеци се генерише динамички -->
                 </div>
+
+                <div style="font-size: 0.76rem; color: #555; margin-top: 8px; text-align: left;">
+                    Уплате мање од 1.000 РСД ће бити приказане збирно на крају месеца.
+                    Сва средства изнад наведених трошкова биће наменски коришћена за даље унапређење и развој страна.
+                </div>
             </div>
         </div>
+    </div>
     </div>
 </div>

@@ -1,14 +1,10 @@
-<span style="display: block">
-    <span class="naslov">Догађаји</span>
-</span>
-
 <style>
     #dogadjaji_results table tr:hover {
         background-color: rgba(0, 0, 0, 0.05);
     }
 
     #dogadjaji_results {
-        margin-top: 15px;
+        margin-top: 12px;
     }
 
     .zapis-autocomplete-wrapper {
@@ -74,12 +70,17 @@
     }
 </style>
 
-<div id="dogadjaji_accordion">
-    <!-- Унос Section -->
-    <div id="dogadjaji_unos" class="mt-2"><strong>унос</strong> <span class="bi bi-arrows-expand ml-2"
-            data-toggle="collapse" data-target="#dogadjaji_unos_sadrzaj"></span>
-    </div>
-    <div id="dogadjaji_unos_sadrzaj" class="collapse">
+<div class="sekcija-fiksni-vrh">
+    <span class="sekcija-fiksni-deo" style="display: block">
+        <span class="naslov">Догађаји</span>
+    </span>
+
+    <div id="dogadjaji_accordion" class="sekcija-accordion-flex">
+        <!-- Унос Section -->
+        <div id="dogadjaji_unos" class="mt-2 sekcija-fiksni-deo"><strong>унос</strong> <span class="bi bi-arrows-expand ml-2"
+                data-toggle="collapse" data-target="#dogadjaji_unos_sadrzaj"></span>
+        </div>
+        <div id="dogadjaji_unos_sadrzaj" class="collapse sekcija-fiksni-deo-ogranicen">
         <div style="margin-top: 10px;">
             <form id="dogadjaji_unos_form" novalidate>
                 <!-- Hidden field for username -->
@@ -159,11 +160,11 @@
     </div>
 
     <!-- Тражи Section -->
-    <div id="dogadjaji_trazi" class="mt-2"><strong>тражи</strong> <span class="bi bi-arrows-expand ml-2"
+    <div id="dogadjaji_trazi" class="mt-2 sekcija-fiksni-deo"><strong>тражи</strong> <span class="bi bi-arrows-expand ml-2"
             data-toggle="collapse" data-target="#dogadjaji_trazi_sadrzaj"></span>
     </div>
-    <div id="dogadjaji_trazi_sadrzaj" class="collapse show">
-        <div style="margin-top: 10px;">
+    <div id="dogadjaji_trazi_sadrzaj" class="collapse show sekcija-collapse-flex">
+        <div class="sekcija-fiksni-deo" style="margin-top: 10px;">
             <form id="dogadjaji_trazi_form">
                 <div class="form-row">
                     <div class="col">
@@ -221,8 +222,8 @@
         </div>
 
         <!-- Results Table -->
-        <div id="dogadjaji_results" style="display: none;">
-            <div id="dogadjaji_results_title" class="text-muted small mb-1"></div>
+        <div id="dogadjaji_results" class="sekcija-lista-scroll" style="display: none;">
+            <div id="dogadjaji_results_title" class="text-muted small mb-1 sekcija-lista-naslov-sticky"></div>
             <table style="width: 100%; border-collapse: collapse;">
                 <tbody id="dogadjaji_results_body">
                     <!-- Results will be populated dynamically -->
@@ -230,4 +231,5 @@
             </table>
         </div>
     </div>
+</div>
 </div>

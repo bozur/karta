@@ -48,10 +48,11 @@
     style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; margin-left: 10px; display: none;">
 <span style="margin-left: 10px;" id="user-display">...</span>
 </span>
+<div id="korisnik_accordion">
 <div id="korisnik_izmjeni" class="mt-2"><strong>измјени</strong> <span class="bi bi-arrows-expand ml-2"
         data-toggle="collapse" data-target="#korisnik_izmjeni_podaci"></span>
 </div>
-<div id="korisnik_izmjeni_podaci" class="collapse hidden">
+<div id="korisnik_izmjeni_podaci" class="collapse hidden" data-parent="#korisnik_accordion">
     <form id="form_izmjeni_korisnik">
         <div class="form-row">
             <div class="col">
@@ -161,7 +162,7 @@
 <div id="korisnik_pregled" class="mt-3"><strong>преглед</strong> <span class="bi bi-arrows-expand ml-2"
         data-toggle="collapse" data-target="#korisnik_pregled_podaci"></span>
 </div>
-<div id="korisnik_pregled_podaci" class="collapse show">
+<div id="korisnik_pregled_podaci" class="collapse show" data-parent="#korisnik_accordion">
     <div style="margin-top: 5px; margin-bottom: 5px;">
         <span style="color: #000;">Прва посјета:</span> <span id="first-visit">-</span>
     </div>
@@ -185,7 +186,7 @@
 <div id="korisnik_posljednje" class="mt-3"><strong>од посљедње посјете</strong> <span class="bi bi-arrows-expand ml-2"
         data-toggle="collapse" data-target="#korisnik_posljednje_podaci"></span>
 </div>
-<div id="korisnik_posljednje_podaci" class="collapse show">
+<div id="korisnik_posljednje_podaci" class="collapse show" data-parent="#korisnik_accordion">
     <div style="margin-top: 5px; margin-bottom: 5px;">
         <span style="color: #000;">Новости:</span> <span id="news-since-last">-</span>
     </div>
@@ -206,7 +207,7 @@
 <div id="korisnik_dodatno" class="mt-3"><strong>преузми податке</strong> <span class="bi bi-arrows-expand ml-2"
         data-toggle="collapse" data-target="#korisnik_dodatno_podaci"></span>
 </div>
-<div id="korisnik_dodatno_podaci" class="collapse">
+<div id="korisnik_dodatno_podaci" class="collapse" data-parent="#korisnik_accordion">
     <div class="mt-1" style="color: #000;">
         Ради ваше и наше безбједности података сваки корисник може да у сваком тренутку преузме своје податке! Податке
         можете да провјерите на страни <a href="https://geojson.io/" target="_blank">https://geojson.io/</a>
@@ -214,4 +215,5 @@
     <div id="user_themes_list" class="mt-2">
         <!-- Theme links will be loaded here -->
     </div>
+</div>
 </div>

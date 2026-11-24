@@ -255,6 +255,65 @@ i:hover {
   margin-right: 0px;
 }
 
+/* Section layout: keep top header/filters fixed and scroll only the bottom list */
+.sloj_vidi:has(> .sekcija-fiksni-vrh) {
+  display: flex;
+  flex-direction: column;
+  overflow-y: hidden;
+}
+
+.sekcija-fiksni-vrh {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.sekcija-fiksni-deo {
+  flex: 0 0 auto;
+}
+
+.sekcija-fiksni-deo-ogranicen {
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: thin;
+}
+
+.sekcija-accordion-flex {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.sekcija-collapse-flex.collapse.show {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+.sekcija-lista-scroll {
+  flex: 1 1 0;
+  min-height: 120px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  padding-right: 2px;
+}
+
+.sekcija-lista-naslov-sticky {
+  position: sticky;
+  top: 0;
+  background: rgba(255, 255, 255, 0.94);
+  z-index: 2;
+  padding: 2px 0 4px 0;
+}
+
 .sloj_vidi .form-control {
   color: #000;
   background-color: #fff;

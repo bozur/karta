@@ -1,10 +1,6 @@
-<span style="display: block">
-    <span class="naslov">Мишљења</span>
-</span>
-
 <style>
     #misljenja_results {
-        margin-top: 15px;
+        margin-top: 12px;
     }
 
     .misljenje-item {
@@ -57,61 +53,67 @@
     }
 </style>
 
-<div id="misljenja_accordion">
-    <!-- Тражи Section -->
-    <div id="misljenja_trazi" class="mt-2"><strong>тражи</strong> <span class="bi bi-arrows-expand ml-2"
-            data-toggle="collapse" data-target="#misljenja_trazi_sadrzaj"></span>
-    </div>
-    <div id="misljenja_trazi_sadrzaj" class="collapse show">
-        <div style="margin-top: 10px;">
-            <form id="misljenja_trazi_form">
-                <div class="form-row">
-                    <div class="col-6">
-                        <select id="misljenja_trazi_tema" name="tema" class="form-control">
-                            <option value="">-- све теме --</option>
-                            <option value="dogadjaji">Догађаји</option>
-                        </select>
-                    </div>
-                    <div class="col-6">
-                        <select id="misljenja_trazi_sort" name="sort" class="form-control">
-                            <option value="newest">најновија прво</option>
-                            <option value="oldest">најстарија прво</option>
-                            <option value="upvotes">највише одобравања</option>
-                            <option value="downvotes">највише неслагања</option>
-                            <option value="active">највише реакција</option>
-                        </select>
-                    </div>
-                </div>
+<div class="sekcija-fiksni-vrh">
+    <span class="sekcija-fiksni-deo" style="display: block">
+        <span class="naslov">Мишљења</span>
+    </span>
 
-                <div class="form-row">
-                    <div class="col">
-                        <input type="text" class="form-control" id="misljenja_trazi_tekst" name="tekst"
-                            placeholder="текст мишљења">
-                    </div>
-                    <div class="col">
-                        <input type="text" class="form-control" id="misljenja_trazi_korisnik" name="korisnik"
-                            placeholder="корисник">
-                    </div>
-                </div>
-
-                <div class="form-row mt-2">
-                    <div class="col">
-                        <div id="misljenja_trazi_error" style="color: orange; display: none;"></div>
-                    </div>
-                    <button type="submit" class="btn btn-white border border-dark">тражи</button>
-                    <div class="spinner-border text-secondary spinner-border-sm m-2" id="misljenja_trazi_cekanje"
-                        role="status" style="visibility: hidden;">
-                        <span class="sr-only">Loading...</span>
-                    </div>
-                </div>
-            </form>
+    <div id="misljenja_accordion" class="sekcija-accordion-flex">
+        <!-- Тражи Section -->
+        <div id="misljenja_trazi" class="mt-2 sekcija-fiksni-deo"><strong>тражи</strong> <span class="bi bi-arrows-expand ml-2"
+                data-toggle="collapse" data-target="#misljenja_trazi_sadrzaj"></span>
         </div>
+        <div id="misljenja_trazi_sadrzaj" class="collapse show sekcija-collapse-flex">
+            <div class="sekcija-fiksni-deo" style="margin-top: 10px;">
+                <form id="misljenja_trazi_form">
+                    <div class="form-row">
+                        <div class="col-6">
+                            <select id="misljenja_trazi_tema" name="tema" class="form-control">
+                                <option value="">-- све теме --</option>
+                                <option value="dogadjaji">Догађаји</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <select id="misljenja_trazi_sort" name="sort" class="form-control">
+                                <option value="newest">најновија прво</option>
+                                <option value="oldest">најстарија прво</option>
+                                <option value="upvotes">највише одобравања</option>
+                                <option value="downvotes">највише неслагања</option>
+                                <option value="active">највише реакција</option>
+                            </select>
+                        </div>
+                    </div>
 
-        <!-- Results List -->
-        <div id="misljenja_results" style="display: none;">
-            <div id="misljenja_results_title" class="text-muted small mb-1"></div>
-            <div id="misljenja_results_list">
-                <!-- Results will be populated dynamically -->
+                    <div class="form-row">
+                        <div class="col">
+                            <input type="text" class="form-control" id="misljenja_trazi_tekst" name="tekst"
+                                placeholder="текст мишљења">
+                        </div>
+                        <div class="col">
+                            <input type="text" class="form-control" id="misljenja_trazi_korisnik" name="korisnik"
+                                placeholder="корисник">
+                        </div>
+                    </div>
+
+                    <div class="form-row mt-2">
+                        <div class="col">
+                            <div id="misljenja_trazi_error" style="color: orange; display: none;"></div>
+                        </div>
+                        <button type="submit" class="btn btn-white border border-dark">тражи</button>
+                        <div class="spinner-border text-secondary spinner-border-sm m-2" id="misljenja_trazi_cekanje"
+                            role="status" style="visibility: hidden;">
+                            <span class="sr-only">Loading...</span>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Results List -->
+            <div id="misljenja_results" class="sekcija-lista-scroll" style="display: none;">
+                <div id="misljenja_results_title" class="text-muted small mb-1 sekcija-lista-naslov-sticky"></div>
+                <div id="misljenja_results_list">
+                    <!-- Results will be populated dynamically -->
+                </div>
             </div>
         </div>
     </div>
