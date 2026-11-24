@@ -1,10 +1,50 @@
 <style>
-    #zapisi_results table tr:hover {
-        background-color: rgba(0, 0, 0, 0.05);
-    }
-
     #zapisi_results {
         margin-top: 12px;
+    }
+
+    .zapis-item {
+        padding: 8px 6px;
+        border-bottom: 1px solid #e9ecef;
+        transition: background-color 0.15s ease;
+    }
+
+    .zapis-item,
+    .zapis-item-header,
+    .zapis-item-opis {
+        text-align: left;
+    }
+
+    .zapis-item:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    .zapis-item-header {
+        display: flex;
+        align-items: baseline;
+        gap: 6px;
+        line-height: 1.5;
+    }
+
+    .zapis-id-badge {
+        display: inline-block;
+        flex-shrink: 0;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #555;
+        background-color: #f1f3f5;
+        border: 1px solid #dee2e6;
+        border-radius: 3px;
+        padding: 0 5px;
+        line-height: 1.4;
+    }
+
+    .zapis-item-opis {
+        margin-top: 3px;
+        font-size: 0.95rem;
+        color: #000;
+        line-height: 1.5;
+        word-break: break-word;
     }
 
     /* Custom file input styling */
@@ -24,13 +64,16 @@
     }
 
     .zapis-link {
-        color: darkorange;
+        color: #c96a00;
+        font-weight: 400;
+        font-size: 1rem;
         text-decoration: none;
+        word-break: break-word;
     }
 
     .zapis-link:hover {
         text-decoration: underline;
-        color: darkorange;
+        color: #a85500;
     }
 </style>
 
@@ -151,14 +194,12 @@
             </form>
         </div>
 
-        <!-- Results Table -->
+        <!-- Results List -->
         <div id="zapisi_results" class="sekcija-lista-scroll" style="display: none;">
             <div id="zapisi_results_title" class="text-muted small mb-1 sekcija-lista-naslov-sticky"></div>
-            <table style="width: 100%; border-collapse: collapse;">
-                <tbody id="zapisi_results_body">
-                    <!-- Results will be populated dynamically -->
-                </tbody>
-            </table>
+            <div id="zapisi_results_body">
+                <!-- Results will be populated dynamically -->
+            </div>
         </div>
     </div>
 </div>

@@ -318,23 +318,33 @@ function displaySearchResults(results, titleText) {
 
     if (results.length === 0) {
         resultsBody.append(`
-            <tr>
-                <td colspan="3" style="padding: 10px; text-align: center; color: #666;">
-                    Нема резултата.
-                </td>
-            </tr>
+            <div style="padding: 12px; text-align: center; color: #666;">
+                Нема резултата.
+            </div>
         `);
     } else {
         results.forEach(result => {
-            resultsBody.append(`
-                <tr>
-                    <td style="padding: 5px 8px 5px 5px; width: 1%; white-space: nowrap; vertical-align: top;">${result.id}</td>
-                    <td style="padding: 5px; width: 35%; vertical-align: top;">
-                        <a href="#" class="zapis-link" onclick="viewZapis(${result.id}); return false;">${result.naziv}</a>
-                    </td>
-                    <td style="padding: 5px; vertical-align: top;">${result.opis || ''}</td>
-                </tr>
-            `);
+            const item = $('<div class="zapis-item"></div>');
+            const header = $('<div class="zapis-item-header"></div>');
+            const idBadge = $('<span class="zapis-id-badge"></span>')
+                .text(`#${result.id}`)
+                .attr('title', `ИД записа: ${result.id}`);
+            const link = $('<a href="#" class="zapis-link"></a>')
+                .text(result.naziv || '')
+                .on('click', function (e) {
+                    e.preventDefault();
+                    viewZapis(result.id);
+                });
+
+            header.append(idBadge, link);
+            item.append(header);
+
+            if (result.opis) {
+                const opis = $('<div class="zapis-item-opis"></div>').text(result.opis);
+                item.append(opis);
+            }
+
+            resultsBody.append(item);
         });
     }
 
