@@ -51,7 +51,10 @@
 
                 <div class="form-row">
                     <div class="col">
-                        <input type="text" class="form-control" id="unos_naziv" name="naziv" placeholder="назив *">
+                        <input type="text" class="form-control" id="unos_naziv" name="naziv"
+                            placeholder="назив * (макс. 255 карактера)" maxlength="255">
+                        <small id="unos_naziv_counter" class="form-text text-muted text-right"
+                            style="margin-top: 2px; font-size: 0.78rem;">0 / 255</small>
                     </div>
                     <div class="col">
                         <select id="unos_tema" name="tema_id" class="form-control">
@@ -62,15 +65,20 @@
 
                 <div class="form-row">
                     <div class="col">
-                        <textarea class="form-control" id="unos_opis" name="opis" placeholder="опис *" rows="3"
+                        <textarea class="form-control" id="unos_opis" name="opis"
+                            placeholder="опис * (макс. 500 карактера)" rows="3" maxlength="500"
                             style="resize: both;"></textarea>
+                        <small id="unos_opis_counter" class="form-text text-muted text-right"
+                            style="margin-top: 2px; font-size: 0.78rem;">0 / 500</small>
                     </div>
                 </div>
 
                 <div class="form-row">
                     <div class="col">
                         <input type="text" class="form-control" id="unos_tagovi" name="tagovi"
-                            placeholder="тагови (одвојени зарезом) *">
+                            placeholder="тагови * (одвојени зарезом, макс. 255 карактера)" maxlength="255">
+                        <small id="unos_tagovi_counter" class="form-text text-muted text-right"
+                            style="margin-top: 2px; font-size: 0.78rem;">0 / 255</small>
                     </div>
                 </div>
 

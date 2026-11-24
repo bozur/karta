@@ -182,7 +182,7 @@ const poolPromise = (async () => {
         `);
         console.log('✓ Theme 4 razred "аустроугарски" verified');
 
-        // Ensure dogadjaji.izvor can store full URLs (at least 500 chars)
+        // Ensure dogadjaji.izvor and dogadjaji.opis can store up to 500 chars
         await client.query(`
             DO $$
             BEGIN
@@ -195,9 +195,19 @@ const poolPromise = (async () => {
                 ) THEN
                     ALTER TABLE dogadjaji ALTER COLUMN izvor TYPE VARCHAR(500);
                 END IF;
+
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'dogadjaji'
+                      AND column_name = 'opis'
+                      AND character_maximum_length IS NOT NULL
+                      AND character_maximum_length < 500
+                ) THEN
+                    ALTER TABLE dogadjaji ALTER COLUMN opis TYPE VARCHAR(500);
+                END IF;
             END $$;
         `);
-        console.log('✓ dogadjaji.izvor column length verified (>= 500)');
+        console.log('✓ dogadjaji.izvor and dogadjaji.opis column lengths verified (>= 500)');
 
         client.release();
 

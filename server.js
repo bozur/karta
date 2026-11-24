@@ -1452,6 +1452,19 @@ app.post('/api/zapisi/upload', uploadLimiter, handleZapisUpload, async (req, res
             fs.unlinkSync(req.file.path);
             return res.status(400).json({ error: 'Сва поља морају бити попуњена' });
         }
+        // 4.1 Field length validation
+        if (naziv.length > 255) {
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ error: 'Назив може имати највише 255 карактера' });
+        }
+        if (opis.length > 500) {
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ error: 'Опис може имати највише 500 карактера' });
+        }
+        if (tagovi.length > 255) {
+            fs.unlinkSync(req.file.path);
+            return res.status(400).json({ error: 'Тагови могу имати највише 255 карактера' });
+        }
         // 4a. Validate tema_id exists
         const temaCheck = await pool.request()
             .input('tema_id', sql.Int, tema_id)
@@ -1663,10 +1676,10 @@ app.post('/api/dogadjaji/insert', async (req, res) => {
             return res.status(400).json({ error: 'Опис мора имати најмање 10 карактера' });
         }
 
-        // 4. Validate opis length (max 255 chars)
-        if (opis.length > 255) {
+        // 4. Validate opis length (max 500 chars)
+        if (opis.length > 500) {
             console.log('Validation failed: opis too long');
-            return res.status(400).json({ error: 'Опис може имати највише 255 карактера' });
+            return res.status(400).json({ error: 'Опис може имати највише 500 карактера' });
         }
 
         // 4.5 Validate izvor length (max 500 chars)

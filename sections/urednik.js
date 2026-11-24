@@ -2154,7 +2154,7 @@ function deleteStavka(id, tabela) {
 // Uplate (Monthly Support Donations) Management
 // ============================================
 
-const UPLATE_MESECI_NAZIVI = [
+var UPLATE_MESECI_NAZIVI = [
     'јануар', 'фебруар', 'март', 'април', 'мај', 'јун',
     'јул', 'август', 'септембар', 'октобар', 'новембар', 'децембар'
 ];

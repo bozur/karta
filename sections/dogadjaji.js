@@ -36,6 +36,10 @@ function initializeDogadjaji() {
     // Initialize searchable zapis autocomplete
     initializeZapisAutocomplete();
 
+    // Initialize character counters and paste-truncation warnings
+    bindDogadjajCharCounter('#dogadjaji_unos_opis', '#dogadjaji_unos_opis_counter', 500);
+    bindDogadjajCharCounter('#dogadjaji_unos_izvor', '#dogadjaji_unos_izvor_counter', 500);
+
     // Initialize Flatpickr for datetime inputs
     if (typeof flatpickr !== 'undefined') {
         // Search fields - forgiving (guessing enabled)
@@ -152,8 +156,8 @@ function initializeMarkerTool() {
 }
 
 // Searchable zapis autocomplete for dogadjaji insert form
-let dogadjajiZapisiCache = null;
-let dogadjajiZapisiLoading = false;
+var dogadjajiZapisiCache = null;
+var dogadjajiZapisiLoading = false;
 
 function escapeDogadjajHtml(text) {
     if (text === null || text === undefined) return '';
@@ -303,6 +307,41 @@ function initializeZapisAutocomplete() {
     });
 }
 
+function bindDogadjajCharCounter(inputSelector, counterSelector, maxLen) {
+    const input = $(inputSelector);
+    const counter = $(counterSelector);
+    if (input.length === 0 || counter.length === 0) return;
+
+    function updateCounter(truncated) {
+        const len = (input.val() || '').length;
+        if (truncated) {
+            counter.css('color', '#d9534f').text(`${len} / ${maxLen} — текст је скраћен на ${maxLen} карактера`);
+        } else if (len >= maxLen) {
+            counter.css('color', 'darkorange').text(`${len} / ${maxLen} (достигнут максимум)`);
+        } else {
+            counter.css('color', '').text(`${len} / ${maxLen}`);
+        }
+    }
+
+    input.off('input.charcount').on('input.charcount', function () {
+        updateCounter(false);
+    });
+
+    input.off('paste.charcount').on('paste.charcount', function (e) {
+        const clipboardData = (e.originalEvent && e.originalEvent.clipboardData) || window.clipboardData;
+        const pastedText = clipboardData ? clipboardData.getData('text') : '';
+        const el = this;
+        const currentLen = (el.value || '').length;
+        const selectedLen = (el.selectionEnd || 0) - (el.selectionStart || 0);
+        const projectedLen = currentLen - selectedLen + pastedText.length;
+        if (projectedLen > maxLen) {
+            setTimeout(() => updateCounter(true), 0);
+        }
+    });
+
+    updateCounter(false);
+}
+
 function handleDogadjajiInsert() {
     let selectedZapis = ($('#dogadjaji_unos_zapis').val() || '').trim();
     const rawZapisSearch = ($('#dogadjaji_unos_zapis_search').val() || '').trim();
@@ -340,6 +379,10 @@ function handleDogadjajiInsert() {
     } else if ($('#dogadjaji_unos_opis').val().trim().length < 10) {
         $('#dogadjaji_unos_opis').css('border-color', 'red');
         errorMessage = 'опис мора имати најмање 10 карактера';
+        isValid = false;
+    } else if ($('#dogadjaji_unos_opis').val().length > 500) {
+        $('#dogadjaji_unos_opis').css('border-color', 'red');
+        errorMessage = 'опис може имати највише 500 карактера';
         isValid = false;
     }
 
@@ -397,6 +440,8 @@ function handleDogadjajiInsert() {
                 $('#dogadjaji_unos_zapis_search').val('');
                 $('#dogadjaji_unos_zapis_clear').hide();
                 $('#dogadjaji_unos_zapis_dropdown').hide();
+                $('#dogadjaji_unos_opis_counter').css('color', '').text('0 / 500');
+                $('#dogadjaji_unos_izvor_counter').css('color', '').text('0 / 500');
                 $('#dogadjaji_unos_korisnik').val(sessionStorage.getItem('username') || 'TestUser');
 
                 setTimeout(() => {

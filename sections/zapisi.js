@@ -36,8 +36,48 @@ function initializeZapisi() {
         handleSearch();
     });
 
+    // Initialize character counters and paste-truncation warnings
+    bindZapisCharCounter('#unos_naziv', '#unos_naziv_counter', 255);
+    bindZapisCharCounter('#unos_opis', '#unos_opis_counter', 500);
+    bindZapisCharCounter('#unos_tagovi', '#unos_tagovi_counter', 255);
+
     // Load latest 10 records automatically on tab open
     loadLatestZapisi();
+}
+
+function bindZapisCharCounter(inputSelector, counterSelector, maxLen) {
+    const input = $(inputSelector);
+    const counter = $(counterSelector);
+    if (input.length === 0 || counter.length === 0) return;
+
+    function updateCounter(truncated) {
+        const len = (input.val() || '').length;
+        if (truncated) {
+            counter.css('color', '#d9534f').text(`${len} / ${maxLen} — текст је скраћен на ${maxLen} карактера`);
+        } else if (len >= maxLen) {
+            counter.css('color', 'darkorange').text(`${len} / ${maxLen} (достигнут максимум)`);
+        } else {
+            counter.css('color', '').text(`${len} / ${maxLen}`);
+        }
+    }
+
+    input.off('input.charcount').on('input.charcount', function () {
+        updateCounter(false);
+    });
+
+    input.off('paste.charcount').on('paste.charcount', function (e) {
+        const clipboardData = (e.originalEvent && e.originalEvent.clipboardData) || window.clipboardData;
+        const pastedText = clipboardData ? clipboardData.getData('text') : '';
+        const el = this;
+        const currentLen = (el.value || '').length;
+        const selectedLen = (el.selectionEnd || 0) - (el.selectionStart || 0);
+        const projectedLen = currentLen - selectedLen + pastedText.length;
+        if (projectedLen > maxLen) {
+            setTimeout(() => updateCounter(true), 0);
+        }
+    });
+
+    updateCounter(false);
 }
 
 window.initZapisiSection = initializeZapisi;
@@ -84,6 +124,10 @@ function handleFileUpload() {
         $('#unos_naziv').css('border-color', 'red');
         errorMessage = 'попуните поље (назив)';
         isValid = false;
+    } else if ($('#unos_naziv').val().length > 255) {
+        $('#unos_naziv').css('border-color', 'red');
+        errorMessage = 'назив може имати највише 255 карактера';
+        isValid = false;
     }
 
     if (!$('#unos_tema').val()) {
@@ -96,11 +140,19 @@ function handleFileUpload() {
         $('#unos_opis').css('border-color', 'red');
         errorMessage = errorMessage || 'попуните поље (опис)';
         isValid = false;
+    } else if ($('#unos_opis').val().length > 500) {
+        $('#unos_opis').css('border-color', 'red');
+        errorMessage = errorMessage || 'опис може имати највише 500 карактера';
+        isValid = false;
     }
 
     if (!$('#unos_tagovi').val().trim()) {
         $('#unos_tagovi').css('border-color', 'red');
         errorMessage = errorMessage || 'попуните поље (тагови)';
+        isValid = false;
+    } else if ($('#unos_tagovi').val().length > 255) {
+        $('#unos_tagovi').css('border-color', 'red');
+        errorMessage = errorMessage || 'тагови могу имати највише 255 карактера';
         isValid = false;
     }
 
@@ -145,6 +197,9 @@ function handleFileUpload() {
                 $('#zapisi_unos_form')[0].reset();
                 $('#unos_korisnik').val(sessionStorage.getItem('username') || 'TestUser');
                 $('.custom-file-label').text('запис није изабран').attr('title', '');
+                $('#unos_naziv_counter').css('color', '').text('0 / 255');
+                $('#unos_opis_counter').css('color', '').text('0 / 500');
+                $('#unos_tagovi_counter').css('color', '').text('0 / 255');
 
                 // Hide success message after 3 seconds
                 setTimeout(() => {

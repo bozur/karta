@@ -88,8 +88,10 @@
                 <div class="form-row">
                     <div class="col">
                         <textarea class="form-control" id="dogadjaji_unos_opis" name="opis"
-                            placeholder="опис * (мин. 10 карактера)" rows="3" style="resize: both;"
-                            maxlength="255"></textarea>
+                            placeholder="опис * (мин. 10, макс. 500 карактера)" rows="3" style="resize: both;"
+                            maxlength="500"></textarea>
+                        <small id="dogadjaji_unos_opis_counter" class="form-text text-muted text-right"
+                            style="margin-top: 2px; font-size: 0.78rem;">0 / 500</small>
                     </div>
                 </div>
 
@@ -123,7 +125,9 @@
                 <div class="form-row">
                     <div class="col-12">
                         <input type="text" class="form-control" id="dogadjaji_unos_izvor" name="izvor"
-                            placeholder="извор *" maxlength="500">
+                            placeholder="извор * (макс. 500 карактера)" maxlength="500">
+                        <small id="dogadjaji_unos_izvor_counter" class="form-text text-muted text-right"
+                            style="margin-top: 2px; font-size: 0.78rem;">0 / 500</small>
                     </div>
                 </div>
 
