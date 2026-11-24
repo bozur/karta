@@ -3118,13 +3118,19 @@ app.post('/api/v2/urednik/stavke/process', async (req, res) => {
 // POST /api/novosti (Insert new news)
 app.post('/api/novosti', async (req, res) => {
     try {
-        // 1. Authentication check
+        // 1. Authentication & editor check
         if (!req.session.user) {
             return res.status(401).json({ error: 'Морате бити пријављени' });
         }
+        if (req.session.user.urednik != 1 && req.session.user.urednik != '1') {
+            return res.status(403).json({ error: 'Забрањен приступ. Потребне су уредничке привилегије.' });
+        }
 
-        const { opis } = req.body;
+        const { opis, vaznost, posalji_epostom } = req.body;
         const korisnik_id = req.session.user.id;
+        const parsedVaznost = Number.isInteger(Number(vaznost)) ? Number(vaznost) : 0;
+        const safeVaznost = [0, 1, 2].includes(parsedVaznost) ? parsedVaznost : 0;
+        const shouldSendEmail = posalji_epostom === undefined ? (safeVaznost === 2) : Boolean(posalji_epostom);
 
         // 2. Validation
         if (!opis) {
@@ -3144,43 +3150,99 @@ app.post('/api/novosti', async (req, res) => {
 
         request.input('opis', sql.NVarChar, opis);
         request.input('uneo', sql.Int, korisnik_id);
+        request.input('vaznost', sql.Int, safeVaznost);
 
         // Insert with current server time (UTC)
         await request.query(`
-            INSERT INTO novosti (vrijeme, opis, uneo)
-            VALUES (GETUTCDATE(), @opis, @uneo)
+            INSERT INTO novosti (vrijeme, opis, uneo, vaznost)
+            VALUES (GETUTCDATE(), @opis, @uneo, @vaznost)
         `);
 
-        // Send notifications to subscribers
-        try {
-            console.log('Fetching subscribers for news notification...');
-            const subscribersResult = await pool.request()
-                .query("SELECT eposta FROM korisnik WHERE obavjestenja IS TRUE");
-            const subscribers = subscribersResult.recordset.map(r => r.eposta).filter(e => e);
+        // Send notifications to subscribers only when requested
+        let emailSentCount = 0;
+        if (shouldSendEmail) {
+            try {
+                console.log('Fetching subscribers for news notification...');
+                const subscribersResult = await pool.request()
+                    .query("SELECT eposta FROM korisnik WHERE obavjestenja IS TRUE");
+                const subscribers = subscribersResult.recordset.map(r => r.eposta).filter(e => e);
 
-            console.log(`Found ${subscribers.length} subscribers.`);
+                console.log(`Found ${subscribers.length} subscribers.`);
 
-            if (subscribers.length > 0) {
-                const data = await sendEmail({
-                    to: 'kontakt@1.xn--80aa2azak.xn--90a3ac', // Primary recipient (self)
-                    bcc: subscribers,
-                    subject: 'Новости на странама карта.СРБ',
-                    html: `На странама карта.срб је објављена новост: '${opis}'.
+                if (subscribers.length > 0) {
+                    const subject = safeVaznost === 2
+                        ? 'Важна новост на странама Карта.СРБ'
+                        : 'Новости на странама Карта.СРБ';
+                    const data = await sendEmail({
+                        to: 'kontakt@1.xn--80aa2azak.xn--90a3ac', // Primary recipient (self)
+                        bcc: subscribers,
+                        subject: subject,
+                        html: `На странама Карта.СРБ је објављена новост: '${opis}'.
 <br><br>
-Ако желите да се одјавите са примања ових порука то можете да учините у дијелу "контакт" измјеном поља за обавјештавање!`
-                });
-                console.log('News notifications sent successfully:', data);
+Ако желите да се одјавите са примања ових порука то можете да учините у дијелу "корисник" измјеном поља за обавјештавање!`
+                    });
+                    emailSentCount = subscribers.length;
+                    console.log('News notifications sent successfully:', data);
+                }
+            } catch (emailErr) {
+                console.error('Error sending news notifications:', emailErr);
+                // Non-blocking error for the user
             }
-        } catch (emailErr) {
-            console.error('Error sending news notifications:', emailErr);
-            // Non-blocking error for the user
         }
 
-        res.json({ success: true, message: 'Новости успјешно додате.' });
+        res.json({
+            success: true,
+            message: shouldSendEmail
+                ? `Новости успјешно додате (послато е-поштом: ${emailSentCount}).`
+                : 'Новости успјешно додате.',
+            vaznost: safeVaznost,
+            emailSent: shouldSendEmail,
+            emailSentCount
+        });
 
     } catch (err) {
         console.error('Error in novosti insert:', err);
         res.status(500).json({ error: 'Грешка при упису новости.' });
+    }
+});
+
+// PUT /api/novosti/:id/vaznost (Update importance of an existing news item)
+app.put('/api/novosti/:id/vaznost', async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (req.session.user.urednik != 1 && req.session.user.urednik != '1') {
+            return res.status(403).json({ error: 'Забрањен приступ. Потребне су уредничке привилегије.' });
+        }
+
+        const id = parseInt(req.params.id, 10);
+        const parsedVaznost = parseInt(req.body.vaznost, 10);
+
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ error: 'Неисправан ИД новости.' });
+        }
+        if (![0, 1, 2].includes(parsedVaznost)) {
+            return res.status(400).json({ error: 'Неисправна важност (дозвољено: 0, 1 или 2).' });
+        }
+
+        const pool = await poolPromise;
+        const request = pool.request();
+        request.input('id', sql.Int, id);
+        request.input('vaznost', sql.Int, parsedVaznost);
+
+        const result = await request.query(`
+            UPDATE novosti SET vaznost = @vaznost WHERE id = @id
+        `);
+
+        if (!result.rowsAffected || result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Новост није пронађена.' });
+        }
+
+        res.json({ success: true, id, vaznost: parsedVaznost });
+    } catch (err) {
+        console.error('Error updating novosti vaznost:', err);
+        res.status(500).json({ error: 'Грешка при измјени важности новости.' });
     }
 });
 
@@ -3189,7 +3251,7 @@ app.get('/api/novosti', async (req, res) => {
     try {
         const pool = await poolPromise;
         // Fetch top 25, ordered by time DESC
-        const result = await pool.request().query('SELECT TOP 25 vrijeme, opis FROM novosti ORDER BY vrijeme DESC');
+        const result = await pool.request().query('SELECT TOP 25 id, vrijeme, opis, COALESCE(vaznost, 0) AS vaznost FROM novosti ORDER BY vrijeme DESC');
 
         res.json(result.recordset);
     } catch (err) {

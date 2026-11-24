@@ -223,6 +223,12 @@ const poolPromise = (async () => {
         `);
         console.log('✓ kontakt_poruke table verified');
 
+        // Ensure vaznost column exists on novosti table (0 = obicna, 1 = vazna, 2 = jako vazna)
+        await client.query(`
+            ALTER TABLE novosti ADD COLUMN IF NOT EXISTS vaznost SMALLINT NOT NULL DEFAULT 0;
+        `);
+        console.log('✓ novosti.vaznost column verified');
+
         client.release();
 
         // Return a mock pool object that server.js expects

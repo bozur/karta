@@ -26,6 +26,15 @@ async function ucitajNovosti() {
 
         data.forEach(item => {
             const row = document.createElement('tr');
+            const vaznost = Number(item.vaznost) || 0;
+
+            if (vaznost === 2) {
+                row.className = 'novost-jako-vazna';
+            } else if (vaznost === 1) {
+                row.className = 'novost-vazna';
+            } else {
+                row.className = 'novost-obicna';
+            }
 
             const date = new Date(item.vrijeme);
             const day = String(date.getDate()).padStart(2, '0');
@@ -33,9 +42,16 @@ async function ucitajNovosti() {
             const year = date.getFullYear();
             const dateStr = `${day}.${month}.${year}.`;
 
+            const iconHtml = vaznost === 2
+                ? '<i class="bi bi-star-fill mr-1" style="color: #e09100; font-size: 0.78rem;" title="јако важна новост"></i>'
+                : (vaznost === 1
+                    ? '<i class="bi bi-bookmark-fill mr-1" style="color: #2b7a78; font-size: 0.75rem;" title="важна новост"></i>'
+                    : '');
+            const opisStyle = vaznost === 2 ? 'font-weight: 500;' : '';
+
             row.innerHTML = `
-                <td style="padding: 5px 10px 5px 4px; width: 1%; white-space: nowrap; vertical-align: top; color: #555; font-size: 0.85rem; border-bottom: 1px solid #eee;">${dateStr}</td>
-                <td style="padding: 5px 4px; vertical-align: top; border-bottom: 1px solid #eee;">${item.opis}</td>
+                <td style="padding: 6px 10px 6px 6px; width: 1%; white-space: nowrap; vertical-align: top; color: #555; font-size: 0.85rem; border-bottom: 1px solid #eee;">${dateStr}</td>
+                <td style="padding: 6px 6px 6px 4px; vertical-align: top; border-bottom: 1px solid #eee; ${opisStyle}">${iconHtml}${item.opis}</td>
             `;
 
             tabela.appendChild(row);

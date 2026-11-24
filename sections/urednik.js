@@ -6,13 +6,24 @@ function initUrednikSection() {
     initThemeLocking();
     initUplateAdmin();
 
-    // Novosti insertion logic
+    // Novosti insertion & importance management logic
     const btnUnesi = document.getElementById('btn_unesi_novosti');
+    const vaznostSelect = document.getElementById('novosti_vaznost');
+    const posaljiCheckbox = document.getElementById('novosti_posalji_epostom');
+
+    if (vaznostSelect && posaljiCheckbox) {
+        vaznostSelect.addEventListener('change', () => {
+            posaljiCheckbox.checked = (vaznostSelect.value === '2');
+        });
+    }
+
     if (btnUnesi) {
         btnUnesi.addEventListener('click', async () => {
             const opisArea = document.getElementById('novosti_opis');
             const alertsDiv = document.getElementById('novosti_alerts');
             const opis = opisArea.value.trim();
+            const vaznost = vaznostSelect ? parseInt(vaznostSelect.value, 10) : 0;
+            const posalji_epostom = posaljiCheckbox ? posaljiCheckbox.checked : (vaznost === 2);
 
             alertsDiv.innerHTML = ''; // Clear previous alerts
 
@@ -22,7 +33,7 @@ function initUrednikSection() {
                 return;
             }
             if (opis.length > 4000) {
-                showAlert(alertsDiv, 'Опис не смије бити дужи од 4000 карактера.', 'danger'); // Although maxlength prevents typing, good specific check
+                showAlert(alertsDiv, 'Опис не смије бити дужи од 4000 карактера.', 'danger');
                 return;
             }
 
@@ -32,15 +43,17 @@ function initUrednikSection() {
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ opis })
+                    body: JSON.stringify({ opis, vaznost, posalji_epostom })
                 });
 
                 const data = await response.json();
 
                 if (response.ok && data.success) {
-                    showAlert(alertsDiv, 'Новости успјешно додате!', 'success');
-                    opisArea.value = ''; // Clear input
-                    // Optionally refresh Opste news if needed imediately, but it fetches on load
+                    showAlert(alertsDiv, data.message || 'Новости успјешно додате!', 'success');
+                    opisArea.value = '';
+                    if (vaznostSelect) vaznostSelect.value = '0';
+                    if (posaljiCheckbox) posaljiCheckbox.checked = false;
+                    loadUrednikNovosti();
                 } else {
                     showAlert(alertsDiv, data.error || 'Грешка при слању података.', 'danger');
                 }
@@ -49,6 +62,118 @@ function initUrednikSection() {
                 showAlert(alertsDiv, 'Грешка на серверу.', 'danger');
             }
         });
+    }
+
+    $('#urednik_novosti_podaci').off('shown.bs.collapse').on('shown.bs.collapse', function () {
+        loadUrednikNovosti();
+    });
+}
+
+function getNovostVaznostStyle(vaznost) {
+    if (vaznost === 2) {
+        return { border: '#f5a615', bg: '#fff8eb' };
+    }
+    if (vaznost === 1) {
+        return { border: '#2b7a78', bg: '#f0f7f7' };
+    }
+    return { border: 'transparent', bg: 'transparent' };
+}
+
+async function loadUrednikNovosti() {
+    const lista = document.getElementById('urednik_novosti_lista');
+    const alertsDiv = document.getElementById('novosti_alerts');
+    if (!lista) return;
+
+    lista.innerHTML = '<div class="text-muted py-1">Учитавање...</div>';
+
+    try {
+        const response = await fetch('/api/novosti');
+        if (!response.ok) throw new Error('Failed to fetch news');
+        const items = await response.json();
+
+        lista.innerHTML = '';
+        if (!items || items.length === 0) {
+            lista.innerHTML = '<div class="text-muted py-1">Нема новости.</div>';
+            return;
+        }
+
+        items.forEach(item => {
+            let currentVaznost = Number(item.vaznost) || 0;
+            const style = getNovostVaznostStyle(currentVaznost);
+            const date = new Date(item.vrijeme);
+            const dateStr = `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}.`;
+
+            const row = document.createElement('div');
+            row.className = 'd-flex align-items-center justify-content-between py-1 px-2 border-bottom';
+            row.style.gap = '8px';
+            row.style.borderLeft = `3px solid ${style.border}`;
+            row.style.backgroundColor = style.bg;
+
+            const textWrap = document.createElement('div');
+            textWrap.style.minWidth = '0';
+            textWrap.style.flex = '1';
+            textWrap.title = item.opis || '';
+
+            const dateSpan = document.createElement('span');
+            dateSpan.className = 'text-muted mr-1';
+            dateSpan.textContent = dateStr;
+
+            const opisSpan = document.createElement('span');
+            const fullText = item.opis || '';
+            opisSpan.textContent = fullText.length > 70 ? fullText.slice(0, 70) + '…' : fullText;
+
+            textWrap.appendChild(dateSpan);
+            textWrap.appendChild(opisSpan);
+
+            const select = document.createElement('select');
+            select.className = 'form-control form-control-sm';
+            select.style.width = 'auto';
+            select.style.fontSize = '0.78rem';
+            select.style.padding = '1px 4px';
+            select.style.height = 'auto';
+            select.innerHTML = `
+                <option value="0">обична</option>
+                <option value="1">важна</option>
+                <option value="2">јако важна</option>
+            `;
+            select.value = String(currentVaznost);
+
+            select.addEventListener('change', async () => {
+                const newVaznost = parseInt(select.value, 10);
+                select.disabled = true;
+                try {
+                    const res = await fetch(`/api/novosti/${item.id}/vaznost`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ vaznost: newVaznost })
+                    });
+                    const resData = await res.json();
+                    if (res.ok && resData.success) {
+                        currentVaznost = newVaznost;
+                        const updatedStyle = getNovostVaznostStyle(newVaznost);
+                        row.style.borderLeft = `3px solid ${updatedStyle.border}`;
+                        row.style.backgroundColor = updatedStyle.bg;
+                        if (alertsDiv) showAlert(alertsDiv, 'Важност новости је сачувана.', 'success');
+                    } else {
+                        select.value = String(currentVaznost);
+                        if (alertsDiv) showAlert(alertsDiv, resData.error || 'Грешка при измјени важности.', 'danger');
+                    }
+                } catch (err) {
+                    console.error('Error updating vaznost:', err);
+                    select.value = String(currentVaznost);
+                    if (alertsDiv) showAlert(alertsDiv, 'Грешка на серверу.', 'danger');
+                } finally {
+                    select.disabled = false;
+                }
+            });
+
+            row.appendChild(textWrap);
+            row.appendChild(select);
+            lista.appendChild(row);
+        });
+    } catch (err) {
+        console.error('Error loading urednik novosti:', err);
+        lista.innerHTML = '<div class="text-danger py-1">Грешка при учитавању новости.</div>';
     }
 }
 
