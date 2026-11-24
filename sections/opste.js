@@ -27,14 +27,15 @@ async function ucitajNovosti() {
         data.forEach(item => {
             const row = document.createElement('tr');
 
-            // Format time (assuming datetime2 string from SQL)
-            // Example: 2025-12-17T17:55:32.000Z
             const date = new Date(item.vrijeme);
-            const dateStr = date.toLocaleDateString('sr-RS'); // e.g. 17.12.2025.
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const dateStr = `${day}.${month}.${year}.`;
 
             row.innerHTML = `
-                <td style="padding: 5px; width: 120px; border-bottom: 1px solid #eee;">${dateStr}</td>
-                <td style="padding: 5px; border-bottom: 1px solid #eee;">${item.opis}</td>
+                <td style="padding: 5px 10px 5px 4px; width: 1%; white-space: nowrap; vertical-align: top; color: #555; font-size: 0.85rem; border-bottom: 1px solid #eee;">${dateStr}</td>
+                <td style="padding: 5px 4px; vertical-align: top; border-bottom: 1px solid #eee;">${item.opis}</td>
             `;
 
             tabela.appendChild(row);

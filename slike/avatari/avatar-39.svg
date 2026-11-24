@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <clipPath id="c"><circle cx="64" cy="64" r="64"/></clipPath>
+  </defs>
+  <g clip-path="url(#c)">
+    <circle cx="64" cy="64" r="64" fill="#FDEBD0"/>
+    
+    <!-- Shoulders & Shirt -->
+    <path d="M18 128 C20 103 38 94 64 94 C90 94 108 103 110 128 Z" fill="#E67E22"/>
+    <!-- Neck -->
+    <rect x="54" y="81" width="20" height="18" rx="6" fill="#B97A56"/>
+    <path d="M54 85 C58 91 70 91 74 85 L74 81 L54 81 Z" fill="#a56d4d"/>
+    <path d="M52 94 C56 101 72 101 76 94" stroke="#bd671c" stroke-width="3" fill="none"/>
+    
+    <!-- Ears -->
+    <circle cx="37" cy="61" r="6" fill="#B97A56"/>
+    <circle cx="91" cy="61" r="6" fill="#B97A56"/>
+    <!-- Head -->
+    <rect x="38" y="30" width="52" height="58" rx="26" fill="#B97A56"/>
+    <path d="M38 64 C39 85 50 96 64 96 C78 96 89 85 90 64 C85 72 76 76 64 76 C52 76 43 72 38 64 Z" fill="#1B2631"/>
+    <!-- Eyes -->
+    <circle cx="52" cy="58" r="2.8" fill="#2C3E50"/>
+    <circle cx="76" cy="58" r="2.8" fill="#2C3E50"/>
+    <!-- Eyebrows -->
+    <path d="M46 50 Q52 47.5 57 50" stroke="#17202a" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M71 50 Q76 47.5 82 50" stroke="#17202a" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <!-- Nose -->
+    <path d="M64 59 L62.5 66 Q64 67.5 66 66" stroke="#a56d4d" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <!-- Smile -->
+    <path d="M56 75 Q64 81 72 75" stroke="#FFFFFF" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    
+    <rect x="41" y="51" width="19" height="13" rx="4" fill="#1C2833"/>
+    <rect x="68" y="51" width="19" height="13" rx="4" fill="#1C2833"/>
+    <line x1="60" y1="56" x2="68" y2="56" stroke="#1C2833" stroke-width="2.5"/>
+    <line x1="45" y1="54" x2="50" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="72" y1="54" x2="77" y2="54" stroke="rgba(255,255,255,0.35)" stroke-width="1.5" stroke-linecap="round"/>
+    <path d="M48 33 Q64 28 76 34" stroke="rgba(255,255,255,0.45)" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+    
+  </g>
+</svg>

@@ -1096,7 +1096,7 @@ async function napraviSlikuZaMrezu(sirina, visina, sufiks, dugme) {
         postaviMrezeStatus('Слика је преузета (' + sirina + '×' + visina + ').', false);
     } catch (err) {
         console.error('Грешка при прављењу слике карте:', err);
-        postaviMrezeStatus('Није могуће направити слику (освежите страницу Ctrl+F5 и покушајте поново).', true);
+        postaviMrezeStatus('Није могуће направити слику (освежите страницу Ctrl+Shift+R и покушајте поново).', true);
     } finally {
         if (dugme) dugme.disabled = false;
     }
@@ -1188,7 +1188,7 @@ async function napraviVideoZaTikTok(dugme) {
         postaviMrezeStatus('Видео је преузет! Додајте музику по избору у TikTok / Instagram апликацији.', false);
     } catch (err) {
         console.error('Грешка при снимању видеа:', err);
-        postaviMrezeStatus('Грешка при снимању видеа (освежите страницу Ctrl+F5 и покушајте поново).', true);
+        postaviMrezeStatus('Грешка при снимању видеа (освежите страницу Ctrl+Shift+R и покушајте поново).', true);
     } finally {
         if (dugme) dugme.disabled = false;
     }

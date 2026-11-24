@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <clipPath id="c"><circle cx="64" cy="64" r="64"/></clipPath>
+  </defs>
+  <g clip-path="url(#c)">
+    <circle cx="64" cy="64" r="64" fill="#FDEDEC"/>
+    <circle cx="33" cy="28" r="12" fill="#C9973E"/><circle cx="95" cy="28" r="12" fill="#C9973E"/>
+    <!-- Shoulders & Shirt -->
+    <path d="M18 128 C20 103 38 94 64 94 C90 94 108 103 110 128 Z" fill="#C0392B"/>
+    <!-- Neck -->
+    <rect x="54" y="81" width="20" height="18" rx="6" fill="#FDEBD0"/>
+    <path d="M54 85 C58 91 70 91 74 85 L74 81 L54 81 Z" fill="#e1d1b9"/>
+    <path d="M52 94 C56 101 72 101 76 94" stroke="#9d2f23" stroke-width="3" fill="none"/>
+    
+    <circle cx="36" cy="69" r="2.6" fill="#F1C40F"/>
+    <circle cx="92" cy="69" r="2.6" fill="#F1C40F"/>
+    <!-- Ears -->
+    <circle cx="37" cy="61" r="6" fill="#FDEBD0"/>
+    <circle cx="91" cy="61" r="6" fill="#FDEBD0"/>
+    <!-- Head -->
+    <rect x="38" y="30" width="52" height="58" rx="26" fill="#FDEBD0"/>
+    
+    <!-- Eyes -->
+    <circle cx="52" cy="58" r="2.8" fill="#2C3E50"/>
+    <circle cx="76" cy="58" r="2.8" fill="#2C3E50"/>
+    <!-- Eyebrows -->
+    <path d="M46 50 Q52 47.5 57 50" stroke="#ab8035" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <path d="M71 50 Q76 47.5 82 50" stroke="#ab8035" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    <!-- Nose -->
+    <path d="M64 59 L62.5 66 Q64 67.5 66 66" stroke="#e1d1b9" stroke-width="1.8" fill="none" stroke-linecap="round"/>
+    <!-- Smile -->
+    <path d="M56 73 Q64 79 72 73" stroke="#7E4A35" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+    
+    <path d="M33 50 C36 29 49 22 64 22 C79 22 92 29 95 50 C88 38 76 34 64 35 C51 34 40 38 33 50 Z" fill="#C9973E"/>
+    
+  </g>
+</svg>

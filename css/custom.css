@@ -500,7 +500,7 @@ div {
 
 /* Rename Browse button */
 .custom-file-label::after {
-  content: "изабери сличицу" !important;
+  content: "учитај сличицу" !important;
 }
 
 #zapisi_unos_form .custom-file-label::after {
