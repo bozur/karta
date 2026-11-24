@@ -19,8 +19,9 @@ var PODRSKA_CONFIG = {
         svrha: 'podrska za razvoj karta.srb'
     },
 
-    // Месечни технички трошкови у РСД (резервна вредност ако сервер није доступан)
+    // Месечни трошкови у РСД (резервне вредности ако сервер није доступан)
     mesecniTroskovi: 5500,
+    troskoviOdrzavanja: 30000,
 
     // Тестни подаци за протеклих 12 месеци (индекс 0 = текући месец, индекс 11 = пре 11 месеци)
     mesecniPrihodi: [
@@ -419,11 +420,16 @@ function prikaziGrafikon12Meseci(podaciSaServera) {
     var kontejner = document.getElementById('podrska_grafikon_12m');
     var statusEl = document.getElementById('podrska_novcana_status');
     var legendaTroskoviEl = document.getElementById('podrska_legenda_troskovi');
+    var legendaOdrzavanjeEl = document.getElementById('podrska_legenda_odrzavanje');
     if (!kontejner) return;
 
     var troskovi = (podaciSaServera && typeof podaciSaServera.mesecniTroskovi === 'number')
         ? podaciSaServera.mesecniTroskovi
         : PODRSKA_CONFIG.mesecniTroskovi;
+
+    var troskoviOdrzavanja = (podaciSaServera && typeof podaciSaServera.troskoviOdrzavanja === 'number')
+        ? podaciSaServera.troskoviOdrzavanja
+        : PODRSKA_CONFIG.troskoviOdrzavanja;
 
     var meseciPodaci = [];
 
@@ -455,28 +461,42 @@ function prikaziGrafikon12Meseci(podaciSaServera) {
         }
     }
 
-    // Распон скале: од 0 РСД до максималног прихода (укључујући техничке трошкове)
+    // Распон скале: од 0 РСД до максимума између прихода, техничких трошкова и трошкова одржавања
     var maksPrihod = 0;
     for (var j = 0; j < meseciPodaci.length; j++) {
         if (meseciPodaci[j].iznos > maksPrihod) {
             maksPrihod = meseciPodaci[j].iznos;
         }
     }
-    var maksSkala = Math.max(troskovi, maksPrihod, 1);
+    var maksSkala = Math.max(troskovi, troskoviOdrzavanja, maksPrihod, 1);
     var pozicijaTroskova = troskovi > 0 ? (troskovi / maksSkala) * 100 : 0;
+    var pozicijaOdrzavanja = troskoviOdrzavanja > 0 ? (troskoviOdrzavanja / maksSkala) * 100 : 0;
 
     if (legendaTroskoviEl) {
         legendaTroskoviEl.textContent = 'технички мјесечни трошкови: ' + formatRsd(troskovi) + ' РСД (хостинг+база+домен)';
+    }
+    if (legendaOdrzavanjeEl) {
+        legendaOdrzavanjeEl.textContent = 'минимални трошкови одржавања: ' + formatRsd(troskoviOdrzavanja) + ' РСД';
     }
 
     // Статус за текући месец одмах поред иконице за отварање "новчана подршка"
     if (statusEl && meseciPodaci.length > 0) {
         var tekuci = meseciPodaci[0];
-        var procenat = troskovi > 0 ? Math.round((tekuci.iznos / troskovi) * 100) : 100;
-        var jePokriveno = tekuci.iznos >= troskovi;
+        var statusKlasa = 'ispod';
+        var ciljniIznos = troskovi;
 
-        statusEl.className = 'podrska-novcana-status ' + (jePokriveno ? 'pokriveno' : 'ispod');
-        statusEl.textContent = formatRsd(tekuci.iznos) + ' РСД / ' + formatRsd(troskovi) +
+        if (troskoviOdrzavanja > 0 && tekuci.iznos >= troskoviOdrzavanja) {
+            statusKlasa = 'odrzavanje';
+            ciljniIznos = troskoviOdrzavanja;
+        } else if (tekuci.iznos >= troskovi) {
+            statusKlasa = 'pokriveno';
+            ciljniIznos = troskoviOdrzavanja > troskovi ? troskoviOdrzavanja : troskovi;
+        }
+
+        var procenat = ciljniIznos > 0 ? Math.round((tekuci.iznos / ciljniIznos) * 100) : 100;
+
+        statusEl.className = 'podrska-novcana-status ' + statusKlasa;
+        statusEl.textContent = formatRsd(tekuci.iznos) + ' РСД / ' + formatRsd(ciljniIznos) +
             ' РСД (' + procenat + '%)';
     }
 
@@ -484,13 +504,18 @@ function prikaziGrafikon12Meseci(podaciSaServera) {
     for (var k = 0; k < meseciPodaci.length; k++) {
         var stavka = meseciPodaci[k];
         var sirinaProcenat = Math.min(100, (stavka.iznos / maksSkala) * 100);
-        var klasaBoje = stavka.iznos >= troskovi ? 'pokriveno' : 'ispod';
+        var klasaBoje = 'ispod';
+        if (troskoviOdrzavanja > 0 && stavka.iznos >= troskoviOdrzavanja) {
+            klasaBoje = 'odrzavanje';
+        } else if (stavka.iznos >= troskovi) {
+            klasaBoje = 'pokriveno';
+        }
         var klasaReda = stavka.jeTekuci ? 'podrska-mesec-red tekuci' : 'podrska-mesec-red';
         var razlika = stavka.iznos - troskovi;
         var tooltipTekst = stavka.puniNaziv + ': ' + formatRsd(stavka.iznos) + ' РСД (' +
             (razlika >= 0
-                ? '+' + formatRsd(razlika) + ' РСД изнад трошкова'
-                : formatRsd(Math.abs(razlika)) + ' РСД до покрића трошкова') + ')';
+                ? '+' + formatRsd(razlika) + ' РСД изнад техничких трошкова'
+                : formatRsd(Math.abs(razlika)) + ' РСД до покрића техничких трошкова') + ')';
 
         html +=
             '<div class="' + klasaReda + '" title="' + tooltipTekst + '">' +
@@ -501,13 +526,20 @@ function prikaziGrafikon12Meseci(podaciSaServera) {
                         ? '<div class="podrska-troskovi-linija" style="left: ' + pozicijaTroskova.toFixed(2) + '%;" ' +
                           'title="Месечни технички трошкови: ' + formatRsd(troskovi) + ' РСД"></div>'
                         : '') +
+                    (troskoviOdrzavanja > 0
+                        ? '<div class="podrska-odrzavanje-linija" style="left: ' + pozicijaOdrzavanja.toFixed(2) + '%;" ' +
+                          'title="Минимални трошкови одржавања: ' + formatRsd(troskoviOdrzavanja) + ' РСД"></div>'
+                        : '') +
                 '</div>' +
                 '<span class="podrska-mesec-iznos">' + formatRsd(stavka.iznos) + ' РСД</span>' +
             '</div>';
     }
 
-    // Доња скала: 0 РСД, ознака трошкова и максимум
-    var prikaziOznakuTroskova = troskovi > 0 && pozicijaTroskova > 18 && pozicijaTroskova < 82;
+    // Доња скала: 0 РСД, ознака техничких трошкова, ознака одржавања (ако не преклапа) и максимум
+    var prikaziOznakuTroskova = troskovi > 0 && pozicijaTroskova > 14 && pozicijaTroskova < 84;
+    var prikaziOznakuOdrzavanja = troskoviOdrzavanja > 0 && pozicijaOdrzavanja > 18 && pozicijaOdrzavanja < 84 &&
+        Math.abs(pozicijaOdrzavanja - pozicijaTroskova) > 16;
+
     html +=
         '<div class="podrska-skala-red">' +
             '<span class="podrska-mesec-oznaka"></span>' +
@@ -516,6 +548,10 @@ function prikaziGrafikon12Meseci(podaciSaServera) {
                 (prikaziOznakuTroskova
                     ? '<span class="podrska-skala-troskovi" style="left: ' + pozicijaTroskova.toFixed(2) + '%;">' +
                       formatRsd(troskovi) + '</span>'
+                    : '') +
+                (prikaziOznakuOdrzavanja
+                    ? '<span class="podrska-skala-odrzavanje" style="left: ' + pozicijaOdrzavanja.toFixed(2) + '%;">' +
+                      formatRsd(troskoviOdrzavanja) + '</span>'
                     : '') +
                 '<span class="podrska-skala-maks">' + formatRsd(maksSkala) + ' РСД</span>' +
             '</div>' +

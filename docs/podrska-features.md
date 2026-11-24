@@ -47,12 +47,12 @@ Allows users to export the currently visible Leaflet map area directly in platfo
 
 ### Payment Tabs (`#podrska_placanje_blok`)
 
-1. **Динарске уплате** (default tab)
+1. **Домаће уплате** (default tab)
    - **Desktop**: Dynamically generates a **National Bank of Serbia (NBS) IPS QR code** (`qrcode-generator` loaded in `karta.html`) using Latin ASCII text (`Bozur Vujicic`, `podrska za razvoj karta.srb`, payment code `289`, and 18-digit account auto-formatted from `racunPrikaz`). Because NBS IPS `K:PR` requires an amount (`I:`), the QR code is blurred with a prompt until the user enters an amount or clicks one of the quick-pick chips (`500`, `1.000`, `2.000`, `5.000`), plus a toggle link to view manual payment details.
    - **Mobile**: Automatically displays formatted payment slip details with one-tap Copy buttons (copying Latin text without diacritics for banking app compatibility) and an inline amount input next to **"Преузми IPS QR код"** for m-banking gallery import, plus a toggle to view the QR code directly.
 
-2. **Девизне уплате**
-   - **Primary**: **Ko-fi** button (`https://ko-fi.com/kartasrb`) with inline Ko-fi SVG icon, recommended for donations up to ~400 € (card / PayPal, lowest fees).
+2. **Иностране уплате**
+   - **Primary**: **Ko-fi** button (`https://ko-fi.com/kartasrb`) with inline Ko-fi SVG icon, recommended for international donations up to ~400 € (card / PayPal; explicitly notes it does not support domestic Serbian payments per NBS/PayPal rules).
    - **Secondary (collapsible)**: Direct international bank transfer (**IBAN / SWIFT**) recommended for amounts over 400 €, with one-tap Copy buttons for Beneficiary, IBAN, SWIFT/BIC, and Reference.
 
 ### Configuration

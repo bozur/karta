@@ -3351,7 +3351,7 @@ async function ensurePodrskaTables(pool) {
     `);
     await pool.request().query(`
         INSERT INTO podrska_podesavanja (kljuc, vrednost)
-        VALUES ('mesecni_troskovi', '5500')
+        VALUES ('mesecni_troskovi', '5500'), ('troskovi_odrzavanja', '30000')
         ON CONFLICT (kljuc) DO NOTHING
     `);
     await pool.request().query(`
@@ -3373,11 +3373,19 @@ app.get('/api/podrska/uplate', async (req, res) => {
         await ensurePodrskaTables(pool);
 
         const settingsRes = await pool.request().query(`
-            SELECT vrednost FROM podrska_podesavanja WHERE kljuc = 'mesecni_troskovi'
+            SELECT kljuc, vrednost FROM podrska_podesavanja
+            WHERE kljuc IN ('mesecni_troskovi', 'troskovi_odrzavanja')
         `);
-        const mesecniTroskovi = settingsRes.recordset.length > 0
-            ? Math.max(0, parseInt(settingsRes.recordset[0].vrednost, 10) || 0)
+        const podesavanjaMapa = {};
+        for (const row of settingsRes.recordset) {
+            podesavanjaMapa[row.kljuc] = row.vrednost;
+        }
+        const mesecniTroskovi = podesavanjaMapa.mesecni_troskovi !== undefined
+            ? Math.max(0, parseInt(podesavanjaMapa.mesecni_troskovi, 10) || 0)
             : 5500;
+        const troskoviOdrzavanja = podesavanjaMapa.troskovi_odrzavanja !== undefined
+            ? Math.max(0, parseInt(podesavanjaMapa.troskovi_odrzavanja, 10) || 0)
+            : 30000;
 
         // Build list of last 12 months (current month first)
         const now = new Date();
@@ -3415,6 +3423,7 @@ app.get('/api/podrska/uplate', async (req, res) => {
         res.json({
             success: true,
             mesecniTroskovi,
+            troskoviOdrzavanja,
             meseci
         });
     } catch (err) {
@@ -3430,11 +3439,18 @@ app.post('/api/urednik/uplate', async (req, res) => {
             return res.status(403).json({ error: 'Немате дозволу' });
         }
 
-        const { mesecniTroskovi, meseci } = req.body;
+        const { mesecniTroskovi, troskoviOdrzavanja, meseci } = req.body;
         const troskoviInt = parseInt(mesecniTroskovi, 10);
+        const odrzavanjeInt = troskoviOdrzavanja !== undefined && troskoviOdrzavanja !== ''
+            ? parseInt(troskoviOdrzavanja, 10)
+            : 30000;
 
         if (isNaN(troskoviInt) || troskoviInt < 0) {
             return res.status(400).json({ error: 'Месечни технички трошкови морају бити ненегативан број.' });
+        }
+
+        if (isNaN(odrzavanjeInt) || odrzavanjeInt < 0) {
+            return res.status(400).json({ error: 'Минимални трошкови одржавања морају бити ненегативан број.' });
         }
 
         if (!Array.isArray(meseci) || meseci.length === 0) {
@@ -3449,6 +3465,15 @@ app.post('/api/urednik/uplate', async (req, res) => {
             .query(`
                 INSERT INTO podrska_podesavanja (kljuc, vrednost, azurirano)
                 VALUES ('mesecni_troskovi', @vrednost, CURRENT_TIMESTAMP)
+                ON CONFLICT (kljuc)
+                DO UPDATE SET vrednost = EXCLUDED.vrednost, azurirano = CURRENT_TIMESTAMP
+            `);
+
+        await pool.request()
+            .input('vrednostOdrz', sql.VarChar, String(odrzavanjeInt))
+            .query(`
+                INSERT INTO podrska_podesavanja (kljuc, vrednost, azurirano)
+                VALUES ('troskovi_odrzavanja', @vrednostOdrz, CURRENT_TIMESTAMP)
                 ON CONFLICT (kljuc)
                 DO UPDATE SET vrednost = EXCLUDED.vrednost, azurirano = CURRENT_TIMESTAMP
             `);

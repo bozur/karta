@@ -2175,6 +2175,7 @@ async function loadUplateAdmin() {
     const formaDiv = document.getElementById('uplate_forma');
     const alertsDiv = document.getElementById('uplate_alerts');
     const troskoviInput = document.getElementById('uplate_troskovi_input');
+    const odrzavanjeInput = document.getElementById('uplate_odrzavanje_input');
     const tbody = document.getElementById('uplate_meseci_body');
 
     if (!tbody) return;
@@ -2196,6 +2197,9 @@ async function loadUplateAdmin() {
 
         if (troskoviInput) {
             troskoviInput.value = data.mesecniTroskovi;
+        }
+        if (odrzavanjeInput) {
+            odrzavanjeInput.value = data.troskoviOdrzavanja !== undefined ? data.troskoviOdrzavanja : 30000;
         }
 
         tbody.innerHTML = '';
@@ -2237,12 +2241,19 @@ async function loadUplateAdmin() {
 async function saveUplateAdmin() {
     const alertsDiv = document.getElementById('uplate_alerts');
     const troskoviInput = document.getElementById('uplate_troskovi_input');
+    const odrzavanjeInput = document.getElementById('uplate_odrzavanje_input');
     const inputs = document.querySelectorAll('.uplate-mesec-input');
     const btnSacuvaj = document.getElementById('btn_sacuvaj_uplate');
 
     const mesecniTroskovi = parseInt(troskoviInput ? troskoviInput.value : '', 10);
     if (isNaN(mesecniTroskovi) || mesecniTroskovi < 0) {
         showAlert(alertsDiv, 'Унесите исправан износ за месечне техничке трошкове (0 или више).', 'danger');
+        return;
+    }
+
+    const troskoviOdrzavanja = parseInt(odrzavanjeInput ? odrzavanjeInput.value : '', 10);
+    if (isNaN(troskoviOdrzavanja) || troskoviOdrzavanja < 0) {
+        showAlert(alertsDiv, 'Унесите исправан износ за минималне трошкове одржавања (0 или више).', 'danger');
         return;
     }
 
@@ -2265,7 +2276,7 @@ async function saveUplateAdmin() {
         const response = await fetch('/api/urednik/uplate', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ mesecniTroskovi, meseci })
+            body: JSON.stringify({ mesecniTroskovi, troskoviOdrzavanja, meseci })
         });
         const data = await response.json();
 

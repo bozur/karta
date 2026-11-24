@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS podrska_podesavanja (
 );
 
 INSERT INTO podrska_podesavanja (kljuc, vrednost)
-VALUES ('mesecni_troskovi', '5500')
+VALUES ('mesecni_troskovi', '5500'), ('troskovi_odrzavanja', '30000')
 ON CONFLICT (kljuc) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS uplate_mesecne (
