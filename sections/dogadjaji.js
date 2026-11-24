@@ -10,7 +10,7 @@ $(document).ready(function () {
 
 function initializeDogadjaji() {
     const accordion = $('#dogadjaji_accordion');
-    if (accordion.data('initialized')) {
+    if (accordion.length === 0 || accordion.data('initialized')) {
         return;
     }
     accordion.data('initialized', true);

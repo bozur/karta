@@ -206,9 +206,10 @@ html {
   position: absolute;
   z-index: 1000;
   background: rgba(255, 255, 255, 0.9);
-  right: 0;
+  left: calc(100% - 460px);
+  right: auto;
   top: 0;
-  margin-right: 335px;
+  margin-right: 0;
   padding: 3px 5px;
   border-bottom: 2px solid #bbb;
   border-left: 2px solid #bbb;
@@ -480,6 +481,7 @@ div {
   .izbor_karte {
     position: fixed;
     top: 8px;
+    left: auto;
     right: 60px;
     margin-right: 0;
     height: 44px;

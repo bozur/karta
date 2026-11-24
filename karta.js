@@ -164,23 +164,45 @@ $(document).ready(function () {
         });
 
     var idpointinfo = 0;
+    var idpointtable = null;
     var sidebar = L.control.sidebar('sidebar', {
         position: 'left'
     });
     karta.addControl(sidebar);
     window.sidebarControl = sidebar;
 
+    function ensureThemeOptionsLoaded(themeId) {
+        if (typeof window.themeOptionsCache === 'undefined') {
+            window.themeOptionsCache = {};
+        }
+        if (!themeId || window.themeOptionsCache[themeId]) {
+            return Promise.resolve();
+        }
+        return fetch('/api/v2/theme-options/' + themeId)
+            .then(function (r) { return r.json(); })
+            .then(function (options) {
+                window.themeOptionsCache[themeId] = [
+                    options.razred || [],
+                    options.vrsta || [],
+                    options.podvrsta || []
+                ];
+            })
+            .catch(function (err) {
+                console.error('Error loading theme options:', err);
+            });
+    }
 
-    $(document).on('click', '.detalji', function () {
-        var idpoint = $(this).attr("pointinfo");
-        if (idpointinfo === idpoint) {
-            sidebar.toggle();
-        } else {
-            if (idpointinfo === 0) { sidebar.toggle(); }
-            if (idpointinfo != idpoint && !sidebar.isVisible()) { sidebar.show(); }
+    function showPointDetails(idpoint, targetTabela, highlightCommentId) {
+        var activeTabela = String(targetTabela || (typeof window.tabela !== 'undefined' && window.tabela !== null ? window.tabela : tabela));
+        window.tabela = activeTabela;
+        tabela = activeTabela;
 
+        if (!sidebar.isVisible()) {
+            sidebar.show();
+        }
 
-            $.getJSON('api/points/' + idpoint + '?table=' + tabela, function (data) {
+        ensureThemeOptionsLoaded(activeTabela).then(function () {
+            $.getJSON('api/points/' + idpoint + '?table=' + activeTabela, function (data) {
                 console.log(data);
                 var vrem, pros;
                 if (data.vremenski == '1') { vrem = "одређено"; } else { vrem = "неодређено"; }
@@ -208,11 +230,11 @@ $(document).ready(function () {
                 }
 
                 // Use cached theme options if available, otherwise fallback to index or empty
-                // window.themeOptionsCache[tabela] = [razredArray, vrstaArray, podvrstaArray]
+                // window.themeOptionsCache[activeTabela] = [razredArray, vrstaArray, podvrstaArray]
                 var htmlContent = '';
-                if (window.themeOptionsCache && window.themeOptionsCache[tabela]) {
-                    htmlContent = '<div style="margin-bottom: 5px;"><b>ID:</b> ' + idpoint + ' &nbsp;&nbsp;<b>разред:</b> ' + (window.themeOptionsCache[tabela][0][data.raz] || data.raz) + '</div>';
-                    htmlContent += '<div style="margin-bottom: 5px;"><b>врста:</b> ' + (window.themeOptionsCache[tabela][1][data.vrs] || data.vrs) + ' &nbsp;&nbsp;<b>подврста:</b> ' + (window.themeOptionsCache[tabela][2][data.pod] || data.pod) + '</div>';
+                if (window.themeOptionsCache && window.themeOptionsCache[activeTabela]) {
+                    htmlContent = '<div style="margin-bottom: 5px;"><b>ID:</b> ' + idpoint + ' &nbsp;&nbsp;<b>разред:</b> ' + (window.themeOptionsCache[activeTabela][0][data.raz] || data.raz) + '</div>';
+                    htmlContent += '<div style="margin-bottom: 5px;"><b>врста:</b> ' + (window.themeOptionsCache[activeTabela][1][data.vrs] || data.vrs) + ' &nbsp;&nbsp;<b>подврста:</b> ' + (window.themeOptionsCache[activeTabela][2][data.pod] || data.pod) + '</div>';
                 } else {
                     // Fallback to raw indices if cache not loaded (should not happen in normal flow)
                     htmlContent = '<div style="margin-bottom: 5px;"><b>ID:</b> ' + idpoint + ' &nbsp;&nbsp;<b>разред:</b> ' + data.raz + '</div>';
@@ -230,7 +252,8 @@ $(document).ready(function () {
 
                 $('#sidebar').html(htmlContent);
                 if (!sidebar.isVisible()) { sidebar.show(); }
-                idpointinfo = idpoint;
+                idpointinfo = String(idpoint);
+                idpointtable = activeTabela;
 
                 // Initialize comments plugin
                 const userProfilePic = window.currentUserProfilePic || 'slike/user-icon.png';
@@ -287,7 +310,7 @@ $(document).ready(function () {
                             dataType: 'json',
                             contentType: 'application/json',
                             url: '/api/comments',
-                            data: { table: tabela, id: idpoint },
+                            data: { table: activeTabela, id: idpoint },
                             success: function (commentsArray) {
                                 // Manual mapping to ensure profile picture works
                                 var mapped = commentsArray.map(function (c) {
@@ -295,12 +318,25 @@ $(document).ready(function () {
                                     return c;
                                 });
                                 success(mapped);
+
+                                if (highlightCommentId) {
+                                    setTimeout(function () {
+                                        var commentEl = $('#teme_comments_container li.comment[data-id="' + highlightCommentId + '"]');
+                                        if (commentEl.length) {
+                                            commentEl[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                            commentEl.css('background-color', '#fff3cd');
+                                            setTimeout(function () {
+                                                commentEl.css('background-color', '');
+                                            }, 3000);
+                                        }
+                                    }, 250);
+                                }
                             },
                             error: error
                         });
                     },
                     postComment: function (data, success, error) {
-                        data.table = tabela;
+                        data.table = activeTabela;
                         data.id = idpoint;
                         $.ajax({
                             type: 'post',
@@ -365,6 +401,81 @@ $(document).ready(function () {
                     }
                 });
             });
+        });
+    }
+
+    window.showPointDetails = showPointDetails;
+
+    window.openPointOnMapAndSidebar = function (targetTabela, idpoint, highlightCommentId) {
+        var cleanTabela = String(targetTabela || '').replace(/^Table_/i, '');
+        if (!/^\d+$/.test(cleanTabela)) {
+            return;
+        }
+
+        window.tabela = cleanTabela;
+        tabela = cleanTabela;
+
+        ensureThemeOptionsLoaded(cleanTabela).then(function () {
+            $.ajax({
+                url: 'api/search',
+                type: 'post',
+                dataType: 'json',
+                data: { tabela: cleanTabela, id: idpoint },
+                success: function (data) {
+                    if (typeof window.addedGeoJSON !== 'undefined' && window.addedGeoJSON) {
+                        karta.removeLayer(window.addedGeoJSON);
+                        window.addedGeoJSON = null;
+                    }
+                    if (typeof window.temeClusterLayer !== 'undefined' && window.temeClusterLayer) {
+                        karta.removeLayer(window.temeClusterLayer);
+                        window.temeClusterLayer = null;
+                    }
+                    if (typeof window.currentDogadjajiMarker !== 'undefined' && window.currentDogadjajiMarker) {
+                        karta.removeLayer(window.currentDogadjajiMarker);
+                        window.currentDogadjajiMarker = null;
+                    }
+
+                    if (data && data.features && data.features.length > 0) {
+                        window.addedGeoJSON = L.geoJSON(data, {
+                            pointToLayer: function (feature, latlng) {
+                                return L.marker(latlng, { icon: window.createIcon(feature.properties.r, cleanTabela) });
+                            },
+                            onEachFeature: window.onEachFeature
+                        }).addTo(karta);
+
+                        try {
+                            var bounds = window.addedGeoJSON.getBounds();
+                            if (bounds && bounds.isValid()) {
+                                karta.fitBounds(bounds, { maxZoom: 13 });
+                            }
+                        } catch (e) {
+                            console.warn('Could not fit bounds for point:', e);
+                        }
+
+                        window.addedGeoJSON.eachLayer(function (layer) {
+                            if (typeof layer.openPopup === 'function') {
+                                layer.openPopup();
+                            }
+                        });
+                    }
+
+                    showPointDetails(idpoint, cleanTabela, highlightCommentId);
+                },
+                error: function (err) {
+                    console.error('Error loading point on map:', err);
+                    showPointDetails(idpoint, cleanTabela, highlightCommentId);
+                }
+            });
+        });
+    };
+
+    $(document).on('click', '.detalji', function () {
+        var idpoint = String($(this).attr("pointinfo"));
+        var activeTabela = String((typeof window.tabela !== 'undefined' && window.tabela !== null) ? window.tabela : tabela);
+        if (idpointinfo === idpoint && idpointtable === activeTabela) {
+            sidebar.toggle();
+        } else {
+            showPointDetails(idpoint, activeTabela);
         }
     });
 
@@ -512,10 +623,12 @@ $(document).ready(function () {
             karta.removeLayer(tilelayer1);
             karta.removeLayer(tilelayer1_clean);
             karta.addLayer(window.layersVisible ? tilelayer2 : tilelayer2_clean);
+            $(this).text('терен');
         } else {
             karta.removeLayer(tilelayer2);
             karta.removeLayer(tilelayer2_clean);
             karta.addLayer(window.layersVisible ? tilelayer1 : tilelayer1_clean);
+            $(this).text('сателит');
         }
     });
 

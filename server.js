@@ -247,6 +247,7 @@ const port = process.env.PORT || 3000;
 app.use('/api/search', apiLimiter);
 app.use('/api/zapisi/search', apiLimiter);
 app.use('/api/dogadjaji/search', apiLimiter);
+app.use('/api/misljenja/search', apiLimiter);
 app.use('/api/points', apiLimiter);
 
 // Middleware
@@ -462,6 +463,126 @@ app.get('/api/comments', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send(err.message);
+    }
+});
+
+// POST /api/misljenja/search (Browse and filter latest comments across themes and events)
+app.post('/api/misljenja/search', async (req, res) => {
+    try {
+        const { tema, tekst, korisnik, sort, limit } = req.body || {};
+        const pool = await poolPromise;
+        const request = pool.request();
+
+        let query = `
+            SELECT
+                c.id,
+                c.parent,
+                c.target_type,
+                c.target_id,
+                c.created,
+                c.content,
+                COALESCE(c.upvote_count, 0) AS upvote_count,
+                COALESCE(c.downvote_count, 0) AS downvote_count,
+                c.fullname,
+                k.korisnik,
+                k.ime,
+                k.prezime,
+                k.eposta,
+                CASE
+                    WHEN c.target_type = 'dogadjaji' THEN 'Догађаји'
+                    ELSE COALESCE(t.naziv, c.target_type)
+                END AS tema_naziv,
+                (SELECT COUNT(*) FROM comments r WHERE r.parent = c.id) AS reply_count
+            FROM comments c
+            LEFT JOIN korisnik k ON c.creator = k.id
+            LEFT JOIN teme t ON CAST(t.id AS VARCHAR) = REPLACE(c.target_type, 'Table_', '')
+        `;
+
+        const conditions = [];
+
+        if (tema) {
+            const temaStr = String(tema).trim();
+            if (temaStr === 'dogadjaji') {
+                conditions.push("c.target_type = 'dogadjaji'");
+            } else if (/^\d+$/.test(temaStr)) {
+                conditions.push("(c.target_type = @tema OR c.target_type = @temaTable)");
+                request.input('tema', sql.NVarChar, temaStr);
+                request.input('temaTable', sql.NVarChar, 'Table_' + temaStr);
+            }
+        }
+
+        if (tekst && String(tekst).trim()) {
+            conditions.push("c.content LIKE @tekst");
+            request.input('tekst', sql.NVarChar, `%${String(tekst).trim()}%`);
+        }
+
+        if (korisnik && String(korisnik).trim()) {
+            conditions.push("(COALESCE(k.korisnik, '') LIKE @korisnik OR COALESCE(c.fullname, '') LIKE @korisnik)");
+            request.input('korisnik', sql.NVarChar, `%${String(korisnik).trim()}%`);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
+        }
+
+        switch (sort) {
+            case 'oldest':
+                query += ' ORDER BY c.created ASC, c.id ASC';
+                break;
+            case 'upvotes':
+                query += ' ORDER BY COALESCE(c.upvote_count, 0) DESC, c.created DESC';
+                break;
+            case 'downvotes':
+                query += ' ORDER BY COALESCE(c.downvote_count, 0) DESC, c.created DESC';
+                break;
+            case 'active':
+                query += ' ORDER BY (COALESCE(c.upvote_count, 0) + COALESCE(c.downvote_count, 0)) DESC, c.created DESC';
+                break;
+            case 'newest':
+            default:
+                query += ' ORDER BY c.created DESC, c.id DESC';
+                break;
+        }
+
+        const parsedLimit = parseInt(limit, 10);
+        const safeLimit = (!isNaN(parsedLimit) && parsedLimit > 0 && parsedLimit <= 200) ? parsedLimit : 100;
+        query += ' LIMIT @limit';
+        request.input('limit', sql.Int, safeLimit);
+
+        const result = await request.query(query);
+
+        const results = result.recordset.map(row => {
+            let displayName = row.fullname;
+            if (row.korisnik) {
+                displayName = row.korisnik;
+            } else if (row.ime) {
+                displayName = row.ime + (row.prezime ? ' ' + row.prezime : '');
+            } else if (row.eposta) {
+                displayName = row.eposta.split('@')[0];
+            }
+
+            return {
+                id: row.id,
+                parent: row.parent,
+                target_type: row.target_type,
+                target_id: row.target_id,
+                tema_naziv: row.tema_naziv,
+                created: row.created,
+                content: row.content || '',
+                upvote_count: parseInt(row.upvote_count, 10) || 0,
+                downvote_count: parseInt(row.downvote_count, 10) || 0,
+                reply_count: parseInt(row.reply_count, 10) || 0,
+                author: displayName || 'Непознат'
+            };
+        });
+
+        res.json({
+            success: true,
+            results
+        });
+    } catch (err) {
+        console.error('Error searching misljenja:', err);
+        res.status(500).json({ error: 'Грешка при учитавању мишљења' });
     }
 });
 
