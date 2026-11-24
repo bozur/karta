@@ -10,6 +10,68 @@
     #dogadjaji_results {
         margin-top: 15px;
     }
+
+    .zapis-autocomplete-wrapper {
+        position: relative;
+    }
+
+    .zapis-clear-btn {
+        position: absolute;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+        border: none;
+        background: transparent;
+        color: #6c757d;
+        cursor: pointer;
+        padding: 0 4px;
+        font-size: 1rem;
+        line-height: 1;
+        display: none;
+        z-index: 5;
+    }
+
+    .zapis-clear-btn:hover {
+        color: #212529;
+    }
+
+    .zapis-autocomplete-dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1050;
+        background: #fff;
+        border: 1px solid #ced4da;
+        border-top: none;
+        border-radius: 0 0 0.25rem 0.25rem;
+        max-height: 200px;
+        overflow-y: auto;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.12);
+        display: none;
+    }
+
+    .zapis-autocomplete-item {
+        padding: 6px 10px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        border-bottom: 1px solid #f1f1f1;
+    }
+
+    .zapis-autocomplete-item:last-child {
+        border-bottom: none;
+    }
+
+    .zapis-autocomplete-item:hover,
+    .zapis-autocomplete-item.active {
+        background-color: #f0f4ff;
+    }
+
+    .zapis-autocomplete-empty {
+        padding: 8px 10px;
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
 </style>
 
 <div id="dogadjaji_accordion">
@@ -59,13 +121,22 @@
                 </div>
 
                 <div class="form-row">
-                    <div class="col-9">
+                    <div class="col-12">
                         <input type="text" class="form-control" id="dogadjaji_unos_izvor" name="izvor"
-                            placeholder="извор *" maxlength="50">
+                            placeholder="извор *" maxlength="500">
                     </div>
-                    <div class="col-3">
-                        <input type="text" class="form-control" id="dogadjaji_unos_zapis" name="zapis"
-                            placeholder="запис">
+                </div>
+
+                <div class="form-row">
+                    <div class="col-12">
+                        <div class="zapis-autocomplete-wrapper">
+                            <input type="hidden" id="dogadjaji_unos_zapis" name="zapis">
+                            <input type="text" class="form-control" id="dogadjaji_unos_zapis_search"
+                                placeholder="запис (ID или назив)" autocomplete="off" style="padding-right: 28px;">
+                            <button type="button" id="dogadjaji_unos_zapis_clear" class="zapis-clear-btn"
+                                title="обриши избор">&times;</button>
+                            <div id="dogadjaji_unos_zapis_dropdown" class="zapis-autocomplete-dropdown"></div>
+                        </div>
                     </div>
                 </div>
 

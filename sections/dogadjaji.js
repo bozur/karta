@@ -33,6 +33,9 @@ function initializeDogadjaji() {
     // Initialize marker tool functionality
     initializeMarkerTool();
 
+    // Initialize searchable zapis autocomplete
+    initializeZapisAutocomplete();
+
     // Initialize Flatpickr for datetime inputs
     if (typeof flatpickr !== 'undefined') {
         // Search fields - forgiving (guessing enabled)
@@ -148,7 +151,169 @@ function initializeMarkerTool() {
     });
 }
 
+// Searchable zapis autocomplete for dogadjaji insert form
+let dogadjajiZapisiCache = null;
+let dogadjajiZapisiLoading = false;
+
+function escapeDogadjajHtml(text) {
+    if (text === null || text === undefined) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatDogadjajIzvor(text) {
+    if (!text || !String(text).trim()) return 'Није наведено';
+    const escaped = escapeDogadjajHtml(text);
+    const urlRegex = /(https?:\/\/[^\s<]+|www\.[^\s<]+)/gi;
+    return escaped.replace(urlRegex, function (match) {
+        let trailing = '';
+        let url = match;
+        while (url.length > 0 && /[.,;!?]$/.test(url)) {
+            trailing = url.slice(-1) + trailing;
+            url = url.slice(0, -1);
+        }
+        let href = url;
+        if (!/^https?:\/\//i.test(href)) {
+            href = 'http://' + href;
+        }
+        return '<a href="' + href + '" target="_blank" rel="noopener noreferrer" style="color: darkorange; text-decoration: underline; word-break: break-all;">' + url + '</a>' + trailing;
+    });
+}
+
+function loadDogadjajiZapisiList(onLoaded) {
+    if (Array.isArray(dogadjajiZapisiCache)) {
+        if (onLoaded) onLoaded(dogadjajiZapisiCache);
+        return;
+    }
+    if (dogadjajiZapisiLoading) return;
+    dogadjajiZapisiLoading = true;
+
+    fetch('/api/zapisi/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+    })
+        .then(res => res.json())
+        .then(data => {
+            dogadjajiZapisiLoading = false;
+            dogadjajiZapisiCache = (data && data.success && Array.isArray(data.results)) ? data.results : [];
+            if (onLoaded) onLoaded(dogadjajiZapisiCache);
+        })
+        .catch(err => {
+            dogadjajiZapisiLoading = false;
+            console.error('Error loading zapisi list:', err);
+            if (onLoaded) onLoaded([]);
+        });
+}
+
+function renderDogadjajiZapisDropdown(query) {
+    const dropdown = $('#dogadjaji_unos_zapis_dropdown');
+    if (!Array.isArray(dogadjajiZapisiCache)) {
+        dropdown.html('<div class="zapis-autocomplete-empty">Учитавање записа...</div>').show();
+        return;
+    }
+
+    const rawQuery = (query || '').trim();
+    const lowerQuery = rawQuery.toLowerCase();
+    const idQuery = lowerQuery.replace(/^#/, '');
+
+    const matches = dogadjajiZapisiCache.filter(z => {
+        if (!rawQuery) return true;
+        const idMatch = String(z.id).includes(idQuery);
+        const nameMatch = (z.naziv || '').toLowerCase().includes(lowerQuery);
+        return idMatch || nameMatch;
+    }).slice(0, 15);
+
+    if (matches.length === 0) {
+        dropdown.html('<div class="zapis-autocomplete-empty">Нема пронађених записа.</div>').show();
+        return;
+    }
+
+    const itemsHtml = matches.map(z => {
+        const title = escapeDogadjajHtml(z.naziv || ('Запис #' + z.id));
+        return `<div class="zapis-autocomplete-item" data-id="${z.id}" data-label="#${z.id} – ${title}"><strong>#${z.id}</strong> – ${title}</div>`;
+    }).join('');
+
+    dropdown.html(itemsHtml).show();
+}
+
+function initializeZapisAutocomplete() {
+    const searchInput = $('#dogadjaji_unos_zapis_search');
+    const hiddenInput = $('#dogadjaji_unos_zapis');
+    const clearBtn = $('#dogadjaji_unos_zapis_clear');
+    const dropdown = $('#dogadjaji_unos_zapis_dropdown');
+
+    if (searchInput.length === 0) return;
+
+    searchInput.off('focus.zapis').on('focus.zapis', function () {
+        if (!Array.isArray(dogadjajiZapisiCache)) {
+            renderDogadjajiZapisDropdown($(this).val());
+            loadDogadjajiZapisiList(() => {
+                if (searchInput.is(':focus')) {
+                    renderDogadjajiZapisDropdown(searchInput.val());
+                }
+            });
+        } else {
+            renderDogadjajiZapisDropdown($(this).val());
+        }
+    });
+
+    searchInput.off('input.zapis').on('input.zapis', function () {
+        const val = $(this).val();
+        hiddenInput.val('');
+        clearBtn.toggle(val.length > 0);
+        if (!Array.isArray(dogadjajiZapisiCache)) {
+            loadDogadjajiZapisiList(() => renderDogadjajiZapisDropdown(searchInput.val()));
+        } else {
+            renderDogadjajiZapisDropdown(val);
+        }
+    });
+
+    searchInput.off('keydown.zapis').on('keydown.zapis', function (e) {
+        if (e.key === 'Escape') {
+            dropdown.hide();
+        }
+    });
+
+    dropdown.off('mousedown.zapis').on('mousedown.zapis', '.zapis-autocomplete-item', function (e) {
+        e.preventDefault();
+        const id = $(this).attr('data-id');
+        const label = $(this).attr('data-label');
+        hiddenInput.val(id);
+        searchInput.val(label).css('border-color', '');
+        clearBtn.show();
+        dropdown.hide();
+    });
+
+    clearBtn.off('click.zapis').on('click.zapis', function () {
+        hiddenInput.val('');
+        searchInput.val('').css('border-color', '').focus();
+        clearBtn.hide();
+        renderDogadjajiZapisDropdown('');
+    });
+
+    $(document).off('click.dogadjajiZapisOutside').on('click.dogadjajiZapisOutside', function (e) {
+        if ($(e.target).closest('.zapis-autocomplete-wrapper').length === 0) {
+            dropdown.hide();
+        }
+    });
+}
+
 function handleDogadjajiInsert() {
+    let selectedZapis = ($('#dogadjaji_unos_zapis').val() || '').trim();
+    const rawZapisSearch = ($('#dogadjaji_unos_zapis_search').val() || '').trim();
+
+    if (!selectedZapis && rawZapisSearch) {
+        const numericMatch = rawZapisSearch.match(/^#?(\d+)$/);
+        if (numericMatch) {
+            selectedZapis = numericMatch[1];
+        }
+    }
+
     const formData = {
         korisnik: $('#dogadjaji_unos_korisnik').val(),
         opis: $('#dogadjaji_unos_opis').val(),
@@ -156,7 +321,7 @@ function handleDogadjajiInsert() {
         kraj: $('#dogadjaji_unos_kraj').val(),
         koordinate: $('#dogadjaji_unos_koordinate').val(),
         izvor: $('#dogadjaji_unos_izvor').val(),
-        zapis: $('#dogadjaji_unos_zapis').val()
+        zapis: selectedZapis
     };
 
     const errorDiv = $('#dogadjaji_unos_error');
@@ -188,6 +353,16 @@ function handleDogadjajiInsert() {
         $('#dogadjaji_unos_izvor').css('border-color', 'red');
         errorMessage = errorMessage || 'попуните поље (извор)';
         isValid = false;
+    } else if ($('#dogadjaji_unos_izvor').val().length > 500) {
+        $('#dogadjaji_unos_izvor').css('border-color', 'red');
+        errorMessage = errorMessage || 'извор може имати највише 500 карактера';
+        isValid = false;
+    }
+
+    if (rawZapisSearch && !selectedZapis) {
+        $('#dogadjaji_unos_zapis_search').css('border-color', 'red');
+        errorMessage = errorMessage || 'изаберите запис из листе или унесите ID записа';
+        isValid = false;
     }
 
     if (formData.pocetak && formData.kraj) {
@@ -218,6 +393,10 @@ function handleDogadjajiInsert() {
             if (data.success) {
                 errorDiv.css('color', 'green').text(data.message || 'догађај је додат').show();
                 $('#dogadjaji_unos_form')[0].reset();
+                $('#dogadjaji_unos_zapis').val('');
+                $('#dogadjaji_unos_zapis_search').val('');
+                $('#dogadjaji_unos_zapis_clear').hide();
+                $('#dogadjaji_unos_zapis_dropdown').hide();
                 $('#dogadjaji_unos_korisnik').val(sessionStorage.getItem('username') || 'TestUser');
 
                 setTimeout(() => {
@@ -500,9 +679,18 @@ function showDogadjajLayer(dogadjaj) {
     const krajText = formatDateTime(dogadjaj.kraj);
     $('#dogadjaj_vrijeme').html('<b>Почетак:</b> ' + pocetakText + ' - <b>Крај:</b> ' + krajText);
 
-    // Third row: Извор: value (with bold label)
-    const izvorText = dogadjaj.izvor || 'Није наведено';
-    $('#dogadjaj_izvor').html('<b>Извор:</b> ' + izvorText);
+    // Third row: Извор: value (with clickable web links)
+    $('#dogadjaj_izvor').html('<b>Извор:</b> ' + formatDogadjajIzvor(dogadjaj.izvor));
+
+    // Fourth row: Запис: link to uploaded file if present
+    if (dogadjaj.zapis) {
+        const zapisLabel = escapeDogadjajHtml(dogadjaj.zapis_naziv || ('Запис #' + dogadjaj.zapis));
+        $('#dogadjaj_zapis')
+            .html(`<b>Запис:</b> <a href="/api/zapisi/${encodeURIComponent(dogadjaj.zapis)}" target="_blank" rel="noopener noreferrer" style="color: darkorange; text-decoration: underline;">${zapisLabel}</a>`)
+            .show();
+    } else {
+        $('#dogadjaj_zapis').hide().empty();
+    }
 
     // Add comments container if not exists
     if ($('#dogadjaji_comments_container').length === 0) {

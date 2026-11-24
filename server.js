@@ -1669,6 +1669,25 @@ app.post('/api/dogadjaji/insert', async (req, res) => {
             return res.status(400).json({ error: 'Опис може имати највише 255 карактера' });
         }
 
+        // 4.5 Validate izvor length (max 500 chars)
+        if (izvor.length > 500) {
+            console.log('Validation failed: izvor too long');
+            return res.status(400).json({ error: 'Извор може имати највише 500 карактера' });
+        }
+
+        // 4.6 Validate optional zapis ID
+        let parsedZapis = null;
+        if (zapis !== undefined && zapis !== null && String(zapis).trim() !== '') {
+            const trimmedZapis = String(zapis).trim();
+            if (!/^\d+$/.test(trimmedZapis)) {
+                return res.status(400).json({ error: 'Неисправан ID записа' });
+            }
+            parsedZapis = parseInt(trimmedZapis, 10);
+            if (isNaN(parsedZapis) || parsedZapis <= 0) {
+                return res.status(400).json({ error: 'Неисправан ID записа' });
+            }
+        }
+
         // Pool already declared above for permission check
         const request = pool.request();
 
@@ -1682,7 +1701,7 @@ app.post('/api/dogadjaji/insert', async (req, res) => {
         request.input('kraj', sql.DateTime2, krajFormatted);
         request.input('izvor', sql.NVarChar, izvor);
         request.input('korisnik_id', sql.Int, korisnik_id);
-        request.input('zapis', sql.Int, zapis ? parseInt(zapis) : null);
+        request.input('zapis', sql.Int, parsedZapis);
         request.input('koordinate', sql.NVarChar, koordinate || null);
         request.input('stanje', sql.NVarChar, stanje);
 
@@ -1720,9 +1739,10 @@ app.post('/api/dogadjaji/search', async (req, res) => {
         const request = pool.request();
 
         let query = `
-            SELECT d.id, d.opis, d.pocetak, d.kraj, d.izvor, d.zapis, d.koordinate, d.unos, k.korisnik
+            SELECT d.id, d.opis, d.pocetak, d.kraj, d.izvor, d.zapis, z.naziv AS zapis_naziv, d.koordinate, d.unos, k.korisnik
             FROM dogadjaji d
             INNER JOIN korisnik k ON d.korisnik_id = k.id
+            LEFT JOIN zapisi z ON d.zapis = z.id
                 `;
         let conditions = [];
 
@@ -1791,6 +1811,7 @@ app.post('/api/dogadjaji/search', async (req, res) => {
             kraj: row.kraj ? new Date(row.kraj).toLocaleString('sr-RS') : '',
             izvor: row.izvor,
             zapis: row.zapis,
+            zapis_naziv: row.zapis_naziv || null,
             koordinate: row.koordinate,
             korisnik: row.korisnik,
             unos: row.unos ? new Date(row.unos).toLocaleString('sr-RS') : ''

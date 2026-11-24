@@ -182,6 +182,23 @@ const poolPromise = (async () => {
         `);
         console.log('✓ Theme 4 razred "аустроугарски" verified');
 
+        // Ensure dogadjaji.izvor can store full URLs (at least 500 chars)
+        await client.query(`
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'dogadjaji'
+                      AND column_name = 'izvor'
+                      AND character_maximum_length IS NOT NULL
+                      AND character_maximum_length < 500
+                ) THEN
+                    ALTER TABLE dogadjaji ALTER COLUMN izvor TYPE VARCHAR(500);
+                END IF;
+            END $$;
+        `);
+        console.log('✓ dogadjaji.izvor column length verified (>= 500)');
+
         client.release();
 
         // Return a mock pool object that server.js expects
