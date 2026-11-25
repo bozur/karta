@@ -12,6 +12,86 @@
     .theme-lock-row:hover {
         background-color: #f0f0f0 !important;
     }
+
+    .nt-section-box {
+        border: 1px solid #e2e2e2;
+        border-radius: 4px;
+        padding: 6px 8px;
+        background-color: #fafafa;
+        margin-bottom: 8px;
+    }
+
+    .nt-option-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-bottom: 4px;
+    }
+
+    .nt-idx-badge {
+        min-width: 22px;
+        text-align: center;
+        font-size: 0.75rem;
+        color: #666;
+        background: #eaeaea;
+        border-radius: 3px;
+        padding: 2px 3px;
+        flex-shrink: 0;
+    }
+
+    .nt-icon-preview {
+        width: 24px;
+        height: 28px;
+        object-fit: contain;
+        border: 1px dashed #ccc;
+        border-radius: 3px;
+        background: #fff;
+        flex-shrink: 0;
+        cursor: pointer;
+    }
+
+    .nt-icon-btn {
+        padding: 2px 5px;
+        font-size: 0.75rem;
+        line-height: 1.2;
+        flex-shrink: 0;
+    }
+
+    .nt-gallery-grid {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        max-height: 180px;
+        overflow-y: auto;
+        padding: 6px;
+        background: #fff;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+
+    .nt-gallery-item {
+        width: 38px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px solid #e5e5e5;
+        border-radius: 4px;
+        cursor: pointer;
+        background: #fdfdfd;
+        transition: border-color 0.15s, background-color 0.15s;
+    }
+
+    .nt-gallery-item:hover {
+        border-color: darkorange;
+        background-color: #fff5e6;
+    }
+
+    .nt-gallery-item img {
+        max-width: 32px;
+        max-height: 37px;
+        object-fit: contain;
+    }
 </style>
 
 <span class="naslov">Уредник</span>
@@ -60,7 +140,99 @@
                 data-target="#urednik_nova_tema_podaci"></span></span>
     </div>
     <div id="urednik_nova_tema_podaci" class="collapse" data-parent="#urednik_content">
-        <p style="padding: 10px; margin: 5px 0;">Садржај за нову тему...</p>
+        <div style="margin-top: 8px; font-size: 0.85rem;">
+            <!-- Mode selector: Create new or edit existing theme -->
+            <div class="form-group mb-2">
+                <select id="nt_tema_select" class="form-control form-control-sm">
+                    <option value="new">➕ Нова тема</option>
+                </select>
+            </div>
+
+            <!-- Status / Info bar when editing existing theme -->
+            <div id="nt_status_bar" class="mb-2 p-1 px-2 rounded" style="display: none; background: #f3f3f3; border: 1px solid #e0e0e0; font-size: 0.78rem;">
+                <span id="nt_status_badge"></span>
+                <span id="nt_counts_info" class="ml-2 text-muted"></span>
+            </div>
+
+            <!-- Loading spinner -->
+            <div id="nt_loading" style="display: none; text-align: center; padding: 10px;">
+                <div class="spinner-border text-secondary spinner-border-sm" role="status"></div>
+            </div>
+
+            <div id="nt_form_body">
+                <!-- Name -->
+                <div class="form-group mb-2">
+                    <label for="nt_naziv" class="mb-0"><strong>назив теме</strong> <span class="text-danger">*</span></label>
+                    <input type="text" id="nt_naziv" class="form-control form-control-sm" maxlength="100"
+                        placeholder="нпр. српски манастири">
+                </div>
+
+                <!-- Explanation / Description -->
+                <div class="form-group mb-2">
+                    <label for="nt_opis" class="mb-0"><strong>појашњење теме</strong> <small class="text-muted">(приказује се при избору теме)</small></label>
+                    <textarea id="nt_opis" class="form-control form-control-sm" rows="3"
+                        placeholder="Унесите појашњење теме, правила уноса и значење категорија..."></textarea>
+                </div>
+
+                <!-- Lock warning if theme already has items -->
+                <div id="nt_has_data_notice" class="mb-2 p-1 px-2 rounded"
+                    style="display: none; background: #fff8e6; border: 1px solid #ffe0a3; color: #7a5200; font-size: 0.78rem;">
+                    Тема већ има унесених ставки: дозвољено је преименовање постојећих опција, додавање нових на крај и замјена иконица. Брисање и промјена редослиједа постојећих опција су онемогућени.
+                </div>
+
+                <!-- Razred options (required, each has an icon) -->
+                <div class="nt-section-box">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span><strong>разред</strong> <span class="text-danger">*</span> <small class="text-muted">(сваки разред има своју иконицу 32×37)</small></span>
+                        <button type="button" id="nt_add_razred" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.75rem;">+ додај</button>
+                    </div>
+                    <div id="nt_razred_list"></div>
+                </div>
+
+                <!-- Inline Icon Gallery Picker (hidden until opened for a specific razred row) -->
+                <div id="nt_icon_gallery_panel" class="nt-section-box" style="display: none; border-color: darkorange; background: #fffdf9;">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span style="font-size: 0.8rem;"><strong style="color: darkorange;">Галерија иконица</strong> <span id="nt_gallery_target_label" class="text-muted"></span></span>
+                        <button type="button" id="nt_close_gallery" class="btn btn-sm btn-link p-0 text-secondary" style="font-size: 0.8rem;">затвори ×</button>
+                    </div>
+                    <div id="nt_gallery_loading" style="display: none; text-align: center; padding: 8px;">
+                        <div class="spinner-border text-secondary spinner-border-sm" role="status"></div>
+                    </div>
+                    <div id="nt_gallery_grid" class="nt-gallery-grid"></div>
+                </div>
+
+                <!-- Vrsta options (optional) -->
+                <div class="nt-section-box">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span><strong>врста</strong> <small class="text-muted">(опционо)</small></span>
+                        <button type="button" id="nt_add_vrsta" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.75rem;">+ додај</button>
+                    </div>
+                    <div id="nt_vrsta_list"></div>
+                </div>
+
+                <!-- Podvrsta options (optional) -->
+                <div class="nt-section-box">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span><strong>подврста</strong> <small class="text-muted">(опционо)</small></span>
+                        <button type="button" id="nt_add_podvrsta" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.75rem;">+ додај</button>
+                    </div>
+                    <div id="nt_podvrsta_list"></div>
+                </div>
+
+                <!-- Alerts & Actions -->
+                <div id="nt_alerts" style="color: orange; font-size: 0.82rem; margin-bottom: 6px; display: none;"></div>
+
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <button type="button" id="nt_btn_delete" class="btn btn-sm btn-outline-danger" style="display: none;"
+                        title="Могуће је обрисати само закључану тему без ставки и записа">обриши тему</button>
+                    <div class="ml-auto d-flex align-items-center" style="gap: 6px;">
+                        <div class="spinner-border text-secondary spinner-border-sm" id="nt_saving_spinner"
+                            role="status" style="display: none;"></div>
+                        <button type="button" id="nt_btn_save" class="btn btn-white border border-dark btn-sm">направи тему</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Zaključavanje Tema -->

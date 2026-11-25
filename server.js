@@ -1265,7 +1265,7 @@ app.post('/api/teme/insert', async (req, res) => {
             .input('temaId', sql.Int, temaId)
             .query('SELECT zakljucano FROM teme WHERE id = @temaId');
 
-        if (lockCheck.recordset.length > 0 && lockCheck.recordset[0].zakljucano === 1) {
+        if (lockCheck.recordset.length > 0 && (lockCheck.recordset[0].zakljucano === 1 || lockCheck.recordset[0].zakljucano === true)) {
             return res.status(403).json({ error: 'Тема је тренутно закључана!' });
         }
 
@@ -4455,6 +4455,610 @@ app.post('/api/urednik/teme/toggle-lock', async (req, res) => {
     }
 });
 
+// ============================================
+// Urednik Theme Management & Icons API Routes
+// ============================================
+
+const themeIconUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 500 * 1024 }, // 500 KB max per icon
+    fileFilter: (req, file, cb) => {
+        const allowed = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+        if (allowed.includes(file.mimetype)) {
+            cb(null, true);
+        } else {
+            cb(new Error('Дозвољени формати иконице су PNG, JPG, WebP или GIF.'));
+        }
+    }
+});
+
+function isUrednikUser(req) {
+    return !!(req.session && req.session.user && (req.session.user.urednik == 1 || req.session.user.urednik == '1'));
+}
+
+function resolveThemeIconInfo(temaId, redosled) {
+    const uploadPath = path.join(__dirname, 'uploads', 'ikone', String(temaId), `${redosled}.png`);
+    if (fs.existsSync(uploadPath)) {
+        const stat = fs.statSync(uploadPath);
+        return { exists: true, url: `ikone/${temaId}/${redosled}.png?v=${Math.floor(stat.mtimeMs)}` };
+    }
+    const staticPath = path.join(__dirname, 'ikone', String(temaId), `${redosled}.png`);
+    if (fs.existsSync(staticPath)) {
+        const stat = fs.statSync(staticPath);
+        return { exists: true, url: `ikone/${temaId}/${redosled}.png?v=${Math.floor(stat.mtimeMs)}` };
+    }
+    return { exists: false, url: null };
+}
+
+function sanitizeThemeOptionList(arr, maxLen = 99) {
+    if (!Array.isArray(arr)) return [];
+    const cleaned = [];
+    for (const item of arr) {
+        const val = String(item || '').trim();
+        if (val.length > 0) {
+            cleaned.push(val.slice(0, 100));
+        }
+        if (cleaned.length >= maxLen) break;
+    }
+    return cleaned;
+}
+
+// GET /api/urednik/ikone - List available existing icons for the gallery picker
+app.get('/api/urednik/ikone', async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (!isUrednikUser(req)) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const iconMap = new Map();
+        const scanDir = (baseDir, isUpload) => {
+            if (!fs.existsSync(baseDir)) return;
+            const entries = fs.readdirSync(baseDir, { withFileTypes: true });
+            for (const entry of entries) {
+                if (entry.isDirectory()) {
+                    if (entry.name.toLowerCase() === 'staro' || entry.name.startsWith('.')) continue;
+                    const subDir = path.join(baseDir, entry.name);
+                    const files = fs.readdirSync(subDir, { withFileTypes: true });
+                    for (const f of files) {
+                        if (!f.isFile() || !f.name.toLowerCase().endsWith('.png')) continue;
+                        const relPath = `ikone/${entry.name}/${f.name}`;
+                        const fullPath = path.join(subDir, f.name);
+                        const stat = fs.statSync(fullPath);
+                        if (isUpload || !iconMap.has(relPath)) {
+                            iconMap.set(relPath, {
+                                path: relPath,
+                                url: `${relPath}?v=${Math.floor(stat.mtimeMs)}`,
+                                group: entry.name,
+                                name: f.name
+                            });
+                        }
+                    }
+                }
+            }
+        };
+
+        // Scan static ikone/ first, then uploads/ikone/ so uploaded overrides win
+        scanDir(path.join(__dirname, 'ikone'), false);
+        scanDir(path.join(__dirname, 'uploads', 'ikone'), true);
+
+        const icons = Array.from(iconMap.values()).sort((a, b) => {
+            const gA = parseInt(a.group, 10);
+            const gB = parseInt(b.group, 10);
+            if (!isNaN(gA) && !isNaN(gB) && gA !== gB) return gA - gB;
+            if (a.group !== b.group) return a.group.localeCompare(b.group);
+            return a.name.localeCompare(b.name, undefined, { numeric: true });
+        });
+
+        res.json({ icons });
+    } catch (err) {
+        console.error('Error listing icons:', err);
+        res.status(500).json({ error: 'Грешка при учитавању галерије иконица' });
+    }
+});
+
+// GET /api/urednik/teme/:id - Get full theme metadata, options, counts, and icon status
+app.get('/api/urednik/teme/:id', async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (!isUrednikUser(req)) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        if (!/^\d+$/.test(id)) {
+            return res.status(400).json({ error: 'Неисправан ID теме' });
+        }
+        const temaId = parseInt(id, 10);
+
+        const pool = await poolPromise;
+        const themeRes = await pool.request()
+            .input('id', sql.Int, temaId)
+            .query('SELECT id, naziv, opis, zakljucano FROM teme WHERE id = @id');
+
+        if (themeRes.recordset.length === 0) {
+            return res.status(404).json({ error: 'Тема није пронађена' });
+        }
+
+        const theme = themeRes.recordset[0];
+        const optRes = await pool.request()
+            .input('tema_id', sql.Int, temaId)
+            .query('SELECT tip, redosled, vrednost FROM teme_opcije WHERE tema_id = @tema_id ORDER BY tip, redosled');
+
+        const options = { razred: [], vrsta: [], podvrsta: [] };
+        optRes.recordset.forEach(row => {
+            if (options[row.tip]) {
+                options[row.tip].push(row.vrednost);
+            }
+        });
+
+        let stavkiCount = 0;
+        try {
+            const countRes = await pool.request().query(`SELECT COUNT(*) AS count FROM "table_${temaId}"`);
+            stavkiCount = parseInt(countRes.recordset[0]?.count, 10) || 0;
+        } catch (e) {
+            console.warn(`Could not count rows in table_${temaId}:`, e.message);
+        }
+
+        let zapisiCount = 0;
+        try {
+            const zRes = await pool.request()
+                .input('tema_id', sql.Int, temaId)
+                .query('SELECT COUNT(*) AS count FROM zapisi WHERE tema_id = @tema_id');
+            zapisiCount = parseInt(zRes.recordset[0]?.count, 10) || 0;
+        } catch (e) {
+            console.warn(`Could not count zapisi for tema ${temaId}:`, e.message);
+        }
+
+        const icons = options.razred.map((_, idx) => resolveThemeIconInfo(temaId, idx));
+
+        res.json({
+            theme: {
+                id: theme.id,
+                naziv: theme.naziv,
+                opis: theme.opis || '',
+                zakljucano: theme.zakljucano === 1 || theme.zakljucano === true
+            },
+            options,
+            stavkiCount,
+            zapisiCount,
+            icons
+        });
+    } catch (err) {
+        console.error('Error fetching theme details for urednik:', err);
+        res.status(500).json({ error: 'Грешка при учитавању теме' });
+    }
+});
+
+// POST /api/urednik/teme - Create a new theme (locked by default) + dynamic table_<id>
+app.post('/api/urednik/teme', async (req, res) => {
+    let transaction = null;
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (!isUrednikUser(req)) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const naziv = String(req.body.naziv || '').trim();
+        const opis = String(req.body.opis || '').trim();
+        const razred = sanitizeThemeOptionList(req.body.razred);
+        const vrsta = sanitizeThemeOptionList(req.body.vrsta);
+        const podvrsta = sanitizeThemeOptionList(req.body.podvrsta);
+
+        if (!naziv) {
+            return res.status(400).json({ error: 'Назив теме је обавезан.' });
+        }
+        if (naziv.length > 100) {
+            return res.status(400).json({ error: 'Назив теме може имати највише 100 карактера.' });
+        }
+        if (razred.length === 0) {
+            return res.status(400).json({ error: 'Морате унијети бар једну вриједност за разред.' });
+        }
+
+        const pool = await poolPromise;
+
+        // Check duplicate name
+        const dupCheck = await pool.request()
+            .input('naziv', sql.NVarChar, naziv)
+            .query('SELECT id FROM teme WHERE LOWER(naziv) = LOWER(@naziv)');
+        if (dupCheck.recordset.length > 0) {
+            return res.status(409).json({ error: 'Тема са овим називом већ постоји.' });
+        }
+
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        // Sync sequences safely before inserting
+        await new sql.Request(transaction).query(
+            "SELECT setval(pg_get_serial_sequence('teme', 'id'), COALESCE((SELECT MAX(id) FROM teme), 1), true)"
+        );
+
+        const insertRes = await new sql.Request(transaction)
+            .input('naziv', sql.NVarChar, naziv)
+            .input('opis', sql.Text, opis)
+            .input('zakljucano', sql.Bit, true)
+            .query('INSERT INTO teme (naziv, opis, zakljucano) VALUES (@naziv, @opis, @zakljucano) RETURNING id');
+
+        const newId = insertRes.recordset[0].id;
+
+        // Create theme table with 100% identical schema to table_1..table_6
+        await new sql.Request(transaction).query(`
+            CREATE TABLE "table_${newId}" (
+                "id" SERIAL PRIMARY KEY,
+                "vrsta" VARCHAR(2),
+                "podvrsta" VARCHAR(2),
+                "razred" VARCHAR(2),
+                "prostorno" TEXT,
+                "prostorno2" TEXT,
+                "tp" VARCHAR(2),
+                "vrijeme0" TIMESTAMP WITH TIME ZONE,
+                "vrijeme1" TIMESTAMP WITH TIME ZONE,
+                "tv" VARCHAR(2),
+                "opis" VARCHAR(255),
+                "izvor" VARCHAR(255),
+                "dodao" INTEGER,
+                "dodao_vrijeme" TIMESTAMP WITH TIME ZONE,
+                "odobrio" INTEGER,
+                "odobrio_vrijeme" TIMESTAMP WITH TIME ZONE,
+                "tacke" TEXT,
+                "tacke0" VARCHAR(4000),
+                "zapis" INTEGER,
+                "stanje" VARCHAR(2),
+                "izmjenio" INTEGER,
+                "izmjenio_vrijeme" TIMESTAMP WITH TIME ZONE
+            )
+        `);
+
+        const insertOptions = async (tip, list) => {
+            for (let i = 0; i < list.length; i++) {
+                await new sql.Request(transaction)
+                    .input('tema_id', sql.Int, newId)
+                    .input('tip', sql.NVarChar, tip)
+                    .input('redosled', sql.Int, i)
+                    .input('vrednost', sql.NVarChar, list[i])
+                    .query('INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (@tema_id, @tip, @redosled, @vrednost)');
+            }
+        };
+
+        await insertOptions('razred', razred);
+        await insertOptions('vrsta', vrsta);
+        await insertOptions('podvrsta', podvrsta);
+
+        await transaction.commit();
+        transaction = null;
+
+        res.json({
+            success: true,
+            id: newId,
+            theme: { id: newId, naziv, opis, zakljucano: true }
+        });
+    } catch (err) {
+        if (transaction) {
+            await transaction.rollback();
+        }
+        console.error('Error creating new theme:', err);
+        res.status(500).json({ error: 'Грешка при креирању нове теме' });
+    }
+});
+
+// PUT /api/urednik/teme/:id - Update theme metadata and options
+app.put('/api/urednik/teme/:id', async (req, res) => {
+    let transaction = null;
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (!isUrednikUser(req)) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        if (!/^\d+$/.test(id)) {
+            return res.status(400).json({ error: 'Неисправан ID теме' });
+        }
+        const temaId = parseInt(id, 10);
+
+        const naziv = String(req.body.naziv || '').trim();
+        const opis = String(req.body.opis || '').trim();
+        const razred = sanitizeThemeOptionList(req.body.razred);
+        const vrsta = sanitizeThemeOptionList(req.body.vrsta);
+        const podvrsta = sanitizeThemeOptionList(req.body.podvrsta);
+        const razredIconMap = Array.isArray(req.body.razredIconMap) ? req.body.razredIconMap : null;
+
+        if (!naziv) {
+            return res.status(400).json({ error: 'Назив теме је обавезан.' });
+        }
+        if (naziv.length > 100) {
+            return res.status(400).json({ error: 'Назив теме може имати највише 100 карактера.' });
+        }
+        if (razred.length === 0) {
+            return res.status(400).json({ error: 'Морате унијети бар једну вриједност за разред.' });
+        }
+
+        const pool = await poolPromise;
+
+        const existingRes = await pool.request()
+            .input('id', sql.Int, temaId)
+            .query('SELECT id FROM teme WHERE id = @id');
+        if (existingRes.recordset.length === 0) {
+            return res.status(404).json({ error: 'Тема није пронађена' });
+        }
+
+        // Check duplicate name among other themes
+        const dupCheck = await pool.request()
+            .input('naziv', sql.NVarChar, naziv)
+            .input('id', sql.Int, temaId)
+            .query('SELECT id FROM teme WHERE LOWER(naziv) = LOWER(@naziv) AND id <> @id');
+        if (dupCheck.recordset.length > 0) {
+            return res.status(409).json({ error: 'Друга тема са овим називом већ постоји.' });
+        }
+
+        // Check if table already has data
+        let stavkiCount = 0;
+        try {
+            const countRes = await pool.request().query(`SELECT COUNT(*) AS count FROM "table_${temaId}"`);
+            stavkiCount = parseInt(countRes.recordset[0]?.count, 10) || 0;
+        } catch (e) {
+            stavkiCount = 0;
+        }
+
+        if (stavkiCount > 0) {
+            const curOptsRes = await pool.request()
+                .input('tema_id', sql.Int, temaId)
+                .query('SELECT tip, COUNT(*) AS cnt FROM teme_opcije WHERE tema_id = @tema_id GROUP BY tip');
+            const curCounts = { razred: 0, vrsta: 0, podvrsta: 0 };
+            curOptsRes.recordset.forEach(r => {
+                if (curCounts[r.tip] !== undefined) curCounts[r.tip] = parseInt(r.cnt, 10) || 0;
+            });
+
+            if (razred.length < curCounts.razred || vrsta.length < curCounts.vrsta || podvrsta.length < curCounts.podvrsta) {
+                return res.status(400).json({
+                    error: 'Тема већ има унесених ставки — није дозвољено брисање постојећих опција (дозвољено је преименовање и додавање нових на крај).'
+                });
+            }
+        }
+
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        await new sql.Request(transaction)
+            .input('id', sql.Int, temaId)
+            .input('naziv', sql.NVarChar, naziv)
+            .input('opis', sql.Text, opis)
+            .query('UPDATE teme SET naziv = @naziv, opis = @opis WHERE id = @id');
+
+        await new sql.Request(transaction)
+            .input('tema_id', sql.Int, temaId)
+            .query('DELETE FROM teme_opcije WHERE tema_id = @tema_id');
+
+        const insertOptions = async (tip, list) => {
+            for (let i = 0; i < list.length; i++) {
+                await new sql.Request(transaction)
+                    .input('tema_id', sql.Int, temaId)
+                    .input('tip', sql.NVarChar, tip)
+                    .input('redosled', sql.Int, i)
+                    .input('vrednost', sql.NVarChar, list[i])
+                    .query('INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost) VALUES (@tema_id, @tip, @redosled, @vrednost)');
+            }
+        };
+
+        await insertOptions('razred', razred);
+        await insertOptions('vrsta', vrsta);
+        await insertOptions('podvrsta', podvrsta);
+
+        await transaction.commit();
+        transaction = null;
+
+        // If theme is empty and razred rows were reordered/deleted, remap existing icon files safely
+        if (stavkiCount === 0 && razredIconMap && razredIconMap.length === razred.length) {
+            const uploadThemeDir = path.join(__dirname, 'uploads', 'ikone', String(temaId));
+            const staticThemeDir = path.join(__dirname, 'ikone', String(temaId));
+            const needsRemap = razredIconMap.some((oldIdx, newIdx) => oldIdx !== newIdx);
+            if (needsRemap && (fs.existsSync(uploadThemeDir) || fs.existsSync(staticThemeDir))) {
+                const stagedBuffers = new Map();
+                for (let newIdx = 0; newIdx < razredIconMap.length; newIdx++) {
+                    const oldIdx = razredIconMap[newIdx];
+                    if (oldIdx === null || oldIdx === undefined || !Number.isInteger(oldIdx) || oldIdx < 0) continue;
+                    const upSrc = path.join(uploadThemeDir, `${oldIdx}.png`);
+                    const stSrc = path.join(staticThemeDir, `${oldIdx}.png`);
+                    if (fs.existsSync(upSrc)) {
+                        stagedBuffers.set(newIdx, fs.readFileSync(upSrc));
+                    } else if (fs.existsSync(stSrc)) {
+                        stagedBuffers.set(newIdx, fs.readFileSync(stSrc));
+                    }
+                }
+                fs.mkdirSync(uploadThemeDir, { recursive: true });
+                // Remove old numbered PNGs in uploads/ikone/<temaId>
+                const existingFiles = fs.readdirSync(uploadThemeDir);
+                for (const f of existingFiles) {
+                    if (/^\d+\.png$/.test(f)) {
+                        fs.unlinkSync(path.join(uploadThemeDir, f));
+                    }
+                }
+                for (const [newIdx, buf] of stagedBuffers.entries()) {
+                    fs.writeFileSync(path.join(uploadThemeDir, `${newIdx}.png`), buf);
+                }
+            }
+        }
+
+        res.json({ success: true, id: temaId });
+    } catch (err) {
+        if (transaction) {
+            await transaction.rollback();
+        }
+        console.error('Error updating theme:', err);
+        res.status(500).json({ error: 'Грешка при измјени теме' });
+    }
+});
+
+// DELETE /api/urednik/teme/:id - Delete an empty, locked theme
+app.delete('/api/urednik/teme/:id', async (req, res) => {
+    let transaction = null;
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (!isUrednikUser(req)) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        if (!/^\d+$/.test(id)) {
+            return res.status(400).json({ error: 'Неисправан ID теме' });
+        }
+        const temaId = parseInt(id, 10);
+
+        const pool = await poolPromise;
+        const themeRes = await pool.request()
+            .input('id', sql.Int, temaId)
+            .query('SELECT id, zakljucano FROM teme WHERE id = @id');
+
+        if (themeRes.recordset.length === 0) {
+            return res.status(404).json({ error: 'Тема није пронађена' });
+        }
+
+        const isLocked = themeRes.recordset[0].zakljucano === 1 || themeRes.recordset[0].zakljucano === true;
+        if (!isLocked) {
+            return res.status(400).json({ error: 'Само закључана тема може бити обрисана.' });
+        }
+
+        let stavkiCount = 0;
+        try {
+            const cRes = await pool.request().query(`SELECT COUNT(*) AS count FROM "table_${temaId}"`);
+            stavkiCount = parseInt(cRes.recordset[0]?.count, 10) || 0;
+        } catch (e) {
+            stavkiCount = 0;
+        }
+        if (stavkiCount > 0) {
+            return res.status(400).json({ error: `Тема има ${stavkiCount} ставки и не може бити обрисана.` });
+        }
+
+        const zRes = await pool.request()
+            .input('tema_id', sql.Int, temaId)
+            .query('SELECT COUNT(*) AS count FROM zapisi WHERE tema_id = @tema_id');
+        const zapisiCount = parseInt(zRes.recordset[0]?.count, 10) || 0;
+        if (zapisiCount > 0) {
+            return res.status(400).json({ error: `Тема има ${zapisiCount} записа и не може бити обрисана.` });
+        }
+
+        transaction = new sql.Transaction(pool);
+        await transaction.begin();
+
+        await new sql.Request(transaction)
+            .input('tema_id', sql.Int, temaId)
+            .query('DELETE FROM teme_opcije WHERE tema_id = @tema_id');
+
+        await new sql.Request(transaction)
+            .input('id', sql.Int, temaId)
+            .query('DELETE FROM teme WHERE id = @id');
+
+        await new sql.Request(transaction)
+            .query(`DROP TABLE IF EXISTS "table_${temaId}"`);
+
+        await transaction.commit();
+        transaction = null;
+
+        // Clean up uploaded icons folder for this theme
+        const uploadThemeDir = path.join(__dirname, 'uploads', 'ikone', String(temaId));
+        if (fs.existsSync(uploadThemeDir)) {
+            fs.rmSync(uploadThemeDir, { recursive: true, force: true });
+        }
+
+        res.json({ success: true });
+    } catch (err) {
+        if (transaction) {
+            await transaction.rollback();
+        }
+        console.error('Error deleting theme:', err);
+        res.status(500).json({ error: 'Грешка при брисању теме' });
+    }
+});
+
+// POST /api/urednik/teme/:id/ikona/:redosled - Upload or copy icon from gallery for a razred
+app.post('/api/urednik/teme/:id/ikona/:redosled', (req, res, next) => {
+    const ct = req.headers['content-type'] || '';
+    if (ct.includes('multipart/form-data')) {
+        themeIconUpload.single('ikona')(req, res, (err) => {
+            if (err) {
+                return res.status(400).json({ error: err.message || 'Грешка при отпремању иконице' });
+            }
+            next();
+        });
+    } else {
+        next();
+    }
+}, async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (!isUrednikUser(req)) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id, redosled } = req.params;
+        if (!/^\d+$/.test(id) || !/^\d+$/.test(redosled) || parseInt(redosled, 10) > 99) {
+            return res.status(400).json({ error: 'Неисправни параметри иконице' });
+        }
+        const temaId = parseInt(id, 10);
+        const idx = parseInt(redosled, 10);
+
+        const pool = await poolPromise;
+        const themeCheck = await pool.request()
+            .input('id', sql.Int, temaId)
+            .query('SELECT id FROM teme WHERE id = @id');
+        if (themeCheck.recordset.length === 0) {
+            return res.status(404).json({ error: 'Тема није пронађена' });
+        }
+
+        const targetDir = path.join(__dirname, 'uploads', 'ikone', String(temaId));
+        fs.mkdirSync(targetDir, { recursive: true });
+        const targetFile = path.join(targetDir, `${idx}.png`);
+
+        if (req.file && req.file.buffer) {
+            fs.writeFileSync(targetFile, req.file.buffer);
+        } else if (req.body && req.body.sourcePath) {
+            const sourcePath = String(req.body.sourcePath).trim().replace(/^\/+/, '');
+            if (!/^ikone\/[a-zA-Z0-9_\-\/ .()]+\.png$/i.test(sourcePath) || sourcePath.includes('..')) {
+                return res.status(400).json({ error: 'Неисправна путања иконице' });
+            }
+            const relInsideIkone = sourcePath.replace(/^ikone\//i, '');
+            const uploadCandidate = path.resolve(__dirname, 'uploads', 'ikone', relInsideIkone);
+            const staticCandidate = path.resolve(__dirname, 'ikone', relInsideIkone);
+            const uploadsRoot = path.resolve(__dirname, 'uploads', 'ikone');
+            const staticRoot = path.resolve(__dirname, 'ikone');
+
+            let srcFile = null;
+            if (uploadCandidate.startsWith(uploadsRoot + path.sep) && fs.existsSync(uploadCandidate)) {
+                srcFile = uploadCandidate;
+            } else if (staticCandidate.startsWith(staticRoot + path.sep) && fs.existsSync(staticCandidate)) {
+                srcFile = staticCandidate;
+            }
+
+            if (!srcFile) {
+                return res.status(404).json({ error: 'Изабрана иконица није пронађена' });
+            }
+            fs.copyFileSync(srcFile, targetFile);
+        } else {
+            return res.status(400).json({ error: 'Није послата иконица' });
+        }
+
+        res.json({
+            success: true,
+            url: `ikone/${temaId}/${idx}.png?v=${Date.now()}`
+        });
+    } catch (err) {
+        console.error('Error saving theme icon:', err);
+        res.status(500).json({ error: 'Грешка при чувању иконице' });
+    }
+});
+
 // GET /api/urednik/comments/reported - Fetch comments with unreviewed downvotes
 app.get('/api/urednik/comments/reported', async (req, res) => {
     try {
@@ -4800,6 +5404,9 @@ app.get('/api/avatars', (req, res) => {
         res.status(500).json({ error: 'Грешка при учитавању аватара' });
     }
 });
+
+// Serve uploaded/custom theme icons from persistent uploads/ikone first (falls back to static ikone/)
+app.use('/ikone', express.static(path.join(__dirname, 'uploads', 'ikone'), { maxAge: 0 }));
 
 // Serve static files from the new relocated icon folder for backwards compatibility
 app.use('/slike/users', express.static(path.join(__dirname, 'uploads', 'slike', 'users')));

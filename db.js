@@ -229,6 +229,36 @@ const poolPromise = (async () => {
         `);
         console.log('✓ novosti.vaznost column verified');
 
+        // Ensure teme.opis is TEXT, teme.naziv >= 100 chars, and sequences are synced
+        await client.query(`
+            DO $$
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'teme'
+                      AND column_name = 'opis'
+                      AND data_type <> 'text'
+                ) THEN
+                    ALTER TABLE teme ALTER COLUMN opis TYPE TEXT;
+                END IF;
+
+                IF EXISTS (
+                    SELECT 1 FROM information_schema.columns
+                    WHERE table_name = 'teme'
+                      AND column_name = 'naziv'
+                      AND character_maximum_length IS NOT NULL
+                      AND character_maximum_length < 100
+                ) THEN
+                    ALTER TABLE teme ALTER COLUMN naziv TYPE VARCHAR(100);
+                END IF;
+            END $$;
+        `);
+        await client.query(`
+            SELECT setval(pg_get_serial_sequence('teme', 'id'), COALESCE((SELECT MAX(id) FROM teme), 1), true);
+            SELECT setval(pg_get_serial_sequence('teme_opcije', 'id'), COALESCE((SELECT MAX(id) FROM teme_opcije), 1), true);
+        `);
+        console.log('✓ teme columns and sequences verified');
+
         client.release();
 
         // Return a mock pool object that server.js expects

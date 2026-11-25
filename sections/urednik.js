@@ -3,6 +3,7 @@
 function initUrednikSection() {
     console.log('Urednik section initialized');
     initReportedComments();
+    initNovaTema();
     initThemeLocking();
     initUplateAdmin();
     initUrednikBackup();
@@ -361,6 +362,590 @@ function deleteReportedComment(id) {
         });
 }
 
+// ============================================
+// Nova Tema / Uređivanje Tema functionality
+// ============================================
+
+window.ntState = {
+    mode: 'new',
+    stavkiCount: 0,
+    zapisiCount: 0,
+    zakljucano: true,
+    existingCounts: { razred: 0, vrsta: 0, podvrsta: 0 },
+    razred: [],
+    vrsta: [],
+    podvrsta: [],
+    galleryTargetIdx: null,
+    galleryCache: null
+};
+
+function initNovaTema() {
+    $('#urednik_nova_tema_podaci').off('show.bs.collapse.nt').on('show.bs.collapse.nt', function () {
+        loadNovaTemaSelector();
+    });
+
+    $('#nt_tema_select').off('change.nt').on('change.nt', function () {
+        const val = $(this).val();
+        $('#nt_icon_gallery_panel').hide();
+        if (val === 'new') {
+            resetNovaTemaForm();
+        } else {
+            loadThemeForEdit(parseInt(val, 10));
+        }
+    });
+
+    $('#nt_add_razred').off('click.nt').on('click.nt', function () {
+        syncOptionInputsToState();
+        if (window.ntState.razred.length >= 99) {
+            showNtAlert('Максималан број опција за разред је 99.', 'orange');
+            return;
+        }
+        window.ntState.razred.push({
+            text: '',
+            originalIdx: null,
+            iconUrl: null,
+            pendingFile: null,
+            pendingGalleryPath: null
+        });
+        renderNtOptions('razred');
+        $('#nt_razred_list input[type="text"]').last().focus();
+    });
+
+    $('#nt_add_vrsta').off('click.nt').on('click.nt', function () {
+        syncOptionInputsToState();
+        if (window.ntState.vrsta.length >= 99) {
+            showNtAlert('Максималан број опција за врсту је 99.', 'orange');
+            return;
+        }
+        window.ntState.vrsta.push({ text: '', originalIdx: null });
+        renderNtOptions('vrsta');
+        $('#nt_vrsta_list input[type="text"]').last().focus();
+    });
+
+    $('#nt_add_podvrsta').off('click.nt').on('click.nt', function () {
+        syncOptionInputsToState();
+        if (window.ntState.podvrsta.length >= 99) {
+            showNtAlert('Максималан број опција за подврсту је 99.', 'orange');
+            return;
+        }
+        window.ntState.podvrsta.push({ text: '', originalIdx: null });
+        renderNtOptions('podvrsta');
+        $('#nt_podvrsta_list input[type="text"]').last().focus();
+    });
+
+    $('#nt_close_gallery').off('click.nt').on('click.nt', function () {
+        $('#nt_icon_gallery_panel').hide();
+        window.ntState.galleryTargetIdx = null;
+    });
+
+    $('#nt_btn_save').off('click.nt').on('click.nt', saveNovaTema);
+    $('#nt_btn_delete').off('click.nt').on('click.nt', deleteEmptyTheme);
+
+    // Initialize default empty form for "new" mode
+    resetNovaTemaForm();
+}
+
+function showNtAlert(msg, color) {
+    const el = $('#nt_alerts');
+    if (!msg) {
+        el.hide().text('');
+        return;
+    }
+    el.css('color', color || 'orange').text(msg).show();
+}
+
+function loadNovaTemaSelector(selectValueAfter) {
+    const select = $('#nt_tema_select');
+    const prevVal = selectValueAfter !== undefined ? String(selectValueAfter) : select.val();
+
+    fetch('/api/v2/themes', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.themes) return;
+            select.find('option:not(:first)').remove();
+            data.themes.forEach(t => {
+                const isLocked = t.zakljucano === 1 || t.zakljucano === true;
+                const label = isLocked ? `🔒 ${t.naziv}` : t.naziv;
+                select.append($('<option></option>').val(String(t.id)).text(label));
+            });
+            if (prevVal && select.find(`option[value="${prevVal}"]`).length > 0) {
+                select.val(prevVal);
+            } else {
+                select.val('new');
+            }
+        })
+        .catch(err => console.error('Error loading themes for editor:', err));
+}
+
+function resetNovaTemaForm() {
+    window.ntState.mode = 'new';
+    window.ntState.stavkiCount = 0;
+    window.ntState.zapisiCount = 0;
+    window.ntState.zakljucano = true;
+    window.ntState.existingCounts = { razred: 0, vrsta: 0, podvrsta: 0 };
+    window.ntState.razred = [{
+        text: '',
+        originalIdx: null,
+        iconUrl: null,
+        pendingFile: null,
+        pendingGalleryPath: null
+    }];
+    window.ntState.vrsta = [];
+    window.ntState.podvrsta = [];
+    window.ntState.galleryTargetIdx = null;
+
+    $('#nt_naziv').val('');
+    $('#nt_opis').val('');
+    $('#nt_status_bar').hide();
+    $('#nt_has_data_notice').hide();
+    $('#nt_btn_delete').hide();
+    $('#nt_icon_gallery_panel').hide();
+    $('#nt_btn_save').text('направи тему');
+    showNtAlert('');
+
+    renderNtOptions('razred');
+    renderNtOptions('vrsta');
+    renderNtOptions('podvrsta');
+}
+
+function loadThemeForEdit(temaId) {
+    showNtAlert('');
+    $('#nt_loading').show();
+    $('#nt_form_body').hide();
+
+    fetch(`/api/urednik/teme/${temaId}`, { cache: 'no-store' })
+        .then(r => r.json().then(body => ({ ok: r.ok, body })))
+        .then(({ ok, body }) => {
+            $('#nt_loading').hide();
+            $('#nt_form_body').show();
+            if (!ok || !body.theme) {
+                showNtAlert(body.error || 'Грешка при учитавању теме.', 'red');
+                return;
+            }
+
+            const t = body.theme;
+            const opts = body.options || { razred: [], vrsta: [], podvrsta: [] };
+            const icons = body.icons || [];
+
+            window.ntState.mode = t.id;
+            window.ntState.stavkiCount = body.stavkiCount || 0;
+            window.ntState.zapisiCount = body.zapisiCount || 0;
+            window.ntState.zakljucano = !!t.zakljucano;
+            window.ntState.existingCounts = {
+                razred: opts.razred.length,
+                vrsta: opts.vrsta.length,
+                podvrsta: opts.podvrsta.length
+            };
+
+            window.ntState.razred = opts.razred.map((val, idx) => ({
+                text: val,
+                originalIdx: idx,
+                iconUrl: icons[idx] && icons[idx].exists ? icons[idx].url : null,
+                pendingFile: null,
+                pendingGalleryPath: null
+            }));
+            window.ntState.vrsta = opts.vrsta.map((val, idx) => ({ text: val, originalIdx: idx }));
+            window.ntState.podvrsta = opts.podvrsta.map((val, idx) => ({ text: val, originalIdx: idx }));
+            window.ntState.galleryTargetIdx = null;
+
+            $('#nt_naziv').val(t.naziv || '');
+            $('#nt_opis').val(t.opis || '');
+            $('#nt_btn_save').text('сачувај измјене');
+
+            updateNtStatusBar();
+            renderNtOptions('razred');
+            renderNtOptions('vrsta');
+            renderNtOptions('podvrsta');
+        })
+        .catch(err => {
+            $('#nt_loading').hide();
+            $('#nt_form_body').show();
+            console.error('Error loading theme for edit:', err);
+            showNtAlert('Грешка при комуникацији са сервером.', 'red');
+        });
+}
+
+function updateNtStatusBar() {
+    if (window.ntState.mode === 'new') {
+        $('#nt_status_bar').hide();
+        $('#nt_has_data_notice').hide();
+        $('#nt_btn_delete').hide();
+        return;
+    }
+
+    const isLocked = window.ntState.zakljucano;
+    const badgeHtml = isLocked
+        ? '<span class="text-danger"><strong>🔒 закључана</strong></span>'
+        : '<span class="text-success"><strong>🔓 откључана</strong></span>';
+    $('#nt_status_badge').html(badgeHtml);
+    $('#nt_counts_info').text(`ID: ${window.ntState.mode} | ставки: ${window.ntState.stavkiCount} | записа: ${window.ntState.zapisiCount}`);
+    $('#nt_status_bar').show();
+
+    if (window.ntState.stavkiCount > 0) {
+        $('#nt_has_data_notice').show();
+    } else {
+        $('#nt_has_data_notice').hide();
+    }
+
+    if (isLocked && window.ntState.stavkiCount === 0 && window.ntState.zapisiCount === 0) {
+        $('#nt_btn_delete').show();
+    } else {
+        $('#nt_btn_delete').hide();
+    }
+}
+
+function syncOptionInputsToState() {
+    ['razred', 'vrsta', 'podvrsta'].forEach(tip => {
+        const list = window.ntState[tip];
+        $(`#nt_${tip}_list .nt-opt-input`).each(function (idx) {
+            if (list[idx]) {
+                list[idx].text = $(this).val();
+            }
+        });
+    });
+}
+
+function renderNtOptions(tip) {
+    const container = $(`#nt_${tip}_list`);
+    container.empty();
+    const list = window.ntState[tip];
+    const hasData = window.ntState.mode !== 'new' && window.ntState.stavkiCount > 0;
+
+    if (list.length === 0) {
+        container.append('<div class="text-muted" style="font-size: 0.78rem; padding: 2px 0;">нема унесених вриједности</div>');
+        return;
+    }
+
+    list.forEach((item, idx) => {
+        const isLockedExisting = hasData && item.originalIdx !== null;
+        const canMoveUp = idx > 0 && !isLockedExisting && !(hasData && list[idx - 1].originalIdx !== null);
+        const canMoveDown = idx < list.length - 1 && !isLockedExisting && !(hasData && list[idx + 1].originalIdx !== null);
+        const canDelete = !isLockedExisting;
+
+        const row = $('<div class="nt-option-row"></div>');
+        row.append(`<span class="nt-idx-badge" title="индекс у бази">${idx}</span>`);
+
+        if (tip === 'razred') {
+            const preview = $('<img class="nt-icon-preview" alt="" title="преглед иконице (32×37)">');
+            if (item.iconUrl) {
+                preview.attr('src', item.iconUrl);
+            } else {
+                preview.attr('src', 'data:image/svg+xml;utf8,' + encodeURIComponent(
+                    '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="28"><rect width="24" height="28" fill="#f5f5f5"/><text x="12" y="18" font-size="11" text-anchor="middle" fill="#bbb">?</text></svg>'
+                ));
+            }
+            preview.on('click', () => openIconGalleryForRazred(idx));
+
+            const fileInput = $('<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;">');
+            fileInput.on('change', function () {
+                const file = this.files && this.files[0];
+                if (!file) return;
+                if (file.size > 500 * 1024) {
+                    showNtAlert('Иконица не смије бити већа од 500 KB.', 'red');
+                    this.value = '';
+                    return;
+                }
+                syncOptionInputsToState();
+                window.ntState.razred[idx].pendingFile = file;
+                window.ntState.razred[idx].pendingGalleryPath = null;
+                window.ntState.razred[idx].iconUrl = URL.createObjectURL(file);
+                renderNtOptions('razred');
+                showNtAlert('');
+            });
+
+            const btnUpload = $('<button type="button" class="btn btn-outline-secondary nt-icon-btn" title="отпреми иконицу са рачунара"><i class="bi bi-upload"></i></button>');
+            btnUpload.on('click', () => fileInput.trigger('click'));
+
+            const btnGallery = $('<button type="button" class="btn btn-outline-secondary nt-icon-btn" title="изабери из галерије иконица"><i class="bi bi-grid"></i></button>');
+            btnGallery.on('click', () => openIconGalleryForRazred(idx));
+
+            row.append(preview, fileInput, btnUpload, btnGallery);
+        }
+
+        const input = $('<input type="text" class="form-control form-control-sm nt-opt-input" maxlength="100">')
+            .val(item.text || '')
+            .attr('placeholder', `назив (${tip})`);
+        row.append(input);
+
+        const btnUp = $('<button type="button" class="btn btn-outline-secondary nt-icon-btn" title="помјери горе">▲</button>')
+            .prop('disabled', !canMoveUp)
+            .on('click', () => {
+                syncOptionInputsToState();
+                const tmp = list[idx - 1];
+                list[idx - 1] = list[idx];
+                list[idx] = tmp;
+                renderNtOptions(tip);
+            });
+
+        const btnDown = $('<button type="button" class="btn btn-outline-secondary nt-icon-btn" title="помјери доле">▼</button>')
+            .prop('disabled', !canMoveDown)
+            .on('click', () => {
+                syncOptionInputsToState();
+                const tmp = list[idx + 1];
+                list[idx + 1] = list[idx];
+                list[idx] = tmp;
+                renderNtOptions(tip);
+            });
+
+        const btnDel = $('<button type="button" class="btn btn-outline-danger nt-icon-btn" title="уклони">×</button>')
+            .prop('disabled', !canDelete)
+            .on('click', () => {
+                syncOptionInputsToState();
+                list.splice(idx, 1);
+                if (tip === 'razred' && window.ntState.galleryTargetIdx === idx) {
+                    $('#nt_icon_gallery_panel').hide();
+                    window.ntState.galleryTargetIdx = null;
+                }
+                renderNtOptions(tip);
+            });
+
+        row.append(btnUp, btnDown, btnDel);
+        container.append(row);
+    });
+}
+
+function openIconGalleryForRazred(idx) {
+    syncOptionInputsToState();
+    window.ntState.galleryTargetIdx = idx;
+    const label = window.ntState.razred[idx]?.text?.trim() || `#${idx}`;
+    $('#nt_gallery_target_label').text(`(за разред: ${label})`);
+    $('#nt_icon_gallery_panel').show();
+
+    if (window.ntState.galleryCache) {
+        renderIconGallery(window.ntState.galleryCache);
+        return;
+    }
+
+    $('#nt_gallery_loading').show();
+    $('#nt_gallery_grid').empty();
+
+    fetch('/api/urednik/ikone', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => {
+            $('#nt_gallery_loading').hide();
+            window.ntState.galleryCache = data.icons || [];
+            renderIconGallery(window.ntState.galleryCache);
+        })
+        .catch(err => {
+            $('#nt_gallery_loading').hide();
+            console.error('Error loading icon gallery:', err);
+            $('#nt_gallery_grid').html('<div class="text-danger" style="font-size: 0.78rem;">Грешка при учитавању иконица.</div>');
+        });
+}
+
+function renderIconGallery(icons) {
+    const grid = $('#nt_gallery_grid');
+    grid.empty();
+    if (!icons || icons.length === 0) {
+        grid.html('<div class="text-muted" style="font-size: 0.78rem;">Нема доступних иконица.</div>');
+        return;
+    }
+
+    icons.forEach(ic => {
+        const item = $('<div class="nt-gallery-item"></div>')
+            .attr('title', ic.path)
+            .append($('<img>').attr('src', ic.url).attr('alt', ic.name));
+        item.on('click', () => {
+            const targetIdx = window.ntState.galleryTargetIdx;
+            if (targetIdx === null || !window.ntState.razred[targetIdx]) return;
+            syncOptionInputsToState();
+            window.ntState.razred[targetIdx].pendingGalleryPath = ic.path;
+            window.ntState.razred[targetIdx].pendingFile = null;
+            window.ntState.razred[targetIdx].iconUrl = ic.url;
+            $('#nt_icon_gallery_panel').hide();
+            window.ntState.galleryTargetIdx = null;
+            renderNtOptions('razred');
+        });
+        grid.append(item);
+    });
+}
+
+async function uploadPendingIcons(temaId, nonEmptyRazred) {
+    for (let i = 0; i < nonEmptyRazred.length; i++) {
+        const item = nonEmptyRazred[i];
+        if (item.pendingFile) {
+            const fd = new FormData();
+            fd.append('ikona', item.pendingFile);
+            const resp = await fetch(`/api/urednik/teme/${temaId}/ikona/${i}`, {
+                method: 'POST',
+                body: fd
+            });
+            if (!resp.ok) {
+                const errBody = await resp.json().catch(() => ({}));
+                throw new Error(errBody.error || `Грешка при чувању иконице за разред #${i}`);
+            }
+        } else if (item.pendingGalleryPath) {
+            const resp = await fetch(`/api/urednik/teme/${temaId}/ikona/${i}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sourcePath: item.pendingGalleryPath })
+            });
+            if (!resp.ok) {
+                const errBody = await resp.json().catch(() => ({}));
+                throw new Error(errBody.error || `Грешка при копирању иконице за разред #${i}`);
+            }
+        }
+    }
+}
+
+function refreshAllThemeListsAfterChange(affectedTemaId) {
+    // Clear cached options so next selection fetches fresh values
+    if (typeof window.themeOptionsCache !== 'undefined' && affectedTemaId) {
+        delete window.themeOptionsCache[affectedTemaId];
+    }
+    // Refresh teme tab dropdown & metadata
+    if (typeof loadThemesDropdown === 'function') {
+        loadThemesDropdown();
+    }
+    // Refresh theme locking list if already populated
+    if ($('#theme_lock_list').children().length > 0) {
+        loadThemesForLocking();
+    }
+    // Refresh urednik stavke search & zapisi theme dropdowns
+    fetch('/api/v2/themes', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.themes) return;
+            const refreshSelect = (selId) => {
+                const sel = $(selId);
+                if (!sel.length) return;
+                const cur = sel.val();
+                sel.find('option:not(:first)').remove();
+                data.themes.forEach(t => {
+                    const isLocked = t.zakljucano === 1 || t.zakljucano === true;
+                    const label = isLocked ? `🔒 ${t.naziv}` : t.naziv;
+                    sel.append($('<option></option>').val(String(t.id)).text(label));
+                });
+                if (cur && sel.find(`option[value="${cur}"]`).length > 0) {
+                    sel.val(cur);
+                }
+            };
+            refreshSelect('#stavka_tabela');
+            refreshSelect('#uz_zapis_tema');
+            refreshSelect('#uz_edit_zapis_tema');
+
+            // Update explanation immediately if user currently has this theme selected in Teme tab
+            if (affectedTemaId && window.lastSelectedTeme && String(window.lastSelectedTeme) === String(affectedTemaId)) {
+                const found = data.themes.find(t => String(t.id) === String(affectedTemaId));
+                if (found) {
+                    $('#teme_objasnjenje_content').text(found.opis || 'нема појашњења за изабрану тему');
+                }
+            }
+        })
+        .catch(() => {});
+
+    // Invalidate icon gallery cache so new icons appear
+    window.ntState.galleryCache = null;
+}
+
+async function saveNovaTema() {
+    syncOptionInputsToState();
+    showNtAlert('');
+
+    const naziv = $('#nt_naziv').val().trim();
+    const opis = $('#nt_opis').val().trim();
+    const nonEmptyRazred = window.ntState.razred.filter(x => (x.text || '').trim().length > 0);
+    const nonEmptyVrsta = window.ntState.vrsta.filter(x => (x.text || '').trim().length > 0);
+    const nonEmptyPodvrsta = window.ntState.podvrsta.filter(x => (x.text || '').trim().length > 0);
+
+    if (!naziv) {
+        showNtAlert('Назив теме је обавезан.', 'red');
+        $('#nt_naziv').focus();
+        return;
+    }
+    if (nonEmptyRazred.length === 0) {
+        showNtAlert('Морате унијети бар једну вриједност за разред.', 'red');
+        return;
+    }
+
+    const isNew = window.ntState.mode === 'new';
+    const payload = {
+        naziv,
+        opis,
+        razred: nonEmptyRazred.map(x => x.text.trim()),
+        vrsta: nonEmptyVrsta.map(x => x.text.trim()),
+        podvrsta: nonEmptyPodvrsta.map(x => x.text.trim())
+    };
+    if (!isNew) {
+        payload.razredIconMap = nonEmptyRazred.map(x => x.originalIdx);
+    }
+
+    const btn = $('#nt_btn_save');
+    const spinner = $('#nt_saving_spinner');
+    btn.prop('disabled', true);
+    spinner.show();
+
+    try {
+        const url = isNew ? '/api/urednik/teme' : `/api/urednik/teme/${window.ntState.mode}`;
+        const method = isNew ? 'POST' : 'PUT';
+        const resp = await fetch(url, {
+            method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+            showNtAlert(data.error || 'Грешка при чувању теме.', 'red');
+            return;
+        }
+
+        const savedId = isNew ? data.id : window.ntState.mode;
+
+        // Upload / copy any pending icons for razred rows
+        await uploadPendingIcons(savedId, nonEmptyRazred);
+
+        refreshAllThemeListsAfterChange(savedId);
+        loadNovaTemaSelector(savedId);
+        loadThemeForEdit(savedId);
+
+        if (isNew) {
+            showNtAlert('Тема је креирана као закључана 🔒. Можете наставити са измјенама или је откључати у „закључавање тема”.', 'green');
+        } else {
+            showNtAlert('Измјене теме су сачуване.', 'green');
+        }
+    } catch (err) {
+        console.error('Error saving theme:', err);
+        showNtAlert(err.message || 'Грешка на серверу при чувању теме.', 'red');
+    } finally {
+        btn.prop('disabled', false);
+        spinner.hide();
+    }
+}
+
+async function deleteEmptyTheme() {
+    if (window.ntState.mode === 'new') return;
+    const temaId = window.ntState.mode;
+    const naziv = $('#nt_naziv').val().trim() || `#${temaId}`;
+
+    if (!confirm(`Да ли сте сигурни да желите трајно обрисати празну закључану тему „${naziv}”?`)) {
+        return;
+    }
+
+    showNtAlert('');
+    $('#nt_btn_delete').prop('disabled', true);
+    $('#nt_saving_spinner').show();
+
+    try {
+        const resp = await fetch(`/api/urednik/teme/${temaId}`, { method: 'DELETE' });
+        const data = await resp.json();
+        if (!resp.ok || !data.success) {
+            showNtAlert(data.error || 'Грешка при брисању теме.', 'red');
+            return;
+        }
+
+        refreshAllThemeListsAfterChange(temaId);
+        resetNovaTemaForm();
+        loadNovaTemaSelector('new');
+        showNtAlert(`Тема „${naziv}” је обрисана.`, 'green');
+    } catch (err) {
+        console.error('Error deleting theme:', err);
+        showNtAlert('Грешка на серверу при брисању теме.', 'red');
+    } finally {
+        $('#nt_btn_delete').prop('disabled', false);
+        $('#nt_saving_spinner').hide();
+    }
+}
+
 // Theme Locking functionality
 function initThemeLocking() {
     // Load themes when section begins expanding (prevent duplicate bindings)
@@ -450,6 +1035,17 @@ async function toggleThemeLock(temaId, icon) {
             // Sync with global metadata if it exists
             if (window.temeMetadata && window.temeMetadata[temaId]) {
                 window.temeMetadata[temaId].zakljucano = isLocked;
+            }
+
+            // Sync with Nova Tema editor if currently viewing this theme
+            if (window.ntState && String(window.ntState.mode) === String(temaId)) {
+                window.ntState.zakljucano = isLocked;
+                if (typeof updateNtStatusBar === 'function') {
+                    updateNtStatusBar();
+                }
+            }
+            if (typeof loadNovaTemaSelector === 'function') {
+                loadNovaTemaSelector();
             }
 
             // Re-fetch themes in dropdowns to update labels (with 🔒 icon)

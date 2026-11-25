@@ -114,6 +114,13 @@ function loadTemeContent(valueSelected, isRestoring = false) {
         $('#vrsta').find('option:not(:first)').remove();
         $('#podvrsta').find('option:not(:first)').remove();
     } else {
+        // Update explanation immediately when user selects a theme
+        if (window.temeMetadata && window.temeMetadata[valueSelected] && window.temeMetadata[valueSelected].opis) {
+            $('#teme_objasnjenje_content').text(window.temeMetadata[valueSelected].opis);
+        } else {
+            $('#teme_objasnjenje_content').text("нема појашњења за изабрану тему");
+        }
+
         // Fetch options from API
         return fetch(`/api/v2/theme-options/${valueSelected}`)
             .then(response => {
@@ -205,6 +212,11 @@ function loadThemesDropdown() {
             // Restore previously selected theme if it exists
             if (window.lastSelectedTeme && window.lastSelectedTeme != "0") {
                 select.val(window.lastSelectedTeme);
+                if (window.temeMetadata[window.lastSelectedTeme] && window.temeMetadata[window.lastSelectedTeme].opis) {
+                    $('#teme_objasnjenje_content').text(window.temeMetadata[window.lastSelectedTeme].opis);
+                } else {
+                    $('#teme_objasnjenje_content').text("нема појашњења за изабрану тему");
+                }
             }
         })
         .catch(error => {
