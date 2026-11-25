@@ -128,7 +128,8 @@ Review and moderate user-reported opinions (comments with `downvote_count > 0`).
 - Displays comment content, author, target ID/theme, upvotes/downvotes
 
 **Actions:**
-- Delete comment (`DELETE /api/comments/:id`) and refresh summary counts
+- Mark as reviewed (`✓`, `POST /api/urednik/comments/:id/dismiss`) — sets `pregledano_downvotes = downvote_count` on `comments` so the comment leaves the queue (without altering user votes) and only reappears if it receives new downvotes later.
+- Delete comment (`DELETE /api/comments/:id`) and refresh summary counts.
 
 ---
 

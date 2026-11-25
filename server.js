@@ -3926,6 +3926,12 @@ app.post('/api/urednik/users/update', async (req, res) => {
 // Urednik (Editor) API Routes - Summary Counts & Backup Tracking
 // ============================================
 
+async function ensureCommentsModerationColumn(pool) {
+    await pool.request().query(`
+        ALTER TABLE comments ADD COLUMN IF NOT EXISTS pregledano_downvotes INTEGER DEFAULT 0
+    `);
+}
+
 async function ensureBekapLogTable(pool) {
     await pool.request().query(`
         CREATE TABLE IF NOT EXISTS bekap_log (
@@ -3996,7 +4002,10 @@ app.get('/api/urednik/summary-counts', async (req, res) => {
         }
 
         const pool = await poolPromise;
-        await ensureBekapLogTable(pool);
+        await Promise.all([
+            ensureBekapLogTable(pool),
+            ensureCommentsModerationColumn(pool)
+        ]);
 
         const [
             pendingDogadjajiRes,
@@ -4008,7 +4017,7 @@ app.get('/api/urednik/summary-counts', async (req, res) => {
         ] = await Promise.all([
             pool.request().query("SELECT COUNT(*) AS count FROM dogadjaji WHERE stanje = '0'"),
             pool.request().query("SELECT COUNT(*) AS count FROM zapisi WHERE stanje = '0'"),
-            pool.request().query('SELECT COUNT(*) AS count FROM comments WHERE downvote_count > 0'),
+            pool.request().query('SELECT COUNT(*) AS count FROM comments WHERE downvote_count > COALESCE(pregledano_downvotes, 0)'),
             pool.request().query('SELECT id FROM teme'),
             pool.request().query("SELECT id, created_at, napomena FROM bekap_log WHERE COALESCE(tip, 'baza') = 'baza' ORDER BY created_at DESC LIMIT 1"),
             pool.request().query("SELECT id, created_at, napomena FROM bekap_log WHERE tip = 'fajlovi' ORDER BY created_at DESC LIMIT 1")
@@ -4446,7 +4455,7 @@ app.post('/api/urednik/teme/toggle-lock', async (req, res) => {
     }
 });
 
-// GET /api/urednik/comments/reported - Fetch comments with downvotes > 0
+// GET /api/urednik/comments/reported - Fetch comments with unreviewed downvotes
 app.get('/api/urednik/comments/reported', async (req, res) => {
     try {
         if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
@@ -4454,9 +4463,9 @@ app.get('/api/urednik/comments/reported', async (req, res) => {
         }
 
         const pool = await poolPromise;
+        await ensureCommentsModerationColumn(pool);
 
-        // Query to get reported comments (downvote_count > 0)
-        // Join with teme for theme name, join with korisnik for author info
+        // Query to get reported comments with downvotes above last reviewed count
         const result = await pool.request().query(`
             SELECT 
                 c.id, 
@@ -4472,13 +4481,13 @@ app.get('/api/urednik/comments/reported', async (req, res) => {
                 k.ime,
                 k.prezime,
                 CASE 
-                    WHEN c.target_type = 'dogadjaj' THEN 'догађаји'
+                    WHEN c.target_type IN ('dogadjaj', 'dogadjaji') THEN 'догађаји'
                     ELSE t.naziv 
                 END as theme_name
             FROM comments c
             LEFT JOIN teme t ON c.target_type = CAST(t.id AS VARCHAR)
             LEFT JOIN korisnik k ON c.creator = k.id
-            WHERE c.downvote_count > 0
+            WHERE c.downvote_count > COALESCE(c.pregledano_downvotes, 0)
             ORDER BY c.downvote_count DESC, c.created DESC
         `);
 
@@ -4486,7 +4495,41 @@ app.get('/api/urednik/comments/reported', async (req, res) => {
         res.json({ success: true, results: result.recordset });
     } catch (err) {
         console.error('Error fetching reported comments:', err);
-        res.status(500).json({ error: 'Грешка при добављању примедби' });
+        res.status(500).json({ error: 'Грешка при добављању мишљења' });
+    }
+});
+
+// POST /api/urednik/comments/:id/dismiss - Mark reported comment as reviewed at its current downvote count
+app.post('/api/urednik/comments/:id/dismiss', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        if (!/^\d+$/.test(id)) {
+            return res.status(400).json({ error: 'Неисправан ID мишљења' });
+        }
+
+        const pool = await poolPromise;
+        await ensureCommentsModerationColumn(pool);
+
+        const result = await pool.request()
+            .input('id', sql.Int, parseInt(id, 10))
+            .query(`
+                UPDATE comments
+                SET pregledano_downvotes = COALESCE(downvote_count, 0)
+                WHERE id = @id
+            `);
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Мишљење није пронађено' });
+        }
+
+        res.json({ success: true, message: 'Мишљење је означено као прегледано.' });
+    } catch (err) {
+        console.error('Error dismissing reported comment:', err);
+        res.status(500).json({ error: 'Грешка при означавању мишљења' });
     }
 });
 

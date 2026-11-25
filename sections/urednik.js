@@ -266,7 +266,10 @@ function displayReportedComments(results) {
                             <b>запис ID:</b> ${record.target_id} | 
                             <b>тема:</b> ${record.theme_name || record.target_type}
                         </div>
-                        <i class="bi bi-trash text-danger" style="cursor: pointer; font-size: 1.1rem; padding: 0 5px;" onclick="deleteReportedComment(${record.id})" title="обриши"></i>
+                        <div style="display: flex; align-items: center; gap: 6px;">
+                            <i class="bi bi-check-circle text-success" style="cursor: pointer; font-size: 1.1rem; padding: 0 3px;" onclick="dismissReportedComment(${record.id})" title="прегледано (склони са листе)"></i>
+                            <i class="bi bi-trash text-danger" style="cursor: pointer; font-size: 1.1rem; padding: 0 3px;" onclick="deleteReportedComment(${record.id})" title="обриши"></i>
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -303,6 +306,29 @@ function displayReportedComments(results) {
     });
 
     resultsDiv.show();
+}
+
+function dismissReportedComment(id) {
+    const alertsDiv = $('#primedbe_alerts');
+    alertsDiv.hide().text('');
+
+    fetch(`/api/urednik/comments/${id}/dismiss`, {
+        method: 'POST'
+    })
+        .then(response => response.json().then(data => ({ ok: response.ok, data })))
+        .then(({ ok, data }) => {
+            if (ok && data.success) {
+                alertsDiv.css('color', 'green').text(data.message || 'Мишљење је означено као прегледано.').show();
+                loadReportedComments();
+                loadUrednikSummaryCounts();
+            } else {
+                throw new Error(data.error || 'Грешка при означавању');
+            }
+        })
+        .catch(error => {
+            console.error('Error dismissing comment:', error);
+            alertsDiv.css('color', 'orange').text(error.message).show();
+        });
 }
 
 function deleteReportedComment(id) {
