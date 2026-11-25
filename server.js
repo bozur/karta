@@ -4545,6 +4545,9 @@ app.get('/api/urednik/ikone', async (req, res) => {
         scanDir(path.join(__dirname, 'uploads', 'ikone'), true);
 
         const icons = Array.from(iconMap.values()).sort((a, b) => {
+            // Put uploaded library icons ('biblioteka') first
+            if (a.group === 'biblioteka' && b.group !== 'biblioteka') return -1;
+            if (b.group === 'biblioteka' && a.group !== 'biblioteka') return 1;
             const gA = parseInt(a.group, 10);
             const gB = parseInt(b.group, 10);
             if (!isNaN(gA) && !isNaN(gB) && gA !== gB) return gA - gB;
@@ -4556,6 +4559,88 @@ app.get('/api/urednik/ikone', async (req, res) => {
     } catch (err) {
         console.error('Error listing icons:', err);
         res.status(500).json({ error: 'Грешка при учитавању галерије иконица' });
+    }
+});
+
+// POST /api/urednik/ikone/upload - Bulk upload new icons into the shared icon library (uploads/ikone/biblioteka)
+app.post('/api/urednik/ikone/upload', (req, res, next) => {
+    themeIconUpload.array('ikone', 30)(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({ error: err.message || 'Грешка при отпремању иконица' });
+        }
+        next();
+    });
+}, async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (!isUrednikUser(req)) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const files = req.files || [];
+        if (files.length === 0) {
+            return res.status(400).json({ error: 'Није изабрана ниједна иконица.' });
+        }
+
+        const libDir = path.join(__dirname, 'uploads', 'ikone', 'biblioteka');
+        fs.mkdirSync(libDir, { recursive: true });
+
+        const uploaded = [];
+        for (const file of files) {
+            const base = path.basename(file.originalname || 'ikona', path.extname(file.originalname || ''))
+                .replace(/[^a-zA-Z0-9_\-]/g, '_')
+                .replace(/_+/g, '_')
+                .replace(/^_|_$/g, '')
+                .slice(0, 40) || 'ikona';
+
+            let fileName = `${base}.png`;
+            let counter = 1;
+            while (fs.existsSync(path.join(libDir, fileName))) {
+                fileName = `${base}_${counter}.png`;
+                counter++;
+            }
+
+            fs.writeFileSync(path.join(libDir, fileName), file.buffer);
+            uploaded.push({
+                path: `ikone/biblioteka/${fileName}`,
+                url: `ikone/biblioteka/${fileName}?v=${Date.now()}`,
+                group: 'biblioteka',
+                name: fileName
+            });
+        }
+
+        res.json({ success: true, uploaded });
+    } catch (err) {
+        console.error('Error uploading library icons:', err);
+        res.status(500).json({ error: 'Грешка при чувању иконица у библиотеку' });
+    }
+});
+
+// DELETE /api/urednik/ikone/biblioteka/:filename - Remove an icon from the shared library
+app.delete('/api/urednik/ikone/biblioteka/:filename', async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (!isUrednikUser(req)) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const filename = String(req.params.filename || '').trim();
+        if (!/^[a-zA-Z0-9_\-]+\.png$/i.test(filename)) {
+            return res.status(400).json({ error: 'Неисправан назив фајла иконице' });
+        }
+
+        const targetFile = path.join(__dirname, 'uploads', 'ikone', 'biblioteka', filename);
+        if (fs.existsSync(targetFile)) {
+            fs.unlinkSync(targetFile);
+        }
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error deleting library icon:', err);
+        res.status(500).json({ error: 'Грешка при брисању иконице' });
     }
 });
 

@@ -70,6 +70,7 @@
     }
 
     .nt-gallery-item {
+        position: relative;
         width: 38px;
         height: 44px;
         display: flex;
@@ -91,6 +92,36 @@
         max-width: 32px;
         max-height: 37px;
         object-fit: contain;
+    }
+
+    .nt-gallery-del {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        width: 15px;
+        height: 15px;
+        line-height: 13px;
+        text-align: center;
+        font-size: 11px;
+        border-radius: 50%;
+        background: #dc3545;
+        color: #fff;
+        display: none;
+        cursor: pointer;
+    }
+
+    .nt-gallery-item:hover .nt-gallery-del {
+        display: block;
+    }
+
+    .nt-gallery-group-title {
+        width: 100%;
+        font-size: 0.75rem;
+        font-weight: bold;
+        color: #666;
+        margin-top: 2px;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 2px;
     }
 </style>
 
@@ -183,17 +214,27 @@
                 <!-- Razred options (required, each has an icon) -->
                 <div class="nt-section-box">
                     <div class="d-flex justify-content-between align-items-center mb-1">
-                        <span><strong>разред</strong> <span class="text-danger">*</span> <small class="text-muted">(сваки разред има своју иконицу 32×37)</small></span>
-                        <button type="button" id="nt_add_razred" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.75rem;">+ додај</button>
+                        <span><strong>разред</strong> <span class="text-danger">*</span> <small class="text-muted">(иконице 32×37)</small></span>
+                        <div class="d-flex align-items-center" style="gap: 4px;">
+                            <button type="button" id="nt_open_library_btn" class="btn btn-sm btn-outline-warning py-0 px-1" style="font-size: 0.75rem; color: #b85d00; border-color: #e0a800;" title="Учитај нове иконице у библиотеку">учитај иконице</button>
+                            <button type="button" id="nt_add_razred" class="btn btn-sm btn-outline-secondary py-0 px-1" style="font-size: 0.75rem;">+ додај</button>
+                        </div>
                     </div>
                     <div id="nt_razred_list"></div>
                 </div>
 
-                <!-- Inline Icon Gallery Picker (hidden until opened for a specific razred row) -->
+                <!-- Inline Icon Gallery & Upload Picker (hidden until opened) -->
                 <div id="nt_icon_gallery_panel" class="nt-section-box" style="display: none; border-color: darkorange; background: #fffdf9;">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <span style="font-size: 0.8rem;"><strong style="color: darkorange;">Галерија иконица</strong> <span id="nt_gallery_target_label" class="text-muted"></span></span>
                         <button type="button" id="nt_close_gallery" class="btn btn-sm btn-link p-0 text-secondary" style="font-size: 0.8rem;">затвори ×</button>
+                    </div>
+                    <div class="d-flex align-items-center mb-1" style="gap: 6px;">
+                        <input type="file" id="nt_gallery_upload_input" multiple accept="image/png,image/jpeg,image/webp,image/gif" style="display: none;">
+                        <button type="button" id="nt_gallery_upload_btn" class="btn btn-sm btn-outline-dark py-0 px-2" style="font-size: 0.75rem;">
+                            <i class="bi bi-upload"></i> учитај нове иконице са рачунара
+                        </button>
+                        <span id="nt_gallery_msg" style="font-size: 0.75rem; color: green;"></span>
                     </div>
                     <div id="nt_gallery_loading" style="display: none; text-align: center; padding: 8px;">
                         <div class="spinner-border text-secondary spinner-border-sm" role="status"></div>

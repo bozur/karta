@@ -438,6 +438,52 @@ function initNovaTema() {
         window.ntState.galleryTargetIdx = null;
     });
 
+    $('#nt_open_library_btn').off('click.nt').on('click.nt', function () {
+        openIconGalleryForRazred(null);
+    });
+
+    $('#nt_gallery_upload_btn').off('click.nt').on('click.nt', function () {
+        $('#nt_gallery_upload_input').trigger('click');
+    });
+
+    $('#nt_gallery_upload_input').off('change.nt').on('change.nt', async function () {
+        const files = this.files;
+        if (!files || files.length === 0) return;
+
+        const msgEl = $('#nt_gallery_msg');
+        const fd = new FormData();
+        let validCount = 0;
+        for (let i = 0; i < files.length; i++) {
+            if (files[i].size > 500 * 1024) {
+                msgEl.css('color', 'red').text(`Фајл ${files[i].name} је већи од 500 KB.`);
+                continue;
+            }
+            fd.append('ikone', files[i]);
+            validCount++;
+        }
+        this.value = '';
+        if (validCount === 0) return;
+
+        msgEl.css('color', '#666').text('учитавање...');
+        try {
+            const resp = await fetch('/api/urednik/ikone/upload', {
+                method: 'POST',
+                body: fd
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.success) {
+                msgEl.css('color', 'red').text(data.error || 'Грешка при учитавању.');
+                return;
+            }
+            msgEl.css('color', 'green').text(`учитано: ${data.uploaded.length}`);
+            window.ntState.galleryCache = null;
+            openIconGalleryForRazred(window.ntState.galleryTargetIdx);
+        } catch (err) {
+            console.error('Error uploading icons to library:', err);
+            msgEl.css('color', 'red').text('Грешка на серверу.');
+        }
+    });
+
     $('#nt_btn_save').off('click.nt').on('click.nt', saveNovaTema);
     $('#nt_btn_delete').off('click.nt').on('click.nt', deleteEmptyTheme);
 
@@ -707,8 +753,12 @@ function renderNtOptions(tip) {
 function openIconGalleryForRazred(idx) {
     syncOptionInputsToState();
     window.ntState.galleryTargetIdx = idx;
-    const label = window.ntState.razred[idx]?.text?.trim() || `#${idx}`;
-    $('#nt_gallery_target_label').text(`(за разред: ${label})`);
+    if (idx === null || idx === undefined) {
+        $('#nt_gallery_target_label').text('(учитајте нове, па изаберите поред разреда)');
+    } else {
+        const label = window.ntState.razred[idx]?.text?.trim() || `#${idx}`;
+        $('#nt_gallery_target_label').text(`(за разред: ${label})`);
+    }
     $('#nt_icon_gallery_panel').show();
 
     if (window.ntState.galleryCache) {
@@ -737,17 +787,43 @@ function renderIconGallery(icons) {
     const grid = $('#nt_gallery_grid');
     grid.empty();
     if (!icons || icons.length === 0) {
-        grid.html('<div class="text-muted" style="font-size: 0.78rem;">Нема доступних иконица.</div>');
+        grid.html('<div class="text-muted" style="font-size: 0.78rem;">Нема доступних иконица. Учитајте нове са рачунара.</div>');
         return;
     }
 
-    icons.forEach(ic => {
+    const libIcons = icons.filter(ic => ic.group === 'biblioteka');
+    const existingIcons = icons.filter(ic => ic.group !== 'biblioteka');
+
+    const appendIconTile = (ic, allowDelete) => {
         const item = $('<div class="nt-gallery-item"></div>')
             .attr('title', ic.path)
             .append($('<img>').attr('src', ic.url).attr('alt', ic.name));
+
+        if (allowDelete) {
+            const delBtn = $('<span class="nt-gallery-del" title="обриши из библиотеке">×</span>');
+            delBtn.on('click', async (e) => {
+                e.stopPropagation();
+                try {
+                    const resp = await fetch(`/api/urednik/ikone/biblioteka/${encodeURIComponent(ic.name)}`, {
+                        method: 'DELETE'
+                    });
+                    if (resp.ok) {
+                        window.ntState.galleryCache = (window.ntState.galleryCache || []).filter(x => x.path !== ic.path);
+                        renderIconGallery(window.ntState.galleryCache);
+                    }
+                } catch (err) {
+                    console.error('Error deleting library icon:', err);
+                }
+            });
+            item.append(delBtn);
+        }
+
         item.on('click', () => {
             const targetIdx = window.ntState.galleryTargetIdx;
-            if (targetIdx === null || !window.ntState.razred[targetIdx]) return;
+            if (targetIdx === null || targetIdx === undefined || !window.ntState.razred[targetIdx]) {
+                $('#nt_gallery_msg').css('color', 'orange').text('Кликните на иконицу (или дугме галерије) поред жељеног разреда.');
+                return;
+            }
             syncOptionInputsToState();
             window.ntState.razred[targetIdx].pendingGalleryPath = ic.path;
             window.ntState.razred[targetIdx].pendingFile = null;
@@ -757,7 +833,16 @@ function renderIconGallery(icons) {
             renderNtOptions('razred');
         });
         grid.append(item);
-    });
+    };
+
+    if (libIcons.length > 0) {
+        grid.append('<div class="nt-gallery-group-title">Нове иконице (библиотека)</div>');
+        libIcons.forEach(ic => appendIconTile(ic, true));
+    }
+    if (existingIcons.length > 0) {
+        grid.append('<div class="nt-gallery-group-title">Постојеће иконице из тема</div>');
+        existingIcons.forEach(ic => appendIconTile(ic, false));
+    }
 }
 
 async function uploadPendingIcons(temaId, nonEmptyRazred) {
