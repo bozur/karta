@@ -535,10 +535,10 @@ function prikaziGrafikon12Meseci(podaciSaServera) {
             '</div>';
     }
 
-    // Доња скала: 0 РСД, ознака техничких трошкова, ознака одржавања (ако не преклапа) и максимум
-    var prikaziOznakuTroskova = troskovi > 0 && pozicijaTroskova > 14 && pozicijaTroskova < 84;
-    var prikaziOznakuOdrzavanja = troskoviOdrzavanja > 0 && pozicijaOdrzavanja > 18 && pozicijaOdrzavanja < 84 &&
-        Math.abs(pozicijaOdrzavanja - pozicijaTroskova) > 16;
+    // Доња скала: 0 РСД, ознака техничких трошкова, ознака одржавања (само кад има довољно простора да се не преклапају) и максимум
+    var prikaziOznakuTroskova = troskovi > 0 && pozicijaTroskova >= 24 && pozicijaTroskova <= 68;
+    var prikaziOznakuOdrzavanja = troskoviOdrzavanja > 0 && pozicijaOdrzavanja >= 24 && pozicijaOdrzavanja <= 68 &&
+        (!prikaziOznakuTroskova || Math.abs(pozicijaOdrzavanja - pozicijaTroskova) >= 22);
 
     html +=
         '<div class="podrska-skala-red">' +
