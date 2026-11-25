@@ -93,9 +93,11 @@ function populateEditForm(user) {
             $('#edit_slika_label').text(filename);
         }
         $('#clear_slika_btn').show();
+        $('#avatar_picker_collapse').removeClass('show');
     } else {
         $('#edit_slika_label').text('Слика (max 100KB)');
         $('#clear_slika_btn').hide();
+        $('#avatar_picker_collapse').addClass('show');
     }
     syncSelectedAvatar(user.slika_url || '');
     // Set notifications checkbox
