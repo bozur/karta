@@ -5,6 +5,8 @@ function initUrednikSection() {
     initReportedComments();
     initThemeLocking();
     initUplateAdmin();
+    initUrednikBackup();
+    loadUrednikSummaryCounts();
 
     // Novosti insertion & importance management logic
     const btnUnesi = document.getElementById('btn_unesi_novosti');
@@ -239,7 +241,7 @@ function displayReportedComments(results) {
     tbody.empty();
 
     if (results.length === 0) {
-        alertsDiv.css('color', 'green').text('Нема пријављених примједби.').show();
+        alertsDiv.css('color', 'green').text('Нема пријављених мишљења.').show();
         resultsDiv.hide();
         return;
     }
@@ -315,6 +317,7 @@ function deleteReportedComment(id) {
                 }
                 setTimeout(() => {
                     loadReportedComments();
+                    loadUrednikSummaryCounts();
                 }, 1000);
             } else {
                 return response.json().then(data => {
@@ -607,6 +610,7 @@ function processZapisiApproval() {
                 // Reload the list after 2 seconds
                 setTimeout(() => {
                     loadPendingZapisi();
+                    loadUrednikSummaryCounts();
                 }, 2000);
             } else {
                 alertsDiv.css('color', 'orange').text(data.error || 'Грешка при обради').show();
@@ -892,6 +896,7 @@ function processDogadjajiApproval() {
 
                 // Reload the list after 1 second (keeping section open)
                 setTimeout(() => {
+                    loadUrednikSummaryCounts();
                     // Check if section is still expanded
                     if ($('#urednik_odobravanje_dogadjaja_podaci').hasClass('show')) {
                         console.log('Reloading pending dogadjaji after approval/deletion...');
@@ -1615,6 +1620,7 @@ function processStavkeApproval() {
                 alertsDiv.css('color', 'green').text(message).show();
                 setTimeout(() => {
                     loadPendingStavkeSummary();
+                    loadUrednikSummaryCounts();
                 }, 1500);
             } else {
                 alertsDiv.css('color', 'orange').text(data.error || 'Грешка при обради').show();
@@ -1636,6 +1642,10 @@ $(document).ready(function () {
     initCounterSync();
     initUserManagement();
     initUrednikStavkeSearch();
+    initUrednikDogadjajiSearch();
+    initUrednikZapisiSearch();
+    initUrednikBackup();
+    loadUrednikSummaryCounts();
 });
 
 // ============================================
@@ -1751,6 +1761,7 @@ async function showUserDetails(userId) {
             $('#u_detail_stavki').text(u.brojac_stavki || 0);
             $('#u_detail_dogadjaja').text(u.brojac_dogadjaja || 0);
             $('#u_detail_zapisa').text(u.brojac_zapisa || 0);
+            $('#u_detail_misljenja').text(u.brojac_misljenja || 0);
 
             // Populate editable fields
             $('#u_detail_urednik').prop('checked', u.urednik == 1 || u.urednik == true);
@@ -2418,5 +2429,619 @@ async function saveUplateAdmin() {
         showAlert(alertsDiv, 'Грешка на серверу при чувању података.', 'danger');
     } finally {
         if (btnSacuvaj) btnSacuvaj.disabled = false;
+    }
+}
+
+// ============================================
+// Helper: Escape HTML & Format Local DateTime
+// ============================================
+
+function escapeUrednikHtml(text) {
+    return String(text == null ? '' : text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function formatDateTimeForInput(dateVal) {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) {
+        return String(dateVal).replace('T', ' ').substring(0, 16);
+    }
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd} ${hh}:${mi}`;
+}
+
+function refreshAllZapisiCache() {
+    return fetch('/api/urednik/all-zapisi', { cache: 'no-store' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                window.allZapisiCache = data.results || [];
+            }
+            return window.allZapisiCache || [];
+        })
+        .catch(() => window.allZapisiCache || []);
+}
+
+// ============================================
+// Dogadjaji Search, Edit, Delete (Urednik)
+// ============================================
+
+function initUrednikDogadjajiSearch() {
+    $('#form_pretraga_dogadjaja').off('submit').on('submit', handleUrednikDogadjajiSearch);
+
+    $('#btn_back_to_dogadjaj_search').off('click').on('click', function () {
+        $('#ud_dogadjaj_detail_panel').hide();
+        $('#ud_dogadjaj_search_results').show();
+    });
+
+    $('#btn_update_urednik_dogadjaj').off('click').on('click', updateUrednikDogadjaj);
+    $('#btn_delete_urednik_dogadjaj').off('click').on('click', deleteUrednikDogadjaj);
+
+    $('#urednik_pretraga_dogadjaja_podaci').off('hidden.bs.collapse').on('hidden.bs.collapse', function () {
+        if (window.urednikDogadjajMarker && typeof karta !== 'undefined') {
+            karta.removeLayer(window.urednikDogadjajMarker);
+            window.urednikDogadjajMarker = null;
+        }
+    });
+
+    if (typeof flatpickr !== 'undefined') {
+        flatpickr('.ud-dogadjaj-flatpickr', {
+            enableTime: true,
+            dateFormat: 'Y-m-d H:i',
+            locale: 'sr',
+            time_24hr: true,
+            allowInput: true
+        });
+    }
+}
+
+function handleUrednikDogadjajiSearch(e) {
+    if (e) e.preventDefault();
+
+    const searchData = {
+        id: $('#ud_dogadjaj_id').val(),
+        korisnik: $('#ud_dogadjaj_korisnik').val(),
+        opis: $('#ud_dogadjaj_opis').val(),
+        pocetak: $('#ud_dogadjaj_od').val(),
+        kraj: $('#ud_dogadjaj_do').val(),
+        prostorno: $('#ud_dogadjaj_prostorno').val(),
+        vremenski: $('#ud_dogadjaj_vremenski').val(),
+        stanje: $('#ud_dogadjaj_stanje').val(),
+        izvor: $('#ud_dogadjaj_izvor').val()
+    };
+
+    const spinner = $('#ud_dogadjaj_search_cekanje');
+    const alertArea = $('#ud_dogadjaj_alert_area');
+    const resultsDiv = $('#ud_dogadjaj_search_results');
+    const detailPanel = $('#ud_dogadjaj_detail_panel');
+
+    spinner.css('visibility', 'visible');
+    alertArea.hide().text('');
+    detailPanel.hide();
+
+    fetch('/api/urednik/dogadjaji/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchData)
+    })
+        .then(r => r.json())
+        .then(data => {
+            spinner.css('visibility', 'hidden');
+            if (data.success) {
+                renderUrednikDogadjajiResults(data.results || []);
+            } else {
+                resultsDiv.hide();
+                alertArea.css('color', 'orange').text(data.error || 'Грешка при претрази').show();
+            }
+        })
+        .catch(err => {
+            spinner.css('visibility', 'hidden');
+            console.error('Error searching urednik dogadjaji:', err);
+            alertArea.css('color', 'orange').text('Грешка при комуникацији са сервером').show();
+        });
+}
+
+function renderUrednikDogadjajiResults(results) {
+    const tbody = $('#ud_dogadjaj_search_body');
+    const resultsDiv = $('#ud_dogadjaj_search_results');
+    const alertArea = $('#ud_dogadjaj_alert_area');
+
+    tbody.empty();
+
+    if (results.length === 0) {
+        resultsDiv.hide();
+        alertArea.css('color', 'orange').text('Нема резултата').show();
+        return;
+    }
+
+    results.forEach(item => {
+        const shortOpis = item.opis && item.opis.length > 60 ? item.opis.slice(0, 60) + '…' : (item.opis || '');
+        const pendingBadge = item.stanje === '0' ? ' <span class="badge badge-warning">чека</span>' : '';
+        const dateShort = item.pocetak_fmt ? item.pocetak_fmt.split(',')[0] : '';
+
+        const row = $(`
+            <tr style="border-bottom: 1px solid #eee; cursor: pointer;">
+                <td style="padding: 4px;">${item.id}</td>
+                <td style="padding: 4px;" title="${escapeUrednikHtml(item.opis || '')}">${escapeUrednikHtml(shortOpis)}${pendingBadge}</td>
+                <td style="padding: 4px; font-size: 0.78rem;">${escapeUrednikHtml(dateShort)}</td>
+                <td style="padding: 4px; font-size: 0.78rem;">${escapeUrednikHtml(item.korisnik || '')}</td>
+            </tr>
+        `);
+
+        row.on('click', () => openUrednikDogadjajDetail(item.id));
+        tbody.append(row);
+    });
+
+    resultsDiv.show();
+}
+
+async function openUrednikDogadjajDetail(id) {
+    const spinner = $('#ud_dogadjaj_search_cekanje');
+    const alertArea = $('#ud_dogadjaj_alert_area');
+    const resultsDiv = $('#ud_dogadjaj_search_results');
+    const detailPanel = $('#ud_dogadjaj_detail_panel');
+
+    spinner.css('visibility', 'visible');
+    alertArea.hide().text('');
+    $('#ud_edit_dogadjaj_msg').text('');
+
+    try {
+        const [res, zapisiList] = await Promise.all([
+            fetch(`/api/urednik/dogadjaji/${id}`, { cache: 'no-store' }).then(r => r.json()),
+            window.allZapisiCache ? Promise.resolve(window.allZapisiCache) : refreshAllZapisiCache()
+        ]);
+
+        spinner.css('visibility', 'hidden');
+
+        if (!res.success || !res.dogadjaj) {
+            alertArea.css('color', 'orange').text(res.error || 'Грешка при учитавању догађаја').show();
+            return;
+        }
+
+        const d = res.dogadjaj;
+        $('#ud_edit_dogadjaj_id_label').text(d.id);
+        $('#ud_edit_dogadjaj_korisnik').text(d.korisnik || '-');
+        $('#ud_edit_dogadjaj_opis').val(d.opis || '');
+        $('#ud_edit_dogadjaj_pocetak').val(formatDateTimeForInput(d.pocetak));
+        $('#ud_edit_dogadjaj_kraj').val(formatDateTimeForInput(d.kraj));
+        $('#ud_edit_dogadjaj_izvor').val(d.izvor || '');
+        $('#ud_edit_dogadjaj_koordinate').val(d.koordinate || '');
+        $('#ud_edit_dogadjaj_stanje').val(d.stanje === '0' ? '0' : '1');
+
+        const zapisSelect = $('#ud_edit_dogadjaj_zapis');
+        zapisSelect.empty().append('<option value="">-- без записа --</option>');
+        (zapisiList || []).forEach(z => {
+            zapisSelect.append(`<option value="${z.id}">${escapeUrednikHtml('#' + z.id + ' - ' + z.naziv)}</option>`);
+        });
+        zapisSelect.val(d.zapis ? String(d.zapis) : '');
+
+        $('#btn_update_urednik_dogadjaj').data('dogadjajId', d.id);
+        $('#btn_delete_urednik_dogadjaj').data('dogadjajId', d.id);
+
+        // Show on map if coordinates exist
+        if (typeof karta !== 'undefined') {
+            if (window.urednikDogadjajMarker) {
+                karta.removeLayer(window.urednikDogadjajMarker);
+                window.urednikDogadjajMarker = null;
+            }
+            if (d.koordinate) {
+                const match = String(d.koordinate).match(/POINT\s*\(\s*([\d.-]+)\s+([\d.-]+)\s*\)/i);
+                if (match) {
+                    const lng = parseFloat(match[1]);
+                    const lat = parseFloat(match[2]);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        window.urednikDogadjajMarker = L.marker([lat, lng])
+                            .addTo(karta)
+                            .bindPopup(`<b>Догађај #${d.id}</b><br>${escapeUrednikHtml(d.opis || '')}`)
+                            .openPopup();
+                        karta.panTo([lat, lng]);
+                    }
+                }
+            }
+        }
+
+        resultsDiv.hide();
+        detailPanel.show();
+    } catch (err) {
+        spinner.css('visibility', 'hidden');
+        console.error('Error loading urednik dogadjaj detail:', err);
+        alertArea.css('color', 'orange').text('Грешка при комуникацији са сервером').show();
+    }
+}
+
+async function updateUrednikDogadjaj() {
+    const id = $('#btn_update_urednik_dogadjaj').data('dogadjajId');
+    if (!id) return;
+
+    const msgDiv = $('#ud_edit_dogadjaj_msg');
+    const payload = {
+        opis: $('#ud_edit_dogadjaj_opis').val(),
+        pocetak: $('#ud_edit_dogadjaj_pocetak').val(),
+        kraj: $('#ud_edit_dogadjaj_kraj').val(),
+        izvor: $('#ud_edit_dogadjaj_izvor').val(),
+        zapis: $('#ud_edit_dogadjaj_zapis').val(),
+        koordinate: $('#ud_edit_dogadjaj_koordinate').val(),
+        stanje: $('#ud_edit_dogadjaj_stanje').val()
+    };
+
+    msgDiv.css('color', 'orange').text('Чувам...');
+
+    try {
+        const res = await fetch(`/api/urednik/dogadjaji/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            msgDiv.css('color', 'green').text(data.message || 'Сачувано!');
+            loadUrednikSummaryCounts();
+            setTimeout(() => {
+                handleUrednikDogadjajiSearch();
+            }, 1000);
+        } else {
+            msgDiv.css('color', 'red').text(data.error || 'Грешка');
+        }
+    } catch (err) {
+        console.error('Error updating urednik dogadjaj:', err);
+        msgDiv.css('color', 'red').text('Грешка на серверу');
+    }
+}
+
+async function deleteUrednikDogadjaj() {
+    const id = $('#btn_delete_urednik_dogadjaj').data('dogadjajId');
+    if (!id) return;
+
+    if (!confirm(`Да ли сте сигурни да желите да обришете догађај #${id}?`)) return;
+
+    const msgDiv = $('#ud_edit_dogadjaj_msg');
+    msgDiv.css('color', 'orange').text('Бришем...');
+
+    try {
+        const res = await fetch(`/api/urednik/dogadjaji/${id}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            msgDiv.css('color', 'green').text(data.message || 'Обрисано!');
+            if (window.urednikDogadjajMarker && typeof karta !== 'undefined') {
+                karta.removeLayer(window.urednikDogadjajMarker);
+                window.urednikDogadjajMarker = null;
+            }
+            loadUrednikSummaryCounts();
+            setTimeout(() => {
+                $('#ud_dogadjaj_detail_panel').hide();
+                handleUrednikDogadjajiSearch();
+            }, 1000);
+        } else {
+            msgDiv.css('color', 'red').text(data.error || 'Грешка');
+        }
+    } catch (err) {
+        console.error('Error deleting urednik dogadjaj:', err);
+        msgDiv.css('color', 'red').text('Грешка на серверу');
+    }
+}
+
+// ============================================
+// Zapisi Search, Edit, Delete (Urednik)
+// ============================================
+
+function initUrednikZapisiSearch() {
+    fetch('/api/v2/themes')
+        .then(r => r.json())
+        .then(data => {
+            const themes = data.themes || [];
+            const searchSelect = $('#uz_zapis_tema');
+            const editSelect = $('#uz_edit_zapis_tema');
+            searchSelect.find('option:not(:first)').remove();
+            editSelect.empty();
+
+            themes.forEach(theme => {
+                const id = theme.id || theme.ID;
+                const naziv = theme.naziv || theme.NAZIV;
+                if (id && naziv) {
+                    searchSelect.append(`<option value="${id}">${escapeUrednikHtml(naziv)}</option>`);
+                    editSelect.append(`<option value="${id}">${escapeUrednikHtml(naziv)}</option>`);
+                }
+            });
+        })
+        .catch(err => console.error('Error loading themes for urednik zapisi search:', err));
+
+    $('#form_pretraga_zapisa').off('submit').on('submit', handleUrednikZapisiSearch);
+
+    $('#btn_back_to_zapis_search').off('click').on('click', function () {
+        $('#uz_zapis_detail_panel').hide();
+        $('#uz_zapis_search_results').show();
+    });
+
+    $('#btn_update_urednik_zapis').off('click').on('click', updateUrednikZapis);
+    $('#btn_delete_urednik_zapis').off('click').on('click', deleteUrednikZapis);
+}
+
+function handleUrednikZapisiSearch(e) {
+    if (e) e.preventDefault();
+
+    const searchData = {
+        id: $('#uz_zapis_id').val(),
+        tema_id: $('#uz_zapis_tema').val(),
+        naziv: $('#uz_zapis_naziv').val(),
+        korisnik: $('#uz_zapis_korisnik').val(),
+        opis: $('#uz_zapis_opis').val(),
+        tagovi: $('#uz_zapis_tagovi').val(),
+        stanje: $('#uz_zapis_stanje').val()
+    };
+
+    const spinner = $('#uz_zapis_search_cekanje');
+    const alertArea = $('#uz_zapis_alert_area');
+    const resultsDiv = $('#uz_zapis_search_results');
+    const detailPanel = $('#uz_zapis_detail_panel');
+
+    spinner.css('visibility', 'visible');
+    alertArea.hide().text('');
+    detailPanel.hide();
+
+    fetch('/api/urednik/zapisi/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchData)
+    })
+        .then(r => r.json())
+        .then(data => {
+            spinner.css('visibility', 'hidden');
+            if (data.success) {
+                renderUrednikZapisiResults(data.results || []);
+            } else {
+                resultsDiv.hide();
+                alertArea.css('color', 'orange').text(data.error || 'Грешка при претрази').show();
+            }
+        })
+        .catch(err => {
+            spinner.css('visibility', 'hidden');
+            console.error('Error searching urednik zapisi:', err);
+            alertArea.css('color', 'orange').text('Грешка при комуникацији са сервером').show();
+        });
+}
+
+function renderUrednikZapisiResults(results) {
+    const tbody = $('#uz_zapis_search_body');
+    const resultsDiv = $('#uz_zapis_search_results');
+    const alertArea = $('#uz_zapis_alert_area');
+
+    tbody.empty();
+
+    if (results.length === 0) {
+        resultsDiv.hide();
+        alertArea.css('color', 'orange').text('Нема резултата').show();
+        return;
+    }
+
+    results.forEach(item => {
+        const pendingBadge = item.stanje === '0' ? ' <span class="badge badge-warning">чека</span>' : '';
+        const row = $(`
+            <tr style="border-bottom: 1px solid #eee; cursor: pointer;">
+                <td style="padding: 4px;">${item.id}</td>
+                <td style="padding: 4px;">${escapeUrednikHtml(item.naziv || '')}${pendingBadge}</td>
+                <td style="padding: 4px; font-size: 0.78rem;">${escapeUrednikHtml(item.tema || '')}</td>
+                <td style="padding: 4px; font-size: 0.78rem;">${escapeUrednikHtml(item.korisnik || '')}</td>
+            </tr>
+        `);
+
+        row.on('click', () => openUrednikZapisDetail(item.id));
+        tbody.append(row);
+    });
+
+    resultsDiv.show();
+}
+
+async function openUrednikZapisDetail(id) {
+    const spinner = $('#uz_zapis_search_cekanje');
+    const alertArea = $('#uz_zapis_alert_area');
+    const resultsDiv = $('#uz_zapis_search_results');
+    const detailPanel = $('#uz_zapis_detail_panel');
+
+    spinner.css('visibility', 'visible');
+    alertArea.hide().text('');
+    $('#uz_edit_zapis_msg').text('');
+
+    try {
+        const res = await fetch(`/api/urednik/zapisi/${id}`, { cache: 'no-store' }).then(r => r.json());
+        spinner.css('visibility', 'hidden');
+
+        if (!res.success || !res.zapis) {
+            alertArea.css('color', 'orange').text(res.error || 'Грешка при учитавању записа').show();
+            return;
+        }
+
+        const z = res.zapis;
+        $('#uz_edit_zapis_id_label').text(z.id);
+        $('#uz_edit_zapis_korisnik').text(z.korisnik || '-');
+        $('#uz_edit_zapis_download').attr('href', `/api/zapisi/${z.id}`);
+        $('#uz_edit_zapis_naziv').val(z.naziv || '');
+        $('#uz_edit_zapis_tema').val(String(z.tema_id || ''));
+        $('#uz_edit_zapis_stanje').val(z.stanje === '0' ? '0' : '1');
+        $('#uz_edit_zapis_opis').val(z.opis || '');
+        $('#uz_edit_zapis_tagovi').val(z.tagovi || '');
+
+        $('#btn_update_urednik_zapis').data('zapisId', z.id);
+        $('#btn_delete_urednik_zapis').data('zapisId', z.id);
+
+        resultsDiv.hide();
+        detailPanel.show();
+    } catch (err) {
+        spinner.css('visibility', 'hidden');
+        console.error('Error loading urednik zapis detail:', err);
+        alertArea.css('color', 'orange').text('Грешка при комуникацији са сервером').show();
+    }
+}
+
+async function updateUrednikZapis() {
+    const id = $('#btn_update_urednik_zapis').data('zapisId');
+    if (!id) return;
+
+    const msgDiv = $('#uz_edit_zapis_msg');
+    const payload = {
+        naziv: $('#uz_edit_zapis_naziv').val(),
+        tema_id: $('#uz_edit_zapis_tema').val(),
+        stanje: $('#uz_edit_zapis_stanje').val(),
+        opis: $('#uz_edit_zapis_opis').val(),
+        tagovi: $('#uz_edit_zapis_tagovi').val()
+    };
+
+    msgDiv.css('color', 'orange').text('Чувам...');
+
+    try {
+        const res = await fetch(`/api/urednik/zapisi/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            msgDiv.css('color', 'green').text(data.message || 'Сачувано!');
+            refreshAllZapisiCache();
+            loadUrednikSummaryCounts();
+            setTimeout(() => {
+                handleUrednikZapisiSearch();
+            }, 1000);
+        } else {
+            msgDiv.css('color', 'red').text(data.error || 'Грешка');
+        }
+    } catch (err) {
+        console.error('Error updating urednik zapis:', err);
+        msgDiv.css('color', 'red').text('Грешка на серверу');
+    }
+}
+
+async function deleteUrednikZapis() {
+    const id = $('#btn_delete_urednik_zapis').data('zapisId');
+    if (!id) return;
+
+    if (!confirm(`Да ли сте сигурни да желите да обришете запис #${id}?`)) return;
+
+    const msgDiv = $('#uz_edit_zapis_msg');
+    msgDiv.css('color', 'orange').text('Бришем...');
+
+    try {
+        const res = await fetch(`/api/urednik/zapisi/${id}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+
+        if (res.ok && data.success) {
+            msgDiv.css('color', 'green').text(data.message || 'Обрисано!');
+            refreshAllZapisiCache();
+            loadUrednikSummaryCounts();
+            setTimeout(() => {
+                $('#uz_zapis_detail_panel').hide();
+                handleUrednikZapisiSearch();
+            }, 1000);
+        } else {
+            msgDiv.css('color', 'red').text(data.error || 'Грешка');
+        }
+    } catch (err) {
+        console.error('Error deleting urednik zapis:', err);
+        msgDiv.css('color', 'red').text('Грешка на серверу');
+    }
+}
+
+// ============================================
+// Summary Counts & Backup Status (Urednik)
+// ============================================
+
+function initUrednikBackup() {
+    $('#btn_mark_backup').off('click').on('click', markBackupDone);
+}
+
+function updateUrednikBadge(selector, count) {
+    const el = $(selector);
+    if (!el.length) return;
+    if (count > 0) {
+        el.text(count).show();
+    } else {
+        el.hide().text('');
+    }
+}
+
+async function loadUrednikSummaryCounts() {
+    try {
+        const res = await fetch('/api/urednik/summary-counts', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!data.success) return;
+
+        updateUrednikBadge('#badge_reported_misljenja', data.reportedMisljenja || 0);
+        updateUrednikBadge('#badge_pending_stavki', data.pendingStavki || 0);
+        updateUrednikBadge('#badge_pending_dogadjaja', data.pendingDogadjaja || 0);
+        updateUrednikBadge('#badge_pending_zapisa', data.pendingZapisa || 0);
+
+        // Backup status
+        const b = data.backup || {};
+        const totalNew = b.newEntriesSinceBackup || 0;
+        const bd = b.breakdown || {};
+        const breakdownText = `ставки: ${bd.stavki || 0}, догађаја: ${bd.dogadjaji || 0}, записа: ${bd.zapisi || 0}, мишљења: ${bd.misljenja || 0}`;
+
+        let shortDate = 'нема';
+        let fullDate = 'није евидентиран';
+        if (b.lastBackupAt) {
+            const d = new Date(b.lastBackupAt);
+            if (!isNaN(d.getTime())) {
+                const dd = String(d.getDate()).padStart(2, '0');
+                const mm = String(d.getMonth() + 1).padStart(2, '0');
+                const yyyy = d.getFullYear();
+                const hh = String(d.getHours()).padStart(2, '0');
+                const mi = String(d.getMinutes()).padStart(2, '0');
+                shortDate = `${dd}.${mm}.${yyyy}.`;
+                fullDate = `${dd}.${mm}.${yyyy}. ${hh}:${mi}`;
+            }
+        }
+
+        const badgeColor = totalNew >= 50 ? 'badge-danger' : (totalNew > 0 ? 'badge-info' : 'badge-secondary');
+        $('#badge_backup_info')
+            .html(`(${shortDate} <span class="badge ${badgeColor} badge-pill" title="${breakdownText}">+${totalNew}</span>)`)
+            .attr('title', `Последњи бекап: ${fullDate} | Нових уноса: ${totalNew} (${breakdownText})`);
+
+        $('#bekap_last_date').text(fullDate);
+        $('#bekap_new_total').text(totalNew);
+        $('#bekap_new_breakdown').text(breakdownText);
+    } catch (err) {
+        console.error('Error loading urednik summary counts:', err);
+    }
+}
+
+async function markBackupDone() {
+    const alertsDiv = document.getElementById('bekap_alerts');
+    const btn = document.getElementById('btn_mark_backup');
+    if (btn) btn.disabled = true;
+
+    try {
+        const res = await fetch('/api/urednik/backup/mark', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            if (alertsDiv) showAlert(alertsDiv, data.message || 'Бекап је евидентиран.', 'success');
+            loadUrednikSummaryCounts();
+        } else {
+            if (alertsDiv) showAlert(alertsDiv, data.error || 'Грешка при евидентирању бекапа.', 'danger');
+        }
+    } catch (err) {
+        console.error('Error marking backup:', err);
+        if (alertsDiv) showAlert(alertsDiv, 'Грешка на серверу.', 'danger');
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }

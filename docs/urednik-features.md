@@ -2,14 +2,23 @@
 
 This document describes all features and behaviors of the "urednik" (editor/admin) tab for managing content approval, user administration, and system maintenance.
 
-**Last Updated:** 2026-11-22  
-**Files:** `sections/urednik.html`, `sections/urednik.js`
+**Last Updated:** 2026-11-25  
+**Files:** `sections/urednik.html`, `sections/urednik.js`, `server.js`
 
 ---
 
 ## Overview
 
-The urednik tab is an administrative interface accessible only to users with editor privileges (`urednik` field in `korisnik` table). It provides tools for content moderation, user management, and system maintenance.
+The urednik tab is an administrative interface accessible only to users with editor privileges (`urednik` field in `korisnik` table). It provides tools for content moderation, search/editing of existing records, user management, and system maintenance.
+
+### Accordion & Live Header Indicators
+- **Accordion ("harmonika"):** All collapsible sections inside `#urednik_content` use `data-parent="#urednik_content"`, so only one subsection can be open at a time to reduce accidental admin edits.
+- **Live Summary Counts (`GET /api/urednik/summary-counts`):** Loaded automatically when the Urednik tab opens and refreshed after moderation/edit/delete/backup actions. Displays pill badges next to headings before expanding:
+  - `пријављена мишљења`: red badge (`#badge_reported_misljenja`) when reported opinions > 0
+  - `одобравање ставки`: yellow badge (`#badge_pending_stavki`) when pending items > 0
+  - `одобравање догађаја`: yellow badge (`#badge_pending_dogadjaja`) when pending events > 0
+  - `одобравање записа`: yellow badge (`#badge_pending_zapisa`) when pending records > 0
+  - `покретање бекапа`: compact date of last backup + `+N` new entries badge (`#badge_backup_info`) with breakdown tooltip
 
 ---
 
@@ -100,27 +109,26 @@ WHERE id = @theme_id
 
 ---
 
-## 5. Prijavljene Primjedbe (Reported Comments)
+## 5. Prijavljena Mišljenja (Reported Opinions)
 
 ### Purpose
-Review and moderate user-reported comments.
+Review and moderate user-reported opinions (comments with `downvote_count > 0`).
 
 ### Display
 
+**Header Badge:** `#badge_reported_misljenja` (red pill badge shown when count > 0)  
 **Container:** `#primedbe_body`  
 **Loading:** `#primedbe_loading`  
-**Alerts:** `#primedbe_alerts`
+**Alerts:** `#primedbe_alerts` (shows `"Нема пријављених мишљења."` when empty)
 
 ### Behavior
 
 **On Section Expand:**
-- Loads reported comments
-- Displays comment content, reporter, reason
+- Loads reported comments from `GET /api/urednik/comments/reported`
+- Displays comment content, author, target ID/theme, upvotes/downvotes
 
 **Actions:**
-- View comment context
-- Delete comment
-- Dismiss report
+- Delete comment (`DELETE /api/comments/:id`) and refresh summary counts
 
 ---
 
@@ -163,9 +171,10 @@ Search and manage user accounts.
 - Пријава (`u_detail_count`) - Login count
 
 **Activity Statistics:**
-- Ставки (`u_detail_stavki`) - Items count
-- Догађаја (`u_detail_dogadjaja`) - Events count
-- Записа (`u_detail_zapisa`) - Records count
+- Ставки (`u_detail_stavki`) - Items count (`brojac_stavki`)
+- Догађаја (`u_detail_dogadjaja`) - Events count (`brojac_dogadjaja`)
+- Записа (`u_detail_zapisa`) - Records count (`brojac_zapisa`)
+- Мишљења (`u_detail_misljenja`) - Opinions/comments count (`brojac_misljenja`, counted live from `comments WHERE creator = k.id`)
 
 #### Edit Fields
 
@@ -187,12 +196,59 @@ Search and manage user accounts.
 
 ---
 
-## 7. Pretraga Stavki (Item Search)
+## 7. Pretraga Stavki (Item Search & Edit)
 
-### Status
-**Placeholder** - Not yet implemented
+### Purpose
+Search existing map items across themes and edit or delete them via the left sidebar (`openStavkaEditForm`).
 
-**Purpose:** Advanced search for map items across all themes
+### API Endpoints
+- **Search:** `POST /api/search`
+- **Update:** `PUT /api/urednik/stavke/:tabela/:id`
+- **Delete:** `DELETE /api/urednik/stavke/:tabela/:id`
+
+---
+
+## 7b. Pretraga Događaja (Event Search, Edit & Delete)
+
+### Purpose
+Allow editors to search all events (both approved `stanje='1'` and pending `stanje='0'`), inspect details, edit fields, or delete inaccurate events.
+
+### Search Form (`#form_pretraga_dogadjaja`)
+- Filters: `ID`, `корисник`, `опис`, `од` / `до` (flatpickr datetime), `просторно`, `временски`, `стање`, `извор`
+- Results table (`#ud_dogadjaj_search_body`): shows ID, truncated description (with yellow `чека` badge for pending rows), start date, username.
+
+### Detail / Edit Panel (`#ud_dogadjaj_detail_panel`)
+- Clicking a row opens the inline edit form (and pans the map to a marker if coordinates exist).
+- Editable fields: `опис`, `почетак`, `крај`, `извор`, `запис`, `стање`, `координате`.
+- Actions: **Измијени** (`#btn_update_urednik_dogadjaj`) and **Обриши** (`#btn_delete_urednik_dogadjaj`, with confirmation; also decrements user's `brojac_dogadjaja`).
+
+### API Endpoints
+- **Search:** `POST /api/urednik/dogadjaji/search`
+- **Get Details:** `GET /api/urednik/dogadjaji/:id`
+- **Update:** `PUT /api/urednik/dogadjaji/:id`
+- **Delete:** `DELETE /api/urednik/dogadjaji/:id`
+
+---
+
+## 7c. Pretraga Zapisa (Record Search, Edit & Delete)
+
+### Purpose
+Allow editors to search all uploaded records (both approved and pending), download/inspect the attached file, edit metadata, or delete records.
+
+### Search Form (`#form_pretraga_zapisa`)
+- Filters: `ID`, `тема`, `назив`, `корисник`, `опис`, `тагови`, `стање`
+- Results table (`#uz_zapis_search_body`): shows ID, title (with yellow `чека` badge for pending rows), theme, username.
+
+### Detail / Edit Panel (`#uz_zapis_detail_panel`)
+- Clicking a row opens the inline edit form with a direct file download link (`/api/zapisi/:id`).
+- Editable fields: `назив`, `тема`, `стање`, `опис`, `тагови`.
+- Actions: **Измијени** (`#btn_update_urednik_zapis`) and **Обриши** (`#btn_delete_urednik_zapis`, with confirmation; deletes physical file from disk, nulls `dogadjaji.zapis` references, and decrements user's `brojac_zapisa`).
+
+### API Endpoints
+- **Search:** `POST /api/urednik/zapisi/search`
+- **Get Details:** `GET /api/urednik/zapisi/:id`
+- **Update:** `PUT /api/urednik/zapisi/:id`
+- **Delete:** `DELETE /api/urednik/zapisi/:id`
 
 ---
 
@@ -387,12 +443,22 @@ WHERE id IN (@delete_ids)
 
 ---
 
-## 11. Pokretanje Bekapa (Backup Trigger)
+## 11. Pokretanje Bekapa (Backup Status & Tracking)
 
-### Status
-**Placeholder** - Not yet implemented
+### Purpose
+Track the timestamp of the last completed database backup and monitor how many new entries (items, events, records, opinions) have been added since then, helping admins decide whether backup frequency should be adjusted.
 
-**Purpose:** Manually trigger database backup
+### Header Indicator
+- `#badge_backup_info` next to `покретање бекапа` displays `(<date> +<count>)` (blue badge when > 0, red when >= 50, tooltip with breakdown).
+
+### Expanded Panel (`#urednik_pokretanje_bekapa_podaci`)
+- Displays **Последњи бекап** (`#bekap_last_date`), **Нових уноса од последњег бекапа** (`#bekap_new_total`), and breakdown (`#bekap_new_breakdown`: `ставки`, `догађаја`, `записа`, `мишљења`).
+- **Button:** `#btn_mark_backup` (`евидентирај урађен бекап`) records a new backup timestamp and resets the counter.
+
+### API Endpoints & Database
+- **Summary:** `GET /api/urednik/summary-counts`
+- **Mark Backup:** `POST /api/urednik/backup/mark`
+- **Database Table:** `bekap_log (id, created_at, korisnik_id, napomena)` (auto-created via `ensureBekapLogTable(pool)`)
 
 ---
 
@@ -505,3 +571,4 @@ showAlert($('#novosti_alerts'), 'Success!', 'success');
 |------|---------|-------------|
 | 2025-12-31 | Initial documentation created | AI Assistant |
 | 2026-11-22 | Added Uplate (monthly donations & technical costs) admin section | AI Assistant |
+| 2026-11-25 | Added accordion behavior, live summary badges, user opinions count, Pretraga Događaja/Zapisa (search/edit/delete), renamed Prijavljena Mišljenja, and backup tracking (`bekap_log`) | AI Assistant |

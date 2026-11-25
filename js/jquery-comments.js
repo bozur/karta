@@ -147,7 +147,7 @@
                 newText: 'ново',
                 viewAllRepliesText: 'погледај свих __replyCount__ одговора',
                 hideRepliesText: 'сакриј одговоре',
-                noCommentsText: 'нема примједби',
+                noCommentsText: 'нема мишљења',
                 noAttachmentsText: 'нема записа',
                 attachmentDropText: 'овдхе спусти запис',
                 textFormatter: function (text) { return text },

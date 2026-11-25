@@ -2959,6 +2959,485 @@ app.post('/api/urednik/dogadjaji/process', async (req, res) => {
 });
 
 // ============================================
+// Urednik (Editor) API Routes - Zapisi Search, Edit, Delete
+// ============================================
+
+// POST /api/urednik/zapisi/search - Search all zapisi (approved and pending)
+app.post('/api/urednik/zapisi/search', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id, naziv, tema_id, korisnik, opis, tagovi, stanje } = req.body;
+        const pool = await poolPromise;
+        const request = pool.request();
+
+        let query = `
+            SELECT z.id, z.naziv, z.opis, z.tema_id, t.naziv AS tema, z.korisnik_id, k.korisnik,
+                   z.tagovi, z.file_type, z.file_size, z.stanje, z.created_at
+            FROM zapisi z
+            INNER JOIN teme t ON z.tema_id = t.id
+            INNER JOIN korisnik k ON z.korisnik_id = k.id
+        `;
+        const conditions = [];
+
+        if (id && /^\d+$/.test(String(id).trim())) {
+            conditions.push('z.id = @id');
+            request.input('id', sql.Int, parseInt(String(id).trim(), 10));
+        }
+        if (naziv && naziv.trim()) {
+            conditions.push('z.naziv LIKE @naziv');
+            request.input('naziv', sql.NVarChar, `%${naziv.trim()}%`);
+        }
+        if (tema_id && /^\d+$/.test(String(tema_id).trim()) && String(tema_id).trim() !== '0') {
+            conditions.push('z.tema_id = @tema_id');
+            request.input('tema_id', sql.Int, parseInt(String(tema_id).trim(), 10));
+        }
+        if (korisnik && korisnik.trim()) {
+            conditions.push('k.korisnik LIKE @korisnik');
+            request.input('korisnik', sql.NVarChar, `%${korisnik.trim()}%`);
+        }
+        if (opis && opis.trim()) {
+            conditions.push('z.opis LIKE @opis');
+            request.input('opis', sql.NVarChar, `%${opis.trim()}%`);
+        }
+        if (tagovi && tagovi.trim()) {
+            conditions.push('z.tagovi LIKE @tagovi');
+            request.input('tagovi', sql.NVarChar, `%${tagovi.trim()}%`);
+        }
+        if (stanje === '0' || stanje === '1') {
+            conditions.push('z.stanje = @stanje');
+            request.input('stanje', sql.NVarChar, stanje);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
+        }
+        query += ' ORDER BY z.id DESC LIMIT 100';
+
+        const result = await request.query(query);
+        res.set('Cache-Control', 'no-store');
+        res.json({ success: true, results: result.recordset });
+    } catch (err) {
+        console.error('Error searching urednik zapisi:', err);
+        res.status(500).json({ error: 'Грешка при претрази записа' });
+    }
+});
+
+// GET /api/urednik/zapisi/:id - Get single zapis details
+app.get('/api/urednik/zapisi/:id', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        if (!/^\d+$/.test(id)) {
+            return res.status(400).json({ error: 'Неисправан ID записа' });
+        }
+
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id', sql.Int, parseInt(id, 10))
+            .query(`
+                SELECT z.id, z.naziv, z.opis, z.tema_id, t.naziv AS tema, z.korisnik_id, k.korisnik,
+                       z.tagovi, z.file_type, z.file_size, z.stanje, z.created_at
+                FROM zapisi z
+                INNER JOIN teme t ON z.tema_id = t.id
+                INNER JOIN korisnik k ON z.korisnik_id = k.id
+                WHERE z.id = @id
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Запис није пронађен' });
+        }
+
+        res.set('Cache-Control', 'no-store');
+        res.json({ success: true, zapis: result.recordset[0] });
+    } catch (err) {
+        console.error('Error fetching urednik zapis:', err);
+        res.status(500).json({ error: 'Грешка при учитавању записа' });
+    }
+});
+
+// PUT /api/urednik/zapisi/:id - Edit zapis metadata
+app.put('/api/urednik/zapisi/:id', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        if (!/^\d+$/.test(id)) {
+            return res.status(400).json({ error: 'Неисправан ID записа' });
+        }
+
+        const { naziv, tema_id, opis, tagovi, stanje } = req.body;
+        if (!naziv || !naziv.trim()) {
+            return res.status(400).json({ error: 'Назив је обавезан' });
+        }
+        if (naziv.trim().length > 255) {
+            return res.status(400).json({ error: 'Назив може имати највише 255 карактера' });
+        }
+        if (!tema_id || !/^\d+$/.test(String(tema_id))) {
+            return res.status(400).json({ error: 'Тема је обавезна' });
+        }
+        if (!opis || !opis.trim()) {
+            return res.status(400).json({ error: 'Опис је обавезан' });
+        }
+        if (opis.trim().length > 500) {
+            return res.status(400).json({ error: 'Опис може имати највише 500 карактера' });
+        }
+        if (!tagovi || !tagovi.trim()) {
+            return res.status(400).json({ error: 'Тагови су обавезни' });
+        }
+        if (tagovi.trim().length > 255) {
+            return res.status(400).json({ error: 'Тагови могу имати највише 255 карактера' });
+        }
+
+        const pool = await poolPromise;
+        const temaCheck = await pool.request()
+            .input('tema_id', sql.Int, parseInt(String(tema_id), 10))
+            .query('SELECT id FROM teme WHERE id = @tema_id');
+        if (temaCheck.recordset.length === 0) {
+            return res.status(400).json({ error: 'Неисправна тема' });
+        }
+
+        const reqUpdate = pool.request()
+            .input('id', sql.Int, parseInt(id, 10))
+            .input('naziv', sql.NVarChar, naziv.trim())
+            .input('tema_id', sql.Int, parseInt(String(tema_id), 10))
+            .input('opis', sql.NVarChar, opis.trim())
+            .input('tagovi', sql.NVarChar, tagovi.trim());
+
+        let updateSql = `
+            UPDATE zapisi
+            SET naziv = @naziv, tema_id = @tema_id, opis = @opis, tagovi = @tagovi
+        `;
+        if (stanje === '0' || stanje === '1') {
+            reqUpdate.input('stanje', sql.NVarChar, stanje);
+            updateSql += ', stanje = @stanje';
+        }
+        updateSql += ' WHERE id = @id';
+
+        const result = await reqUpdate.query(updateSql);
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Запис није пронађен' });
+        }
+
+        res.json({ success: true, message: 'Запис је успјешно измијењен' });
+    } catch (err) {
+        console.error('Error updating urednik zapis:', err);
+        res.status(500).json({ error: 'Грешка при измјени записа' });
+    }
+});
+
+// DELETE /api/urednik/zapisi/:id - Delete zapis and its file
+app.delete('/api/urednik/zapisi/:id', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        if (!/^\d+$/.test(id)) {
+            return res.status(400).json({ error: 'Неисправан ID записа' });
+        }
+
+        const pool = await poolPromise;
+        const existing = await pool.request()
+            .input('id', sql.Int, parseInt(id, 10))
+            .query('SELECT id, file_path, korisnik_id FROM zapisi WHERE id = @id');
+
+        if (existing.recordset.length === 0) {
+            return res.status(404).json({ error: 'Запис није пронађен' });
+        }
+
+        const record = existing.recordset[0];
+        if (record.file_path && fs.existsSync(record.file_path)) {
+            try {
+                fs.unlinkSync(record.file_path);
+            } catch (fileErr) {
+                console.error(`Error deleting zapis file ${record.file_path}:`, fileErr);
+            }
+        }
+
+        await pool.request()
+            .input('id', sql.Int, parseInt(id, 10))
+            .query('UPDATE dogadjaji SET zapis = NULL WHERE zapis = @id');
+
+        await pool.request()
+            .input('id', sql.Int, parseInt(id, 10))
+            .query('DELETE FROM zapisi WHERE id = @id');
+
+        if (record.korisnik_id) {
+            await pool.request()
+                .input('userId', sql.Int, record.korisnik_id)
+                .query('UPDATE korisnik SET brojac_zapisa = GREATEST(COALESCE(brojac_zapisa, 0) - 1, 0) WHERE id = @userId');
+        }
+
+        res.json({ success: true, message: 'Запис је успјешно обрисан' });
+    } catch (err) {
+        console.error('Error deleting urednik zapis:', err);
+        res.status(500).json({ error: 'Грешка при брисању записа' });
+    }
+});
+
+// ============================================
+// Urednik (Editor) API Routes - Dogadjaji Search, Edit, Delete
+// ============================================
+
+// POST /api/urednik/dogadjaji/search - Search all dogadjaji (approved and pending)
+app.post('/api/urednik/dogadjaji/search', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id, opis, pocetak, kraj, izvor, korisnik, prostorno, vremenski, stanje } = req.body;
+        const pool = await poolPromise;
+        const request = pool.request();
+
+        let query = `
+            SELECT d.id, d.opis, d.pocetak, d.kraj, d.izvor, d.zapis, z.naziv AS zapis_naziv,
+                   d.koordinate, d.stanje, d.unos, d.korisnik_id, k.korisnik
+            FROM dogadjaji d
+            INNER JOIN korisnik k ON d.korisnik_id = k.id
+            LEFT JOIN zapisi z ON d.zapis = z.id
+        `;
+        const conditions = [];
+
+        if (id && /^\d+$/.test(String(id).trim())) {
+            conditions.push('d.id = @id');
+            request.input('id', sql.Int, parseInt(String(id).trim(), 10));
+        }
+        if (opis && opis.trim()) {
+            conditions.push('d.opis LIKE @opis');
+            request.input('opis', sql.NVarChar, `%${opis.trim()}%`);
+        }
+        if (pocetak && pocetak.trim()) {
+            const pVal = pocetak.trim().length === 16 ? pocetak.trim() + ':00' : pocetak.trim();
+            conditions.push('d.pocetak >= @pocetak');
+            request.input('pocetak', sql.DateTime2, pVal);
+        }
+        if (kraj && kraj.trim()) {
+            const kVal = kraj.trim().length === 16 ? kraj.trim() + ':00' : kraj.trim();
+            conditions.push('d.kraj <= @kraj');
+            request.input('kraj', sql.DateTime2, kVal);
+        }
+        if (izvor && izvor.trim()) {
+            const izvVal = izvor.trim();
+            if (izvVal === '1') {
+                conditions.push("d.izvor IS NOT NULL AND d.izvor != ''");
+            } else if (izvVal === '0') {
+                conditions.push("(d.izvor IS NULL OR d.izvor = '')");
+            } else {
+                conditions.push('d.izvor LIKE @izvor');
+                request.input('izvor', sql.NVarChar, `%${izvVal}%`);
+            }
+        }
+        if (korisnik && korisnik.trim()) {
+            conditions.push('k.korisnik LIKE @korisnik');
+            request.input('korisnik', sql.NVarChar, `%${korisnik.trim()}%`);
+        }
+        if (prostorno === '1') {
+            conditions.push("d.koordinate IS NOT NULL AND d.koordinate != ''");
+        } else if (prostorno === '0') {
+            conditions.push("(d.koordinate IS NULL OR d.koordinate = '')");
+        }
+        if (vremenski === '1') {
+            conditions.push('d.kraj IS NOT NULL AND d.kraj != d.pocetak');
+        } else if (vremenski === '0') {
+            conditions.push('(d.kraj IS NULL OR d.kraj = d.pocetak)');
+        }
+        if (stanje === '0' || stanje === '1') {
+            conditions.push('d.stanje = @stanje');
+            request.input('stanje', sql.NVarChar, stanje);
+        }
+
+        if (conditions.length > 0) {
+            query += ' WHERE ' + conditions.join(' AND ');
+        }
+        query += ' ORDER BY d.id DESC LIMIT 100';
+
+        const result = await request.query(query);
+        const results = result.recordset.map(row => ({
+            id: row.id,
+            opis: row.opis,
+            pocetak: row.pocetak,
+            kraj: row.kraj,
+            pocetak_fmt: row.pocetak ? new Date(row.pocetak).toLocaleString('sr-RS') : '',
+            kraj_fmt: row.kraj ? new Date(row.kraj).toLocaleString('sr-RS') : '',
+            izvor: row.izvor,
+            zapis: row.zapis,
+            zapis_naziv: row.zapis_naziv || null,
+            koordinate: row.koordinate,
+            stanje: row.stanje,
+            korisnik: row.korisnik,
+            unos: row.unos ? new Date(row.unos).toLocaleString('sr-RS') : ''
+        }));
+
+        res.set('Cache-Control', 'no-store');
+        res.json({ success: true, results });
+    } catch (err) {
+        console.error('Error searching urednik dogadjaji:', err);
+        res.status(500).json({ error: 'Грешка при претрази догађаја' });
+    }
+});
+
+// GET /api/urednik/dogadjaji/:id - Get single dogadjaj details
+app.get('/api/urednik/dogadjaji/:id', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        if (!/^\d+$/.test(id)) {
+            return res.status(400).json({ error: 'Неисправан ID догађаја' });
+        }
+
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id', sql.Int, parseInt(id, 10))
+            .query(`
+                SELECT d.id, d.opis, d.pocetak, d.kraj, d.izvor, d.zapis, z.naziv AS zapis_naziv,
+                       d.koordinate, d.stanje, d.unos, d.korisnik_id, k.korisnik
+                FROM dogadjaji d
+                INNER JOIN korisnik k ON d.korisnik_id = k.id
+                LEFT JOIN zapisi z ON d.zapis = z.id
+                WHERE d.id = @id
+            `);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Догађај није пронађен' });
+        }
+
+        res.set('Cache-Control', 'no-store');
+        res.json({ success: true, dogadjaj: result.recordset[0] });
+    } catch (err) {
+        console.error('Error fetching urednik dogadjaj:', err);
+        res.status(500).json({ error: 'Грешка при учитавању догађаја' });
+    }
+});
+
+// PUT /api/urednik/dogadjaji/:id - Edit dogadjaj
+app.put('/api/urednik/dogadjaji/:id', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        if (!/^\d+$/.test(id)) {
+            return res.status(400).json({ error: 'Неисправан ID догађаја' });
+        }
+
+        const { opis, pocetak, kraj, izvor, zapis, koordinate, stanje } = req.body;
+        if (!opis || opis.trim().length < 10) {
+            return res.status(400).json({ error: 'Опис мора имати најмање 10 карактера' });
+        }
+        if (opis.trim().length > 500) {
+            return res.status(400).json({ error: 'Опис може имати највише 500 карактера' });
+        }
+        if (!pocetak || !String(pocetak).trim()) {
+            return res.status(400).json({ error: 'Почетак је обавезан' });
+        }
+        if (!izvor || !izvor.trim()) {
+            return res.status(400).json({ error: 'Извор је обавезан' });
+        }
+        if (izvor.trim().length > 500) {
+            return res.status(400).json({ error: 'Извор може имати највише 500 карактера' });
+        }
+
+        let parsedZapis = null;
+        if (zapis !== undefined && zapis !== null && String(zapis).trim() !== '') {
+            const trimmedZapis = String(zapis).trim();
+            if (!/^\d+$/.test(trimmedZapis)) {
+                return res.status(400).json({ error: 'Неисправан ID записа' });
+            }
+            parsedZapis = parseInt(trimmedZapis, 10);
+        }
+
+        let pVal = String(pocetak).trim();
+        if (pVal.length === 16) pVal += ':00';
+        let kVal = kraj && String(kraj).trim() ? String(kraj).trim() : null;
+        if (kVal && kVal.length === 16) kVal += ':00';
+
+        const pool = await poolPromise;
+        const reqUpdate = pool.request()
+            .input('id', sql.Int, parseInt(id, 10))
+            .input('opis', sql.NVarChar, opis.trim())
+            .input('pocetak', sql.DateTime2, pVal)
+            .input('kraj', sql.DateTime2, kVal)
+            .input('izvor', sql.NVarChar, izvor.trim())
+            .input('zapis', sql.Int, parsedZapis)
+            .input('koordinate', sql.NVarChar, koordinate && String(koordinate).trim() ? String(koordinate).trim() : null);
+
+        let updateSql = `
+            UPDATE dogadjaji
+            SET opis = @opis, pocetak = @pocetak, kraj = @kraj,
+                izvor = @izvor, zapis = @zapis, koordinate = @koordinate
+        `;
+        if (stanje === '0' || stanje === '1') {
+            reqUpdate.input('stanje', sql.NVarChar, stanje);
+            updateSql += ', stanje = @stanje';
+        }
+        updateSql += ' WHERE id = @id';
+
+        const result = await reqUpdate.query(updateSql);
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Догађај није пронађен' });
+        }
+
+        res.json({ success: true, message: 'Догађај је успјешно измијењен' });
+    } catch (err) {
+        console.error('Error updating urednik dogadjaj:', err);
+        res.status(500).json({ error: 'Грешка при измјени догађаја' });
+    }
+});
+
+// DELETE /api/urednik/dogadjaji/:id - Delete dogadjaj
+app.delete('/api/urednik/dogadjaji/:id', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const { id } = req.params;
+        if (!/^\d+$/.test(id)) {
+            return res.status(400).json({ error: 'Неисправан ID догађаја' });
+        }
+
+        const pool = await poolPromise;
+        const existing = await pool.request()
+            .input('id', sql.Int, parseInt(id, 10))
+            .query('SELECT id, korisnik_id FROM dogadjaji WHERE id = @id');
+
+        if (existing.recordset.length === 0) {
+            return res.status(404).json({ error: 'Догађај није пронађен' });
+        }
+
+        const record = existing.recordset[0];
+        await pool.request()
+            .input('id', sql.Int, parseInt(id, 10))
+            .query('DELETE FROM dogadjaji WHERE id = @id');
+
+        if (record.korisnik_id) {
+            await pool.request()
+                .input('userId', sql.Int, record.korisnik_id)
+                .query('UPDATE korisnik SET brojac_dogadjaja = GREATEST(COALESCE(brojac_dogadjaja, 0) - 1, 0) WHERE id = @userId');
+        }
+
+        res.json({ success: true, message: 'Догађај је успјешно обрисан' });
+    } catch (err) {
+        console.error('Error deleting urednik dogadjaj:', err);
+        res.status(500).json({ error: 'Грешка при брисању догађаја' });
+    }
+});
+
+// ============================================
 // Stavke (Theme Items) Urednik API Routes
 // ============================================
 
@@ -3380,16 +3859,24 @@ app.get('/api/urednik/users/:id', async (req, res) => {
         const { id } = req.params;
         const pool = await poolPromise;
 
-        // 1. Fetch user data including new administration fields
+        // 1. Fetch user data including new administration fields and comment count
         const userResult = await pool.request()
             .input('id', sql.Int, id)
-            .query('SELECT id, ime, prezime, korisnik, eposta, slika_url, pristup0, pristup1, brojac_pristupa, brojac_stavki, brojac_zapisa, brojac_dogadjaja, moze_ucitati, urednik, blokiran, napomena FROM korisnik WHERE id = @id');
+            .query(`
+                SELECT k.id, k.ime, k.prezime, k.korisnik, k.eposta, k.slika_url, k.pristup0, k.pristup1,
+                       k.brojac_pristupa, k.brojac_stavki, k.brojac_zapisa, k.brojac_dogadjaja,
+                       (SELECT COUNT(*) FROM comments c WHERE c.creator = k.id) AS brojac_misljenja,
+                       k.moze_ucitati, k.urednik, k.blokiran, k.napomena
+                FROM korisnik k
+                WHERE k.id = @id
+            `);
 
         if (userResult.recordset.length === 0) {
             return res.status(404).json({ error: 'Корисник није пронађен' });
         }
 
         const user = userResult.recordset[0];
+        user.brojac_misljenja = parseInt(user.brojac_misljenja, 10) || 0;
         res.json({ success: true, user });
     } catch (err) {
         console.error('Error fetching user details:', err);
@@ -3430,6 +3917,170 @@ app.post('/api/urednik/users/update', async (req, res) => {
     } catch (err) {
         console.error('Error updating user:', err);
         res.status(500).json({ error: 'Грешка при ажурирању корисника' });
+    }
+});
+
+// ============================================
+// Urednik (Editor) API Routes - Summary Counts & Backup Tracking
+// ============================================
+
+async function ensureBekapLogTable(pool) {
+    await pool.request().query(`
+        CREATE TABLE IF NOT EXISTS bekap_log (
+            id SERIAL PRIMARY KEY,
+            created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            korisnik_id INTEGER,
+            napomena VARCHAR(255)
+        )
+    `);
+}
+
+// GET /api/urednik/summary-counts - Pending approval counts, reported opinions count, and backup status
+app.get('/api/urednik/summary-counts', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const pool = await poolPromise;
+        await ensureBekapLogTable(pool);
+
+        const [
+            pendingDogadjajiRes,
+            pendingZapisiRes,
+            reportedRes,
+            themesRes,
+            lastBackupRes
+        ] = await Promise.all([
+            pool.request().query("SELECT COUNT(*) AS count FROM dogadjaji WHERE stanje = '0'"),
+            pool.request().query("SELECT COUNT(*) AS count FROM zapisi WHERE stanje = '0'"),
+            pool.request().query('SELECT COUNT(*) AS count FROM comments WHERE downvote_count > 0'),
+            pool.request().query('SELECT id FROM teme'),
+            pool.request().query('SELECT id, created_at, napomena FROM bekap_log ORDER BY created_at DESC LIMIT 1')
+        ]);
+
+        const pendingDogadjaja = parseInt(pendingDogadjajiRes.recordset[0]?.count, 10) || 0;
+        const pendingZapisa = parseInt(pendingZapisiRes.recordset[0]?.count, 10) || 0;
+        const reportedMisljenja = parseInt(reportedRes.recordset[0]?.count, 10) || 0;
+        const themes = themesRes.recordset || [];
+        const lastBackupRow = lastBackupRes.recordset[0] || null;
+        const lastBackupAt = lastBackupRow ? lastBackupRow.created_at : null;
+
+        // Pending stavki across all themes + new stavki since last backup in one pass per theme
+        let pendingStavki = 0;
+        let newStavki = 0;
+
+        for (const theme of themes) {
+            const tableName = `Table_${theme.id}`;
+            try {
+                if (lastBackupAt) {
+                    const r = await pool.request()
+                        .input('since', sql.DateTime2, lastBackupAt)
+                        .query(`
+                            SELECT
+                                SUM(CASE WHEN stanje = '0' THEN 1 ELSE 0 END) AS pending_cnt,
+                                SUM(CASE WHEN dodao_vrijeme > @since THEN 1 ELSE 0 END) AS new_cnt
+                            FROM ${tableName}
+                        `);
+                    pendingStavki += parseInt(r.recordset[0]?.pending_cnt, 10) || 0;
+                    newStavki += parseInt(r.recordset[0]?.new_cnt, 10) || 0;
+                } else {
+                    const r = await pool.request().query(`
+                        SELECT
+                            SUM(CASE WHEN stanje = '0' THEN 1 ELSE 0 END) AS pending_cnt,
+                            COUNT(*) AS total_cnt
+                        FROM ${tableName}
+                    `);
+                    pendingStavki += parseInt(r.recordset[0]?.pending_cnt, 10) || 0;
+                    newStavki += parseInt(r.recordset[0]?.total_cnt, 10) || 0;
+                }
+            } catch (e) {
+                // Table might not exist yet for new themes
+            }
+        }
+
+        let newDogadjaji = 0;
+        let newZapisi = 0;
+        let newMisljenja = 0;
+
+        if (lastBackupAt) {
+            const [dRes, zRes, cRes] = await Promise.all([
+                pool.request().input('since', sql.DateTime2, lastBackupAt)
+                    .query('SELECT COUNT(*) AS count FROM dogadjaji WHERE unos > @since'),
+                pool.request().input('since', sql.DateTime2, lastBackupAt)
+                    .query('SELECT COUNT(*) AS count FROM zapisi WHERE created_at > @since'),
+                pool.request().input('since', sql.DateTime2, lastBackupAt)
+                    .query('SELECT COUNT(*) AS count FROM comments WHERE created > @since')
+            ]);
+            newDogadjaji = parseInt(dRes.recordset[0]?.count, 10) || 0;
+            newZapisi = parseInt(zRes.recordset[0]?.count, 10) || 0;
+            newMisljenja = parseInt(cRes.recordset[0]?.count, 10) || 0;
+        } else {
+            const [dRes, zRes, cRes] = await Promise.all([
+                pool.request().query('SELECT COUNT(*) AS count FROM dogadjaji'),
+                pool.request().query('SELECT COUNT(*) AS count FROM zapisi'),
+                pool.request().query('SELECT COUNT(*) AS count FROM comments')
+            ]);
+            newDogadjaji = parseInt(dRes.recordset[0]?.count, 10) || 0;
+            newZapisi = parseInt(zRes.recordset[0]?.count, 10) || 0;
+            newMisljenja = parseInt(cRes.recordset[0]?.count, 10) || 0;
+        }
+
+        const newEntriesSinceBackup = newStavki + newDogadjaji + newZapisi + newMisljenja;
+
+        res.set('Cache-Control', 'no-store');
+        res.json({
+            success: true,
+            pendingStavki,
+            pendingDogadjaja,
+            pendingZapisa,
+            reportedMisljenja,
+            backup: {
+                lastBackupAt,
+                napomena: lastBackupRow ? lastBackupRow.napomena : null,
+                newEntriesSinceBackup,
+                breakdown: {
+                    stavki: newStavki,
+                    dogadjaji: newDogadjaji,
+                    zapisi: newZapisi,
+                    misljenja: newMisljenja
+                }
+            }
+        });
+    } catch (err) {
+        console.error('Error fetching urednik summary counts:', err);
+        res.status(500).json({ error: 'Грешка при учитавању прегледа' });
+    }
+});
+
+// POST /api/urednik/backup/mark - Record a completed backup timestamp
+app.post('/api/urednik/backup/mark', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const napomena = req.body && req.body.napomena ? String(req.body.napomena).trim().slice(0, 255) : null;
+        const pool = await poolPromise;
+        await ensureBekapLogTable(pool);
+
+        const result = await pool.request()
+            .input('userId', sql.Int, req.session.user.id)
+            .input('napomena', sql.NVarChar, napomena)
+            .query(`
+                INSERT INTO bekap_log (korisnik_id, napomena)
+                VALUES (@userId, @napomena)
+                RETURNING id, created_at, napomena
+            `);
+
+        res.json({
+            success: true,
+            message: 'Бекап је евидентиран',
+            backup: result.recordset[0]
+        });
+    } catch (err) {
+        console.error('Error marking backup:', err);
+        res.status(500).json({ error: 'Грешка при евидентирању бекапа' });
     }
 });
 

@@ -23,7 +23,7 @@
         <span><strong>унос новости</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_novosti_podaci"></span></span>
     </div>
-    <div id="urednik_novosti_podaci" class="collapse">
+    <div id="urednik_novosti_podaci" class="collapse" data-parent="#urednik_content">
         <div class="form-group mb-1 mt-1">
             <textarea id="novosti_opis" class="form-control" rows="3" placeholder="опис" maxlength="4000"
                 style="font-size: 0.9rem;"></textarea>
@@ -59,7 +59,7 @@
         <span><strong>нова тема</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_nova_tema_podaci"></span></span>
     </div>
-    <div id="urednik_nova_tema_podaci" class="collapse">
+    <div id="urednik_nova_tema_podaci" class="collapse" data-parent="#urednik_content">
         <p style="padding: 10px; margin: 5px 0;">Садржај за нову тему...</p>
     </div>
 
@@ -68,7 +68,7 @@
         <span><strong>закључавање тема</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_zakljucavanje_tema_podaci"></span></span>
     </div>
-    <div id="urednik_zakljucavanje_tema_podaci" class="collapse">
+    <div id="urednik_zakljucavanje_tema_podaci" class="collapse" data-parent="#urednik_content">
         <div style="margin-top: 10px;">
             <div id="theme_lock_alerts" style="color: orange; margin-bottom: 10px;"></div>
             <div id="theme_lock_list" class="list-group list-group-flush" style="font-size: 0.9rem;">
@@ -80,12 +80,12 @@
         </div>
     </div>
 
-    <!-- Prijavljene Primedbe -->
+    <!-- Prijavljena Mišljenja -->
     <div id="urednik_primedbe" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
-        <span><strong>пријављене примједбе</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+        <span><strong>пријављена мишљења</strong><span id="badge_reported_misljenja" class="badge badge-danger badge-pill ml-1" style="display: none;"></span><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_primedbe_podaci"></span></span>
     </div>
-    <div id="urednik_primedbe_podaci" class="collapse">
+    <div id="urednik_primedbe_podaci" class="collapse" data-parent="#urednik_content">
         <div style="margin-top: 10px;">
             <div id="primedbe_alerts" style="color: orange; margin-bottom: 10px;"></div>
             <div id="primedbe_results" style="display: none;">
@@ -106,7 +106,7 @@
         <span><strong>претрага корисника</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_pretraga_korisnika_podaci"></span></span>
     </div>
-    <div id="urednik_pretraga_korisnika_podaci" class="collapse">
+    <div id="urednik_pretraga_korisnika_podaci" class="collapse" data-parent="#urednik_content">
         <div style="margin-top: 10px;">
             <div class="input-group mb-2">
                 <input type="text" id="user_search_input" class="form-control" placeholder="корисничко име или е-пошта"
@@ -166,6 +166,7 @@
                             <div>Ставки: <span id="u_detail_stavki">-</span></div>
                             <div>Догађаја: <span id="u_detail_dogadjaja">-</span></div>
                             <div>Записа: <span id="u_detail_zapisa">-</span></div>
+                            <div>Мишљења: <span id="u_detail_misljenja">-</span></div>
                         </div>
                     </div>
 
@@ -206,7 +207,7 @@
         <span><strong>претрага ставки</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_pretraga_stavki_podaci"></span></span>
     </div>
-    <div id="urednik_pretraga_stavki_podaci" class="collapse">
+    <div id="urednik_pretraga_stavki_podaci" class="collapse" data-parent="#urednik_content">
         <form id="form_pretraga_stavki" class="mt-2">
             <div class="form-row mb-2">
                 <div class="col-3">
@@ -285,12 +286,289 @@
         </form>
     </div>
 
+    <!-- Pretraga Događaja -->
+    <div id="urednik_pretraga_dogadjaja" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>претрага догађаја</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_pretraga_dogadjaja_podaci"></span></span>
+    </div>
+    <div id="urednik_pretraga_dogadjaja_podaci" class="collapse" data-parent="#urednik_content">
+        <div style="margin-top: 10px;">
+            <form id="form_pretraga_dogadjaja">
+                <div class="form-row mb-2">
+                    <div class="col-3">
+                        <input type="number" id="ud_dogadjaj_id" class="form-control" placeholder="ID">
+                    </div>
+                    <div class="col-9">
+                        <input type="text" id="ud_dogadjaj_korisnik" class="form-control" placeholder="корисник">
+                    </div>
+                </div>
+                <div class="form-row mb-2">
+                    <div class="col">
+                        <input type="text" id="ud_dogadjaj_opis" class="form-control" placeholder="опис">
+                    </div>
+                </div>
+                <div class="form-row mb-2">
+                    <div class="col-6">
+                        <input type="text" id="ud_dogadjaj_od" class="form-control flatpickr-datetime" placeholder="од">
+                    </div>
+                    <div class="col-6">
+                        <input type="text" id="ud_dogadjaj_do" class="form-control flatpickr-datetime" placeholder="до">
+                    </div>
+                </div>
+                <div class="form-row mb-2">
+                    <div class="col">
+                        <select id="ud_dogadjaj_prostorno" class="form-control">
+                            <option value="">просторно</option>
+                            <option value="1">одређено</option>
+                            <option value="0">неодређено</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <select id="ud_dogadjaj_vremenski" class="form-control">
+                            <option value="">временски</option>
+                            <option value="1">одређено</option>
+                            <option value="0">неодређено</option>
+                        </select>
+                    </div>
+                    <div class="col">
+                        <select id="ud_dogadjaj_stanje" class="form-control">
+                            <option value="">стање</option>
+                            <option value="1">одобрен</option>
+                            <option value="0">на чекању</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row mb-2">
+                    <div class="col">
+                        <input type="text" id="ud_dogadjaj_izvor" class="form-control" placeholder="извор">
+                    </div>
+                </div>
+                <div class="form-row mt-2">
+                    <div class="col">
+                        <div id="ud_dogadjaj_alert_area" style="color: orange; display: none; font-size: 0.85rem;"></div>
+                    </div>
+                    <button type="submit" class="btn btn-white border border-dark">тражи</button>
+                    <div class="spinner-border text-secondary spinner-border-sm m-2" id="ud_dogadjaj_search_cekanje"
+                        role="status" style="visibility: hidden;">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Dogadjaji Search Results Table -->
+            <div id="ud_dogadjaj_search_results" style="display: none; margin-top: 10px; max-height: 300px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #ddd; background-color: #f9f9f9;">
+                            <th style="padding: 4px; text-align: left; width: 45px;">ID</th>
+                            <th style="padding: 4px; text-align: left;">опис</th>
+                            <th style="padding: 4px; text-align: left; width: 95px;">почетак</th>
+                            <th style="padding: 4px; text-align: left; width: 75px;">корисник</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ud_dogadjaj_search_body"></tbody>
+                </table>
+            </div>
+
+            <!-- Dogadjaj Detail / Edit Panel -->
+            <div id="ud_dogadjaj_detail_panel"
+                style="display: none; margin-top: 12px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background-color: #fcfcfc; font-size: 0.85rem;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 8px;">
+                    <span style="font-weight: bold; color: darkorange;">Уреди догађај #<span id="ud_edit_dogadjaj_id_label"></span></span>
+                    <button type="button" class="btn btn-sm btn-link" id="btn_back_to_dogadjaj_search"
+                        style="color: grey; text-decoration: none;">&larr; назад на листу</button>
+                </div>
+
+                <div class="mb-2 text-muted" style="font-size: 0.8rem;">
+                    Корисник: <strong id="ud_edit_dogadjaj_korisnik">-</strong>
+                </div>
+
+                <div class="form-group mb-1">
+                    <label class="mb-0">Опис:</label>
+                    <textarea id="ud_edit_dogadjaj_opis" class="form-control form-control-sm" rows="3" maxlength="500"></textarea>
+                </div>
+                <div class="form-row">
+                    <div class="col-6">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Почетак:</label>
+                            <input type="text" id="ud_edit_dogadjaj_pocetak" class="form-control form-control-sm ud-dogadjaj-flatpickr">
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Крај:</label>
+                            <input type="text" id="ud_edit_dogadjaj_kraj" class="form-control form-control-sm ud-dogadjaj-flatpickr">
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group mb-1">
+                    <label class="mb-0">Извор:</label>
+                    <input type="text" id="ud_edit_dogadjaj_izvor" class="form-control form-control-sm" maxlength="500">
+                </div>
+                <div class="form-row">
+                    <div class="col-7">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Запис:</label>
+                            <select id="ud_edit_dogadjaj_zapis" class="form-control form-control-sm">
+                                <option value="">-- без записа --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-5">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Стање:</label>
+                            <select id="ud_edit_dogadjaj_stanje" class="form-control form-control-sm">
+                                <option value="1">одобрен</option>
+                                <option value="0">на чекању</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group mb-2">
+                    <label class="mb-0">Координате (нпр. POINT(20.45 44.81)):</label>
+                    <input type="text" id="ud_edit_dogadjaj_koordinate" class="form-control form-control-sm" placeholder="празно ако нема">
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <button type="button" id="btn_delete_urednik_dogadjaj" class="btn btn-sm btn-danger">Обриши</button>
+                    <div id="ud_edit_dogadjaj_msg" style="font-size: 0.8rem; flex-grow: 1; text-align: center; margin: 0 5px;"></div>
+                    <button type="button" id="btn_update_urednik_dogadjaj" class="btn btn-sm btn-warning">Измијени</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pretraga Zapisa -->
+    <div id="urednik_pretraga_zapisa" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
+        <span><strong>претрага записа</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+                data-target="#urednik_pretraga_zapisa_podaci"></span></span>
+    </div>
+    <div id="urednik_pretraga_zapisa_podaci" class="collapse" data-parent="#urednik_content">
+        <div style="margin-top: 10px;">
+            <form id="form_pretraga_zapisa">
+                <div class="form-row mb-2">
+                    <div class="col-3">
+                        <input type="number" id="uz_zapis_id" class="form-control" placeholder="ID">
+                    </div>
+                    <div class="col-9">
+                        <select id="uz_zapis_tema" class="form-control">
+                            <option value="">-- све теме --</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row mb-2">
+                    <div class="col-6">
+                        <input type="text" id="uz_zapis_naziv" class="form-control" placeholder="назив">
+                    </div>
+                    <div class="col-6">
+                        <input type="text" id="uz_zapis_korisnik" class="form-control" placeholder="корисник">
+                    </div>
+                </div>
+                <div class="form-row mb-2">
+                    <div class="col-6">
+                        <input type="text" id="uz_zapis_opis" class="form-control" placeholder="опис">
+                    </div>
+                    <div class="col-6">
+                        <input type="text" id="uz_zapis_tagovi" class="form-control" placeholder="тагови">
+                    </div>
+                </div>
+                <div class="form-row mb-2">
+                    <div class="col-6">
+                        <select id="uz_zapis_stanje" class="form-control">
+                            <option value="">стање</option>
+                            <option value="1">одобрен</option>
+                            <option value="0">на чекању</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row mt-2">
+                    <div class="col">
+                        <div id="uz_zapis_alert_area" style="color: orange; display: none; font-size: 0.85rem;"></div>
+                    </div>
+                    <button type="submit" class="btn btn-white border border-dark">тражи</button>
+                    <div class="spinner-border text-secondary spinner-border-sm m-2" id="uz_zapis_search_cekanje"
+                        role="status" style="visibility: hidden;">
+                        <span class="sr-only">Loading...</span>
+                    </div>
+                </div>
+            </form>
+
+            <!-- Zapisi Search Results Table -->
+            <div id="uz_zapis_search_results" style="display: none; margin-top: 10px; max-height: 300px; overflow-y: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid #ddd; background-color: #f9f9f9;">
+                            <th style="padding: 4px; text-align: left; width: 45px;">ID</th>
+                            <th style="padding: 4px; text-align: left;">назив</th>
+                            <th style="padding: 4px; text-align: left; width: 95px;">тема</th>
+                            <th style="padding: 4px; text-align: left; width: 75px;">корисник</th>
+                        </tr>
+                    </thead>
+                    <tbody id="uz_zapis_search_body"></tbody>
+                </table>
+            </div>
+
+            <!-- Zapis Detail / Edit Panel -->
+            <div id="uz_zapis_detail_panel"
+                style="display: none; margin-top: 12px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background-color: #fcfcfc; font-size: 0.85rem;">
+                <div
+                    style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-bottom: 8px;">
+                    <span style="font-weight: bold; color: darkorange;">Уреди запис #<span id="uz_edit_zapis_id_label"></span></span>
+                    <button type="button" class="btn btn-sm btn-link" id="btn_back_to_zapis_search"
+                        style="color: grey; text-decoration: none;">&larr; назад на листу</button>
+                </div>
+
+                <div class="mb-2 d-flex justify-content-between align-items-center" style="font-size: 0.8rem;">
+                    <span class="text-muted">Корисник: <strong id="uz_edit_zapis_korisnik">-</strong></span>
+                    <a href="#" id="uz_edit_zapis_download" class="zapis-link" target="_blank">преузми фајл</a>
+                </div>
+
+                <div class="form-group mb-1">
+                    <label class="mb-0">Назив:</label>
+                    <input type="text" id="uz_edit_zapis_naziv" class="form-control form-control-sm" maxlength="255">
+                </div>
+                <div class="form-row">
+                    <div class="col-7">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Тема:</label>
+                            <select id="uz_edit_zapis_tema" class="form-control form-control-sm"></select>
+                        </div>
+                    </div>
+                    <div class="col-5">
+                        <div class="form-group mb-1">
+                            <label class="mb-0">Стање:</label>
+                            <select id="uz_edit_zapis_stanje" class="form-control form-control-sm">
+                                <option value="1">одобрен</option>
+                                <option value="0">на чекању</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group mb-1">
+                    <label class="mb-0">Опис:</label>
+                    <textarea id="uz_edit_zapis_opis" class="form-control form-control-sm" rows="3" maxlength="500"></textarea>
+                </div>
+                <div class="form-group mb-2">
+                    <label class="mb-0">Тагови:</label>
+                    <input type="text" id="uz_edit_zapis_tagovi" class="form-control form-control-sm" maxlength="255">
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <button type="button" id="btn_delete_urednik_zapis" class="btn btn-sm btn-danger">Обриши</button>
+                    <div id="uz_edit_zapis_msg" style="font-size: 0.8rem; flex-grow: 1; text-align: center; margin: 0 5px;"></div>
+                    <button type="button" id="btn_update_urednik_zapis" class="btn btn-sm btn-warning">Измијени</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Odobravanje Stavki -->
     <div id="urednik_odobravanje_stavki" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
-        <span><strong>одобравање ставки</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+        <span><strong>одобравање ставки</strong><span id="badge_pending_stavki" class="badge badge-warning badge-pill ml-1" style="display: none;"></span><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_odobravanje_stavki_podaci"></span></span>
     </div>
-    <div id="urednik_odobravanje_stavki_podaci" class="collapse">
+    <div id="urednik_odobravanje_stavki_podaci" class="collapse" data-parent="#urednik_content">
         <div style="margin-top: 10px;">
             <!-- Alert/Message Area -->
             <div id="stavke_approval_alerts" style="color: orange; margin-bottom: 10px;"></div>
@@ -356,10 +634,10 @@
 
     <!-- Odobravanje Događaja -->
     <div id="urednik_odobravanje_dogadjaja" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
-        <span><strong>одобравање догађаја</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+        <span><strong>одобравање догађаја</strong><span id="badge_pending_dogadjaja" class="badge badge-warning badge-pill ml-1" style="display: none;"></span><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_odobravanje_dogadjaja_podaci"></span></span>
     </div>
-    <div id="urednik_odobravanje_dogadjaja_podaci" class="collapse">
+    <div id="urednik_odobravanje_dogadjaja_podaci" class="collapse" data-parent="#urednik_content">
         <div style="margin-top: 10px;">
             <!-- Alert/Message Area -->
             <div id="dogadjaji_approval_alerts" style="color: orange; margin-bottom: 10px;"></div>
@@ -403,10 +681,10 @@
 
     <!-- Odobravanje Zapisa -->
     <div id="urednik_odobravanje_zapisa" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
-        <span><strong>одобравање записа</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+        <span><strong>одобравање записа</strong><span id="badge_pending_zapisa" class="badge badge-warning badge-pill ml-1" style="display: none;"></span><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_odobravanje_zapisa_podaci"></span></span>
     </div>
-    <div id="urednik_odobravanje_zapisa_podaci" class="collapse">
+    <div id="urednik_odobravanje_zapisa_podaci" class="collapse" data-parent="#urednik_content">
         <div style="margin-top: 10px;">
             <!-- Alert/Message Area -->
             <div id="zapisi_approval_alerts" style="color: orange; margin-bottom: 10px;"></div>
@@ -449,11 +727,21 @@
 
     <!-- Pokretanje Bekapa -->
     <div id="urednik_pokretanje_bekapa" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
-        <span><strong>покретање бекапа</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+        <span><strong>покретање бекапа</strong><span id="badge_backup_info" class="ml-1" style="font-size: 0.78rem; color: #666;"></span><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_pokretanje_bekapa_podaci"></span></span>
     </div>
-    <div id="urednik_pokretanje_bekapa_podaci" class="collapse">
-        <p style="padding: 10px; margin: 5px 0;">Садржај за покретање бекапа...</p>
+    <div id="urednik_pokretanje_bekapa_podaci" class="collapse" data-parent="#urednik_content">
+        <div style="margin-top: 10px; font-size: 0.85rem;">
+            <div id="bekap_alerts" style="margin-bottom: 8px; display: none;"></div>
+            <div style="background: #fcfcfc; border: 1px solid #eee; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px;">
+                <div>Последњи бекап: <strong id="bekap_last_date">-</strong></div>
+                <div>Нових уноса од последњег бекапа: <strong id="bekap_new_total">-</strong></div>
+                <div id="bekap_new_breakdown" class="text-muted" style="font-size: 0.78rem; margin-top: 2px;"></div>
+            </div>
+            <div class="d-flex align-items-center" style="gap: 8px;">
+                <button type="button" id="btn_mark_backup" class="btn btn-white border border-dark btn-sm">евидентирај урађен бекап</button>
+            </div>
+        </div>
     </div>
 
     <!-- Pokretanje Brojača -->
@@ -461,7 +749,7 @@
         <span><strong>покретање бројача</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_pokretanje_brojaca_podaci"></span></span>
     </div>
-    <div id="urednik_pokretanje_brojaca_podaci" class="collapse">
+    <div id="urednik_pokretanje_brojaca_podaci" class="collapse" data-parent="#urednik_content">
         <div style="margin-top: 10px;">
             <!-- Alert/Message Area -->
             <div id="brojaca_alerts" style="margin-bottom: 10px;"></div>
@@ -485,7 +773,7 @@
         <span><strong>уплате</strong><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_uplate_podaci" style="cursor: pointer;"></span></span>
     </div>
-    <div id="urednik_uplate_podaci" class="collapse">
+    <div id="urednik_uplate_podaci" class="collapse" data-parent="#urednik_content">
         <div style="margin-top: 10px; text-align: left;">
             <div id="uplate_alerts" style="color: orange; margin-bottom: 10px; display: none;"></div>
 
