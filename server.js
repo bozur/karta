@@ -10,6 +10,8 @@ const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 const multer = require('multer');
 const fs = require('fs');
+const zlib = require('zlib');
+const archiver = require('archiver');
 const FormData = require('form-data');
 const axios = require('axios');
 
@@ -3930,9 +3932,60 @@ async function ensureBekapLogTable(pool) {
             id SERIAL PRIMARY KEY,
             created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
             korisnik_id INTEGER,
+            tip VARCHAR(20) DEFAULT 'baza',
             napomena VARCHAR(255)
         )
     `);
+    await pool.request().query(`
+        ALTER TABLE bekap_log ADD COLUMN IF NOT EXISTS tip VARCHAR(20) DEFAULT 'baza'
+    `);
+}
+
+function collectUploadFiles(rootDir, sinceDate) {
+    const files = [];
+    let totalSize = 0;
+    if (!fs.existsSync(rootDir)) {
+        return { files, totalSize };
+    }
+    const sinceMs = sinceDate ? new Date(sinceDate).getTime() : null;
+
+    function walk(dir) {
+        let entries;
+        try {
+            entries = fs.readdirSync(dir, { withFileTypes: true });
+        } catch (e) {
+            return;
+        }
+        for (const entry of entries) {
+            const fullPath = path.join(dir, entry.name);
+            if (entry.isDirectory()) {
+                walk(fullPath);
+            } else if (entry.isFile()) {
+                try {
+                    const stat = fs.statSync(fullPath);
+                    if (!sinceMs || stat.mtimeMs > sinceMs) {
+                        const relPath = path.relative(rootDir, fullPath).replace(/\\/g, '/');
+                        files.push({ fullPath, relPath, size: stat.size, mtime: stat.mtime });
+                        totalSize += stat.size;
+                    }
+                } catch (e) {
+                    // Skip unreadable file
+                }
+            }
+        }
+    }
+
+    walk(rootDir);
+    return { files, totalSize };
+}
+
+function formatBackupFilenameTimestamp(date = new Date()) {
+    const yyyy = date.getFullYear();
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const dd = String(date.getDate()).padStart(2, '0');
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mi = String(date.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}_${hh}-${mi}`;
 }
 
 // GET /api/urednik/summary-counts - Pending approval counts, reported opinions count, and backup status
@@ -3950,21 +4003,25 @@ app.get('/api/urednik/summary-counts', async (req, res) => {
             pendingZapisiRes,
             reportedRes,
             themesRes,
-            lastBackupRes
+            lastDbBackupRes,
+            lastFilesBackupRes
         ] = await Promise.all([
             pool.request().query("SELECT COUNT(*) AS count FROM dogadjaji WHERE stanje = '0'"),
             pool.request().query("SELECT COUNT(*) AS count FROM zapisi WHERE stanje = '0'"),
             pool.request().query('SELECT COUNT(*) AS count FROM comments WHERE downvote_count > 0'),
             pool.request().query('SELECT id FROM teme'),
-            pool.request().query('SELECT id, created_at, napomena FROM bekap_log ORDER BY created_at DESC LIMIT 1')
+            pool.request().query("SELECT id, created_at, napomena FROM bekap_log WHERE COALESCE(tip, 'baza') = 'baza' ORDER BY created_at DESC LIMIT 1"),
+            pool.request().query("SELECT id, created_at, napomena FROM bekap_log WHERE tip = 'fajlovi' ORDER BY created_at DESC LIMIT 1")
         ]);
 
         const pendingDogadjaja = parseInt(pendingDogadjajiRes.recordset[0]?.count, 10) || 0;
         const pendingZapisa = parseInt(pendingZapisiRes.recordset[0]?.count, 10) || 0;
         const reportedMisljenja = parseInt(reportedRes.recordset[0]?.count, 10) || 0;
         const themes = themesRes.recordset || [];
-        const lastBackupRow = lastBackupRes.recordset[0] || null;
+        const lastBackupRow = lastDbBackupRes.recordset[0] || null;
         const lastBackupAt = lastBackupRow ? lastBackupRow.created_at : null;
+        const lastFilesBackupRow = lastFilesBackupRes.recordset[0] || null;
+        const lastFileBackupAt = lastFilesBackupRow ? lastFilesBackupRow.created_at : null;
 
         // Pending stavki across all themes + new stavki since last backup in one pass per theme
         let pendingStavki = 0;
@@ -4027,6 +4084,8 @@ app.get('/api/urednik/summary-counts', async (req, res) => {
         }
 
         const newEntriesSinceBackup = newStavki + newDogadjaji + newZapisi + newMisljenja;
+        const uploadsRoot = path.join(__dirname, 'uploads');
+        const deltaFiles = collectUploadFiles(uploadsRoot, lastFileBackupAt);
 
         res.set('Cache-Control', 'no-store');
         res.json({
@@ -4045,6 +4104,11 @@ app.get('/api/urednik/summary-counts', async (req, res) => {
                     zapisi: newZapisi,
                     misljenja: newMisljenja
                 }
+            },
+            filesBackup: {
+                lastFileBackupAt,
+                newFilesCount: deltaFiles.files.length,
+                newFilesSizeBytes: deltaFiles.totalSize
             }
         });
     } catch (err) {
@@ -4053,24 +4117,187 @@ app.get('/api/urednik/summary-counts', async (req, res) => {
     }
 });
 
-// POST /api/urednik/backup/mark - Record a completed backup timestamp
+// GET /api/urednik/backup/database - Stream compressed JSON backup (.json.gz) of all public tables
+app.get('/api/urednik/backup/database', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const poolObj = await poolPromise;
+        await ensureBekapLogTable(poolObj);
+
+        const tablesRes = await poolObj.request().query(`
+            SELECT tablename
+            FROM pg_tables
+            WHERE schemaname = 'public' AND tablename != 'session'
+            ORDER BY tablename
+        `);
+        const tableNames = (tablesRes.recordset || []).map(r => r.tablename);
+
+        const filename = `karta-baza-${formatBackupFilenameTimestamp()}.json.gz`;
+        res.setHeader('Content-Type', 'application/gzip');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Cache-Control', 'no-store');
+
+        const gzip = zlib.createGzip({ level: 6 });
+        gzip.pipe(res);
+
+        const writeChunk = (str) => new Promise((resolve, reject) => {
+            if (gzip.write(str)) {
+                resolve();
+            } else {
+                gzip.once('drain', resolve);
+                gzip.once('error', reject);
+            }
+        });
+
+        await writeChunk(`{"exported_at":${JSON.stringify(new Date().toISOString())},"tables":{`);
+
+        for (let i = 0; i < tableNames.length; i++) {
+            const tbl = tableNames[i];
+            if (!/^[a-zA-Z0-9_]+$/.test(tbl)) continue;
+            const prefix = i > 0 ? ',' : '';
+            await writeChunk(`${prefix}${JSON.stringify(tbl)}:[`);
+
+            const rowsRes = await pool.query(`SELECT * FROM "${tbl}"`);
+            const rows = rowsRes.rows || [];
+            for (let j = 0; j < rows.length; j++) {
+                const rowPrefix = j > 0 ? ',' : '';
+                await writeChunk(`${rowPrefix}${JSON.stringify(rows[j])}`);
+            }
+            await writeChunk(']');
+        }
+
+        await writeChunk('}}');
+        gzip.end();
+
+        res.on('finish', async () => {
+            try {
+                await poolObj.request()
+                    .input('userId', sql.Int, req.session.user.id)
+                    .input('tip', sql.NVarChar, 'baza')
+                    .input('napomena', sql.NVarChar, filename)
+                    .query('INSERT INTO bekap_log (korisnik_id, tip, napomena) VALUES (@userId, @tip, @napomena)');
+            } catch (logErr) {
+                console.error('Error logging database backup:', logErr);
+            }
+        });
+    } catch (err) {
+        console.error('Error streaming database backup:', err);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Грешка при креирању бекапа базе' });
+        } else {
+            res.end();
+        }
+    }
+});
+
+// GET /api/urednik/backup/files - Stream ZIP backup of uploads/ (delta by default, or ?mode=full)
+app.get('/api/urednik/backup/files', async (req, res) => {
+    try {
+        if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
+            return res.status(403).json({ error: 'Немате дозволу' });
+        }
+
+        const mode = req.query.mode === 'full' ? 'full' : 'delta';
+        const poolObj = await poolPromise;
+        await ensureBekapLogTable(poolObj);
+
+        let sinceDate = null;
+        if (mode === 'delta') {
+            const lastRes = await poolObj.request().query(
+                "SELECT created_at FROM bekap_log WHERE tip = 'fajlovi' ORDER BY created_at DESC LIMIT 1"
+            );
+            sinceDate = lastRes.recordset[0] ? lastRes.recordset[0].created_at : null;
+        }
+
+        const uploadsRoot = path.join(__dirname, 'uploads');
+        const { files, totalSize } = collectUploadFiles(uploadsRoot, sinceDate);
+
+        if (files.length === 0) {
+            return res.status(404).json({ error: 'Нема нових фајлова од последњег бекапа.' });
+        }
+
+        const effectiveMode = (mode === 'delta' && sinceDate) ? 'delta' : 'full';
+        const filename = `karta-fajlovi-${effectiveMode}-${formatBackupFilenameTimestamp()}.zip`;
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Cache-Control', 'no-store');
+
+        // store: true avoids re-compressing already-compressed PDF/JPG/PNG -> minimal RAM & CPU
+        const archive = typeof archiver === 'function'
+            ? archiver('zip', { store: true })
+            : new archiver.ZipArchive({ store: true });
+        archive.on('error', (err) => {
+            console.error('Archive error:', err);
+            if (!res.headersSent) {
+                res.status(500).json({ error: 'Грешка при паковању фајлова' });
+            } else {
+                res.end();
+            }
+        });
+
+        archive.pipe(res);
+
+        const manifest = {
+            exported_at: new Date().toISOString(),
+            mode: effectiveMode,
+            since: sinceDate || null,
+            file_count: files.length,
+            total_size_bytes: totalSize,
+            files: files.map(f => ({ path: f.relPath, size: f.size, mtime: f.mtime }))
+        };
+        archive.append(JSON.stringify(manifest, null, 2), { name: 'manifest.json' });
+
+        for (const f of files) {
+            archive.file(f.fullPath, { name: f.relPath });
+        }
+
+        res.on('finish', async () => {
+            try {
+                await poolObj.request()
+                    .input('userId', sql.Int, req.session.user.id)
+                    .input('tip', sql.NVarChar, 'fajlovi')
+                    .input('napomena', sql.NVarChar, `${filename} (${files.length})`)
+                    .query('INSERT INTO bekap_log (korisnik_id, tip, napomena) VALUES (@userId, @tip, @napomena)');
+            } catch (logErr) {
+                console.error('Error logging files backup:', logErr);
+            }
+        });
+
+        await archive.finalize();
+    } catch (err) {
+        console.error('Error streaming files backup:', err);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Грешка при креирању бекапа фајлова' });
+        } else {
+            res.end();
+        }
+    }
+});
+
+// POST /api/urednik/backup/mark - Record a completed backup timestamp manually
 app.post('/api/urednik/backup/mark', async (req, res) => {
     try {
         if (!req.session.user || (req.session.user.urednik != 1 && req.session.user.urednik != '1')) {
             return res.status(403).json({ error: 'Немате дозволу' });
         }
 
+        const tip = req.body && req.body.tip === 'fajlovi' ? 'fajlovi' : 'baza';
         const napomena = req.body && req.body.napomena ? String(req.body.napomena).trim().slice(0, 255) : null;
-        const pool = await poolPromise;
-        await ensureBekapLogTable(pool);
+        const poolObj = await poolPromise;
+        await ensureBekapLogTable(poolObj);
 
-        const result = await pool.request()
+        const result = await poolObj.request()
             .input('userId', sql.Int, req.session.user.id)
+            .input('tip', sql.NVarChar, tip)
             .input('napomena', sql.NVarChar, napomena)
             .query(`
-                INSERT INTO bekap_log (korisnik_id, napomena)
-                VALUES (@userId, @napomena)
-                RETURNING id, created_at, napomena
+                INSERT INTO bekap_log (korisnik_id, tip, napomena)
+                VALUES (@userId, @tip, @napomena)
+                RETURNING id, created_at, tip, napomena
             `);
 
         res.json({

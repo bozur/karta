@@ -443,22 +443,27 @@ WHERE id IN (@delete_ids)
 
 ---
 
-## 11. Pokretanje Bekapa (Backup Status & Tracking)
+## 11. Pokretanje Bekapa (Streaming DB & Delta File Backups)
 
 ### Purpose
-Track the timestamp of the last completed database backup and monitor how many new entries (items, events, records, opinions) have been added since then, helping admins decide whether backup frequency should be adjusted.
+Download streaming backups of both the PostgreSQL database and uploaded files (`uploads/`), track the last backup timestamps independently, and monitor how many new database entries and files have been added since the last backup.
 
 ### Header Indicator
-- `#badge_backup_info` next to `покретање бекапа` displays `(<date> +<count>)` (blue badge when > 0, red when >= 50, tooltip with breakdown).
+- `#badge_backup_info` next to `покретање бекапа` displays `(<db_date> +<count>)` (blue badge when > 0, red when >= 50, tooltip with breakdown).
 
 ### Expanded Panel (`#urednik_pokretanje_bekapa_podaci`)
-- Displays **Последњи бекап** (`#bekap_last_date`), **Нових уноса од последњег бекапа** (`#bekap_new_total`), and breakdown (`#bekap_new_breakdown`: `ставки`, `догађаја`, `записа`, `мишљења`).
-- **Button:** `#btn_mark_backup` (`евидентирај урађен бекап`) records a new backup timestamp and resets the counter.
+- **База података:** Shows last DB backup date (`#bekap_last_date`), new entries count (`#bekap_new_total`), and breakdown (`#bekap_new_breakdown`: `ставки`, `догађаја`, `записа`, `мишљења`).
+- **Фајлови записа (`uploads/`):** Shows last file backup date (`#bekap_files_last_date`) and count + size of new files (`#bekap_files_new_info`).
+- **Buttons:**
+  - `#btn_download_db_backup` (`преузми бекап базе`) — streams gzip-compressed JSON of all public tables (`karta-baza-YYYY-MM-DD_HH-mm.json.gz`) directly to disk and logs `tip = 'baza'` in `bekap_log`.
+  - `#btn_download_files_backup` (`преузми фајлове (делта ZIP)`) — streams a store-only (`store: true`, low RAM/CPU) ZIP archive of only new/modified files in `uploads/` since the last file backup (plus `manifest.json`), or all files when `#bekap_files_full_mode` is checked, and logs `tip = 'fajlovi'` in `bekap_log`.
 
 ### API Endpoints & Database
 - **Summary:** `GET /api/urednik/summary-counts`
-- **Mark Backup:** `POST /api/urednik/backup/mark`
-- **Database Table:** `bekap_log (id, created_at, korisnik_id, napomena)` (auto-created via `ensureBekapLogTable(pool)`)
+- **Database Backup Stream:** `GET /api/urednik/backup/database`
+- **Files Backup Stream (Delta/Full):** `GET /api/urednik/backup/files?mode=delta|full`
+- **Manual Mark Backup:** `POST /api/urednik/backup/mark`
+- **Database Table:** `bekap_log (id, created_at, korisnik_id, tip, napomena)` (auto-created via `ensureBekapLogTable(pool)`)
 
 ---
 

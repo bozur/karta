@@ -2960,8 +2960,38 @@ async function deleteUrednikZapis() {
 // Summary Counts & Backup Status (Urednik)
 // ============================================
 
+window.urednikLastFilesDeltaCount = 0;
+
+function formatBytesSerbian(bytes) {
+    const b = Number(bytes) || 0;
+    if (b < 1024) return `${b} B`;
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)} KB`;
+    if (b < 1024 * 1024 * 1024) return `${(b / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(b / (1024 * 1024 * 1024)).toFixed(2)} GB`;
+}
+
+function formatBackupDatePair(isoDate) {
+    if (!isoDate) return { shortDate: 'нема', fullDate: 'није евидентиран' };
+    const d = new Date(isoDate);
+    if (isNaN(d.getTime())) return { shortDate: 'нема', fullDate: 'није евидентиран' };
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return {
+        shortDate: `${dd}.${mm}.${yyyy}.`,
+        fullDate: `${dd}.${mm}.${yyyy}. ${hh}:${mi}`
+    };
+}
+
 function initUrednikBackup() {
-    $('#btn_mark_backup').off('click').on('click', markBackupDone);
+    $('#btn_download_db_backup').off('click').on('click', downloadDbBackup);
+    $('#btn_download_files_backup').off('click').on('click', downloadFilesBackup);
+    $('#bekap_files_full_mode').off('change').on('change', function () {
+        const isFull = $(this).is(':checked');
+        $('#btn_download_files_backup').text(isFull ? 'преузми све фајлове (пун ZIP)' : 'преузми фајлове (делта ZIP)');
+    });
 }
 
 function updateUrednikBadge(selector, count) {
@@ -2986,62 +3016,71 @@ async function loadUrednikSummaryCounts() {
         updateUrednikBadge('#badge_pending_dogadjaja', data.pendingDogadjaja || 0);
         updateUrednikBadge('#badge_pending_zapisa', data.pendingZapisa || 0);
 
-        // Backup status
+        // Database backup status
         const b = data.backup || {};
         const totalNew = b.newEntriesSinceBackup || 0;
         const bd = b.breakdown || {};
         const breakdownText = `ставки: ${bd.stavki || 0}, догађаја: ${bd.dogadjaji || 0}, записа: ${bd.zapisi || 0}, мишљења: ${bd.misljenja || 0}`;
+        const dbDate = formatBackupDatePair(b.lastBackupAt);
 
-        let shortDate = 'нема';
-        let fullDate = 'није евидентиран';
-        if (b.lastBackupAt) {
-            const d = new Date(b.lastBackupAt);
-            if (!isNaN(d.getTime())) {
-                const dd = String(d.getDate()).padStart(2, '0');
-                const mm = String(d.getMonth() + 1).padStart(2, '0');
-                const yyyy = d.getFullYear();
-                const hh = String(d.getHours()).padStart(2, '0');
-                const mi = String(d.getMinutes()).padStart(2, '0');
-                shortDate = `${dd}.${mm}.${yyyy}.`;
-                fullDate = `${dd}.${mm}.${yyyy}. ${hh}:${mi}`;
-            }
+        let badgeStyle;
+        if (totalNew >= 50) {
+            badgeStyle = 'background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;';
+        } else if (totalNew > 0) {
+            badgeStyle = 'background-color: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb;';
+        } else {
+            badgeStyle = 'background-color: #e9ecef; color: #495057; border: 1px solid #ced4da;';
         }
-
-        const badgeColor = totalNew >= 50 ? 'badge-danger' : (totalNew > 0 ? 'badge-info' : 'badge-secondary');
         $('#badge_backup_info')
-            .html(`(${shortDate} <span class="badge ${badgeColor} badge-pill" title="${breakdownText}">+${totalNew}</span>)`)
-            .attr('title', `Последњи бекап: ${fullDate} | Нових уноса: ${totalNew} (${breakdownText})`);
+            .html(`(${dbDate.shortDate} <span class="badge badge-pill" style="${badgeStyle} font-weight: 600;" title="${breakdownText}">+${totalNew}</span>)`)
+            .attr('title', `Последњи бекап базе: ${dbDate.fullDate} | Нових уноса: ${totalNew} (${breakdownText})`);
 
-        $('#bekap_last_date').text(fullDate);
+        $('#bekap_last_date').text(dbDate.fullDate);
         $('#bekap_new_total').text(totalNew);
         $('#bekap_new_breakdown').text(breakdownText);
+
+        // Files backup status
+        const fb = data.filesBackup || {};
+        const filesDate = formatBackupDatePair(fb.lastFileBackupAt);
+        const newFilesCount = fb.newFilesCount || 0;
+        window.urednikLastFilesDeltaCount = newFilesCount;
+
+        $('#bekap_files_last_date').text(filesDate.fullDate);
+        $('#bekap_files_new_info').text(`${newFilesCount} (${formatBytesSerbian(fb.newFilesSizeBytes || 0)})`);
     } catch (err) {
         console.error('Error loading urednik summary counts:', err);
     }
 }
 
-async function markBackupDone() {
-    const alertsDiv = document.getElementById('bekap_alerts');
-    const btn = document.getElementById('btn_mark_backup');
-    if (btn) btn.disabled = true;
+function triggerDirectBackupDownload(url) {
+    const a = document.createElement('a');
+    a.href = url;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+}
 
-    try {
-        const res = await fetch('/api/urednik/backup/mark', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-        });
-        const data = await res.json();
-        if (res.ok && data.success) {
-            if (alertsDiv) showAlert(alertsDiv, data.message || 'Бекап је евидентиран.', 'success');
-            loadUrednikSummaryCounts();
-        } else {
-            if (alertsDiv) showAlert(alertsDiv, data.error || 'Грешка при евидентирању бекапа.', 'danger');
-        }
-    } catch (err) {
-        console.error('Error marking backup:', err);
-        if (alertsDiv) showAlert(alertsDiv, 'Грешка на серверу.', 'danger');
-    } finally {
-        if (btn) btn.disabled = false;
+function downloadDbBackup() {
+    const alertsDiv = document.getElementById('bekap_alerts');
+    if (alertsDiv) showAlert(alertsDiv, 'Покренуто преузимање бекапа базе (.json.gz)...', 'success');
+    triggerDirectBackupDownload('/api/urednik/backup/database');
+    setTimeout(() => loadUrednikSummaryCounts(), 2500);
+}
+
+function downloadFilesBackup() {
+    const alertsDiv = document.getElementById('bekap_alerts');
+    const isFull = $('#bekap_files_full_mode').is(':checked');
+
+    if (!isFull && window.urednikLastFilesDeltaCount === 0) {
+        if (alertsDiv) showAlert(alertsDiv, 'Нема нових фајлова од последњег бекапа.', 'success');
+        return;
     }
+
+    const mode = isFull ? 'full' : 'delta';
+    if (alertsDiv) {
+        showAlert(alertsDiv, isFull ? 'Покренуто преузимање свих фајлова (ZIP)...' : 'Покренуто преузимање нових фајлова (делта ZIP)...', 'success');
+    }
+    triggerDirectBackupDownload(`/api/urednik/backup/files?mode=${mode}`);
+    setTimeout(() => loadUrednikSummaryCounts(), 3000);
 }

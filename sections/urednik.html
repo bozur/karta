@@ -82,7 +82,7 @@
 
     <!-- Prijavljena Mišljenja -->
     <div id="urednik_primedbe" class="mt-2" style="display: flex; align-items: center; gap: 10px;">
-        <span><strong>пријављена мишљења</strong><span id="badge_reported_misljenja" class="badge badge-danger badge-pill ml-1" style="display: none;"></span><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
+        <span><strong>пријављена мишљења</strong><span id="badge_reported_misljenja" class="badge badge-pill ml-1" style="display: none; background-color: #f8d7da; color: #721c24; border: 1px solid #f5c6cb;"></span><span class="bi bi-arrows-expand ml-2" data-toggle="collapse"
                 data-target="#urednik_primedbe_podaci"></span></span>
     </div>
     <div id="urednik_primedbe_podaci" class="collapse" data-parent="#urednik_content">
@@ -734,12 +734,27 @@
         <div style="margin-top: 10px; font-size: 0.85rem;">
             <div id="bekap_alerts" style="margin-bottom: 8px; display: none;"></div>
             <div style="background: #fcfcfc; border: 1px solid #eee; border-radius: 4px; padding: 8px 10px; margin-bottom: 10px;">
+                <div><strong>База података</strong></div>
                 <div>Последњи бекап: <strong id="bekap_last_date">-</strong></div>
-                <div>Нових уноса од последњег бекапа: <strong id="bekap_new_total">-</strong></div>
+                <div>Нових уноса од тада: <strong id="bekap_new_total">-</strong></div>
                 <div id="bekap_new_breakdown" class="text-muted" style="font-size: 0.78rem; margin-top: 2px;"></div>
+                <hr style="margin: 8px 0;">
+                <div><strong>Фајлови записа (uploads/)</strong></div>
+                <div>Последњи бекап: <strong id="bekap_files_last_date">-</strong></div>
+                <div>Нових фајлова од тада: <strong id="bekap_files_new_info">-</strong></div>
             </div>
-            <div class="d-flex align-items-center" style="gap: 8px;">
-                <button type="button" id="btn_mark_backup" class="btn btn-white border border-dark btn-sm">евидентирај урађен бекап</button>
+            <div class="d-flex flex-wrap align-items-center mb-2" style="gap: 8px;">
+                <button type="button" id="btn_download_db_backup" class="btn btn-white border border-dark btn-sm">преузми бекап базе</button>
+                <button type="button" id="btn_download_files_backup" class="btn btn-white border border-dark btn-sm">преузми фајлове (делта ZIP)</button>
+            </div>
+            <div class="mb-2">
+                <label class="mb-0 d-inline-flex align-items-center" style="font-size: 0.8rem; cursor: pointer; gap: 5px;">
+                    <input type="checkbox" id="bekap_files_full_mode">
+                    <span>пун бекап свих фајлова (уместо само нових)</span>
+                </label>
+            </div>
+            <div class="text-muted" style="font-size: 0.76rem; line-height: 1.35;">
+                Преузимање иде стримовањем директно на диск (минимално заузеће меморије). Да би фајл ишао директно на екстерни диск, у подешавањима прегледача укључите опцију „Питај где да се сачува сваки фајл“.
             </div>
         </div>
     </div>
