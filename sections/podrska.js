@@ -476,7 +476,7 @@ function prikaziGrafikon12Meseci(podaciSaServera) {
         legendaTroskoviEl.textContent = 'технички мјесечни трошкови: ' + formatRsd(troskovi) + ' РСД (хостинг+база+домен)';
     }
     if (legendaOdrzavanjeEl) {
-        legendaOdrzavanjeEl.textContent = 'минимални трошкови рада на одржавању: ' + formatRsd(troskoviOdrzavanja) + ' РСД';
+        legendaOdrzavanjeEl.textContent = 'основно одржавање: ' + formatRsd(troskoviOdrzavanja) + ' РСД (одобравање, провјере, измјене, е-пошта)';
     }
 
     // Статус за текући месец одмах поред иконице за отварање "новчана подршка"
@@ -528,7 +528,7 @@ function prikaziGrafikon12Meseci(podaciSaServera) {
                         : '') +
                     (troskoviOdrzavanja > 0
                         ? '<div class="podrska-odrzavanje-linija" style="left: ' + pozicijaOdrzavanja.toFixed(2) + '%;" ' +
-                          'title="Минимални трошкови рада на одржавању: ' + formatRsd(troskoviOdrzavanja) + ' РСД"></div>'
+                          'title="Основно одржавање: ' + formatRsd(troskoviOdrzavanja) + ' РСД (одобравање, провјере, измјене, е-пошта)"></div>'
                         : '') +
                 '</div>' +
                 '<span class="podrska-mesec-iznos">' + formatRsd(stavka.iznos) + ' РСД</span>' +

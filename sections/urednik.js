@@ -2459,7 +2459,7 @@ async function saveUplateAdmin() {
 
     const troskoviOdrzavanja = parseInt(odrzavanjeInput ? odrzavanjeInput.value : '', 10);
     if (isNaN(troskoviOdrzavanja) || troskoviOdrzavanja < 0) {
-        showAlert(alertsDiv, 'Унесите исправан износ за минималне трошкове одржавања (0 или више).', 'danger');
+        showAlert(alertsDiv, 'Унесите исправан износ за основне трошкове одржавања (0 или више).', 'danger');
         return;
     }
 
