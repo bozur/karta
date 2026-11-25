@@ -510,6 +510,7 @@ app.get('/api/comments', async (req, res) => {
             };
         });
 
+        res.set('Cache-Control', 'no-store');
         res.json(processedResults);
     } catch (err) {
         console.error(err);
@@ -996,6 +997,13 @@ app.post('/api/comments/:id/upvote', async (req, res) => {
     try {
         const pool = await poolPromise;
 
+        const commentExists = await pool.request()
+            .input('cid', sql.Int, id)
+            .query('SELECT id FROM comments WHERE id = @cid');
+        if (commentExists.recordset.length === 0) {
+            return res.status(404).json({ error: 'Comment not found' });
+        }
+
         // Check current state
         const upvoteCheck = await pool.request()
             .input('cid', sql.Int, id)
@@ -1084,6 +1092,13 @@ app.post('/api/comments/:id/downvote', async (req, res) => {
 
     try {
         const pool = await poolPromise;
+
+        const commentExists = await pool.request()
+            .input('cid', sql.Int, id)
+            .query('SELECT id FROM comments WHERE id = @cid');
+        if (commentExists.recordset.length === 0) {
+            return res.status(404).json({ error: 'Comment not found' });
+        }
 
         const upvoteCheck = await pool.request()
             .input('cid', sql.Int, id)
@@ -1452,6 +1467,7 @@ app.get('/api/urednik/all-zapisi', async (req, res) => {
         }
         const pool = await poolPromise;
         const result = await pool.request().query('SELECT id, naziv, tema_id FROM zapisi ORDER BY naziv');
+        res.set('Cache-Control', 'no-store');
         res.json({ success: true, results: result.recordset });
     } catch (err) {
         console.error('Error fetching all zapisi:', err);
@@ -3346,6 +3362,7 @@ app.get('/api/urednik/users/search', async (req, res) => {
             .input('search', sql.NVarChar, `%${q}%`)
             .query('SELECT id, korisnik, eposta FROM korisnik WHERE korisnik LIKE @search OR eposta LIKE @search');
 
+        res.set('Cache-Control', 'no-store');
         res.json({ success: true, results: result.recordset });
     } catch (err) {
         console.error('Error searching users:', err);
@@ -3587,6 +3604,7 @@ app.get('/api/urednik/comments/reported', async (req, res) => {
             ORDER BY c.downvote_count DESC, c.created DESC
         `);
 
+        res.set('Cache-Control', 'no-store');
         res.json({ success: true, results: result.recordset });
     } catch (err) {
         console.error('Error fetching reported comments:', err);

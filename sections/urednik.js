@@ -214,7 +214,7 @@ function loadReportedComments() {
     loadingDiv.show();
     resultsDiv.hide();
 
-    fetch('/api/urednik/comments/reported')
+    fetch('/api/urednik/comments/reported', { cache: 'no-store' })
         .then(response => response.json())
         .then(data => {
             loadingDiv.hide();
@@ -310,6 +310,9 @@ function deleteReportedComment(id) {
         .then(response => {
             if (response.ok) {
                 alertsDiv.css('color', 'green').text('Коментар је успјешно обрисан.').show();
+                if (typeof window.refreshCurrentPointDetails === 'function') {
+                    window.refreshCurrentPointDetails();
+                }
                 setTimeout(() => {
                     loadReportedComments();
                 }, 1000);

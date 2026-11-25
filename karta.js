@@ -315,6 +315,7 @@ $(document).ready(function () {
                             type: 'get',
                             dataType: 'json',
                             contentType: 'application/json',
+                            cache: false,
                             url: '/api/comments',
                             data: { table: activeTabela, id: idpoint },
                             success: function (commentsArray) {
@@ -475,11 +476,22 @@ $(document).ready(function () {
         });
     };
 
+    window.refreshCurrentPointDetails = function () {
+        if (idpointinfo && idpointtable) {
+            if (sidebar.isVisible()) {
+                showPointDetails(idpointinfo, idpointtable);
+            } else {
+                idpointinfo = null;
+                idpointtable = null;
+            }
+        }
+    };
+
     $(document).on('click', '.detalji', function () {
         var idpoint = String($(this).attr("pointinfo"));
         var activeTabela = String((typeof window.tabela !== 'undefined' && window.tabela !== null) ? window.tabela : tabela);
-        if (idpointinfo === idpoint && idpointtable === activeTabela) {
-            sidebar.toggle();
+        if (idpointinfo === idpoint && idpointtable === activeTabela && sidebar.isVisible()) {
+            sidebar.hide();
         } else {
             showPointDetails(idpoint, activeTabela);
         }
