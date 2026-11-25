@@ -2746,8 +2746,8 @@ app.get('/api/urednik/zapisi/pending', async (req, res) => {
         const result = await pool.request().query(`
             SELECT z.id, z.naziv, z.opis, t.naziv AS tema, k.korisnik, z.tagovi, z.created_at
             FROM zapisi z
-            INNER JOIN teme t ON z.tema_id = t.id
-            INNER JOIN korisnik k ON z.korisnik_id = k.id
+            LEFT JOIN teme t ON z.tema_id = t.id
+            LEFT JOIN korisnik k ON z.korisnik_id = k.id
             WHERE z.stanje = '0'
             ORDER BY z.created_at DESC
         `);
@@ -2875,7 +2875,7 @@ app.get('/api/urednik/dogadjaji/pending', async (req, res) => {
         const result = await pool.request().query(`
             SELECT d.id, d.opis, d.pocetak, d.kraj, d.koordinate, d.izvor, d.unos, k.korisnik
             FROM dogadjaji d
-            INNER JOIN korisnik k ON d.korisnik_id = k.id
+            LEFT JOIN korisnik k ON d.korisnik_id = k.id
             WHERE d.stanje = '0'
             ORDER BY d.unos DESC
         `);
@@ -2979,8 +2979,8 @@ app.post('/api/urednik/zapisi/search', async (req, res) => {
             SELECT z.id, z.naziv, z.opis, z.tema_id, t.naziv AS tema, z.korisnik_id, k.korisnik,
                    z.tagovi, z.file_type, z.file_size, z.stanje, z.created_at
             FROM zapisi z
-            INNER JOIN teme t ON z.tema_id = t.id
-            INNER JOIN korisnik k ON z.korisnik_id = k.id
+            LEFT JOIN teme t ON z.tema_id = t.id
+            LEFT JOIN korisnik k ON z.korisnik_id = k.id
         `;
         const conditions = [];
 
@@ -3046,8 +3046,8 @@ app.get('/api/urednik/zapisi/:id', async (req, res) => {
                 SELECT z.id, z.naziv, z.opis, z.tema_id, t.naziv AS tema, z.korisnik_id, k.korisnik,
                        z.tagovi, z.file_type, z.file_size, z.stanje, z.created_at
                 FROM zapisi z
-                INNER JOIN teme t ON z.tema_id = t.id
-                INNER JOIN korisnik k ON z.korisnik_id = k.id
+                LEFT JOIN teme t ON z.tema_id = t.id
+                LEFT JOIN korisnik k ON z.korisnik_id = k.id
                 WHERE z.id = @id
             `);
 
@@ -3205,7 +3205,7 @@ app.post('/api/urednik/dogadjaji/search', async (req, res) => {
             SELECT d.id, d.opis, d.pocetak, d.kraj, d.izvor, d.zapis, z.naziv AS zapis_naziv,
                    d.koordinate, d.stanje, d.unos, d.korisnik_id, k.korisnik
             FROM dogadjaji d
-            INNER JOIN korisnik k ON d.korisnik_id = k.id
+            LEFT JOIN korisnik k ON d.korisnik_id = k.id
             LEFT JOIN zapisi z ON d.zapis = z.id
         `;
         const conditions = [];
@@ -3307,7 +3307,7 @@ app.get('/api/urednik/dogadjaji/:id', async (req, res) => {
                 SELECT d.id, d.opis, d.pocetak, d.kraj, d.izvor, d.zapis, z.naziv AS zapis_naziv,
                        d.koordinate, d.stanje, d.unos, d.korisnik_id, k.korisnik
                 FROM dogadjaji d
-                INNER JOIN korisnik k ON d.korisnik_id = k.id
+                LEFT JOIN korisnik k ON d.korisnik_id = k.id
                 LEFT JOIN zapisi z ON d.zapis = z.id
                 WHERE d.id = @id
             `);

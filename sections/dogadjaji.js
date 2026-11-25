@@ -596,9 +596,9 @@ function displayDogadjajiResults(results, titleText) {
     resultsContainer.show();
 }
 
-// Global variable to store the current dogadjaj marker
-var currentDogadjajiMarker = null;
-window.currentDogadjajiMarker = currentDogadjajiMarker;
+// Global variable to store the current dogadjaj marker (preserve across script reloads!)
+window.currentDogadjajiMarker = window.currentDogadjajiMarker || null;
+var currentDogadjajiMarker = window.currentDogadjajiMarker;
 
 function viewDogadjaj(id) {
     console.log('Viewing dogadjaj with ID:', id);
@@ -623,11 +623,18 @@ function viewDogadjaj(id) {
                 // Show dogadjaj details in top layer
                 showDogadjajLayer(dogadjaj);
 
-                // ALWAYS remove previous marker first
+                // ALWAYS remove previous marker first (check both local and global refs)
+                if (window.currentDogadjajiMarker) {
+                    karta.removeLayer(window.currentDogadjajiMarker);
+                    window.currentDogadjajiMarker = null;
+                }
                 if (currentDogadjajiMarker) {
                     karta.removeLayer(currentDogadjajiMarker);
                     currentDogadjajiMarker = null;
-                    console.log('Previous marker removed');
+                }
+                if (window.urednikDogadjajMarker) {
+                    karta.removeLayer(window.urednikDogadjajMarker);
+                    window.urednikDogadjajMarker = null;
                 }
 
                 // If this dogadjaj has coordinates, show NEW marker
@@ -885,10 +892,13 @@ function closeDogadjajLayer() {
     $('#dogadjaj_layer').css('height', '35px');
 
     // Also remove marker when closing layer
+    if (window.currentDogadjajiMarker) {
+        karta.removeLayer(window.currentDogadjajiMarker);
+        window.currentDogadjajiMarker = null;
+    }
     if (currentDogadjajiMarker) {
         karta.removeLayer(currentDogadjajiMarker);
         currentDogadjajiMarker = null;
-        window.currentDogadjajiMarker = null;
     }
 }
 

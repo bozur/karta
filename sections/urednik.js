@@ -3377,6 +3377,10 @@ async function openUrednikDogadjajDetail(id) {
 
         // Show on map if coordinates exist
         if (typeof karta !== 'undefined') {
+            if (window.currentDogadjajiMarker) {
+                karta.removeLayer(window.currentDogadjajiMarker);
+                window.currentDogadjajiMarker = null;
+            }
             if (window.urednikDogadjajMarker) {
                 karta.removeLayer(window.urednikDogadjajMarker);
                 window.urednikDogadjajMarker = null;
