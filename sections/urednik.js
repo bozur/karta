@@ -527,24 +527,40 @@ function displayPendingZapisi(results) {
     }
 
     results.forEach(record => {
-        const row = $(`
-            <tr style="border-bottom: 1px solid #eee;">
-                <td style="padding: 3px;">${record.id}</td>
-                <td style="padding: 3px;">
-                    <a href="#" class="zapis-link" onclick="viewZapis(${record.id}); return false;">${record.naziv}</a>
-                </td>
-                <td style="padding: 3px;">${record.opis || ''}</td>
-                <td style="padding: 3px;">${record.tema || ''}</td>
-                <td style="padding: 3px;">${record.korisnik || ''}</td>
-                <td style="padding: 3px; text-align: center;">
+        const metaRow = $(`
+            <tr style="background-color: #fafafa; border-top: 1px solid #ccc;">
+                <td style="padding: 4px 3px;">${record.id}</td>
+                <td style="padding: 4px 3px;">${escapeUrednikHtml(record.tema || '')}</td>
+                <td style="padding: 4px 3px;">${escapeUrednikHtml(record.korisnik || '')}</td>
+                <td style="padding: 4px 3px; text-align: center;">
                     <input type="checkbox" class="zapisi-approve-checkbox" data-id="${record.id}">
                 </td>
-                <td style="padding: 3px; text-align: center;">
+                <td style="padding: 4px 3px; text-align: center;">
                     <input type="checkbox" class="zapisi-delete-checkbox" data-id="${record.id}">
                 </td>
             </tr>
         `);
-        tbody.append(row);
+        const nazivRow = $(`
+            <tr style="border-bottom: ${record.opis ? 'none' : '1px solid #ccc'};">
+                <td colspan="5" style="padding: 3px 5px; word-break: break-word;">
+                    <span class="text-muted" style="font-size: 0.8rem;">Назив:</span>
+                    <a href="#" class="zapis-link" onclick="viewZapis(${record.id}); return false;">${escapeUrednikHtml(record.naziv || '')}</a>
+                </td>
+            </tr>
+        `);
+        tbody.append(metaRow);
+        tbody.append(nazivRow);
+
+        if (record.opis) {
+            const opisRow = $(`
+                <tr style="border-bottom: 1px solid #ccc;">
+                    <td colspan="5" style="padding: 2px 5px 6px 5px; font-size: 0.85rem; color: #333; word-break: break-word;">
+                        <span class="text-muted" style="font-size: 0.8rem;">Опис:</span> ${escapeUrednikHtml(record.opis)}
+                    </td>
+                </tr>
+            `);
+            tbody.append(opisRow);
+        }
     });
 
     // Add event listeners for individual checkboxes
@@ -769,37 +785,45 @@ function displayPendingDogadjaji(results) {
         const hasCoordinates = record.koordinate && record.koordinate.trim() !== '';
         const locationIcon = hasCoordinates ? '<i class="bi bi-geo-alt-fill"></i>' : '';
 
-        const row = $(`
-            <tr style="border-bottom: 1px solid #eee; cursor: ${hasCoordinates ? 'pointer' : 'default'};" data-id="${record.id}" data-has-coords="${hasCoordinates}">
-                <td style="padding: 3px;">${record.id}</td>
-                <td style="padding: 3px;">${record.opis || ''}</td>
-                <td style="padding: 3px;">${record.pocetak || ''}</td>
-                <td style="padding: 3px;">${record.kraj || ''}</td>
-                <td style="padding: 3px;">${record.korisnik || ''}</td>
-                <td style="padding: 3px; width: 30px; text-align: center;">${locationIcon}</td>
-                <td style="padding: 3px; text-align: center;">
+        const metaRow = $(`
+            <tr style="background-color: #fafafa; border-top: 1px solid #ccc; cursor: ${hasCoordinates ? 'pointer' : 'default'};" data-id="${record.id}" data-has-coords="${hasCoordinates}">
+                <td style="padding: 4px 3px;">${record.id}</td>
+                <td style="padding: 4px 3px; font-size: 0.82rem;">${escapeUrednikHtml(record.pocetak || '')}</td>
+                <td style="padding: 4px 3px; font-size: 0.82rem;">${escapeUrednikHtml(record.kraj || '')}</td>
+                <td style="padding: 4px 3px; font-size: 0.82rem;">${escapeUrednikHtml(record.korisnik || '')}</td>
+                <td style="padding: 4px 3px; width: 26px; text-align: center;">${locationIcon}</td>
+                <td style="padding: 4px 3px; text-align: center;">
                     <input type="checkbox" class="dogadjaji-approve-checkbox" data-id="${record.id}">
                 </td>
-                <td style="padding: 3px; text-align: center;">
+                <td style="padding: 4px 3px; text-align: center;">
                     <input type="checkbox" class="dogadjaji-delete-checkbox" data-id="${record.id}">
+                </td>
+            </tr>
+        `);
+
+        const opisRow = $(`
+            <tr style="border-bottom: 1px solid #ccc; cursor: ${hasCoordinates ? 'pointer' : 'default'};" data-id="${record.id}" data-has-coords="${hasCoordinates}">
+                <td colspan="7" style="padding: 3px 5px 6px 5px; font-size: 0.85rem; color: #333; word-break: break-word;">
+                    <span class="text-muted" style="font-size: 0.8rem;">Опис:</span> ${escapeUrednikHtml(record.opis || '')}
                 </td>
             </tr>
         `);
 
         // Add click handler for rows with coordinates
         if (hasCoordinates) {
-            row.on('click', function (e) {
-                // Don't trigger if clicking on checkbox
+            const onRowClick = function (e) {
                 if ($(e.target).is('input[type="checkbox"]')) {
                     return;
                 }
-
                 const recordId = $(this).data('id');
                 showPendingDogadjajOnMap(recordId, results);
-            });
+            };
+            metaRow.on('click', onRowClick);
+            opisRow.on('click', onRowClick);
         }
 
-        tbody.append(row);
+        tbody.append(metaRow);
+        tbody.append(opisRow);
     });
 
     // Add event listeners for individual checkboxes
@@ -1330,34 +1354,44 @@ function displayPendingStavke(data, temaId, themeName) {
         record.vrijeme0_fmt = formatDate(record.vrijeme0);
         record.vrijeme1_fmt = formatDate(record.vrijeme1);
 
-        const row = $(`
-            <tr style="border-bottom: 1px solid #eee; cursor: pointer;" data-id="${recordId}">
-                <td style="padding: 3px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${record.opis || ''}</td>
-                <td style="padding: 3px;">${razredText}</td>
-                <td style="padding: 3px;">${vrstaText}</td>
-                <td style="padding: 3px;">${podvrstaText}</td>
-                <td style="padding: 3px;">${record.vrijeme0_fmt}</td>
-                <td style="padding: 3px;">${record.vrijeme1_fmt}</td>
-                <td style="padding: 3px;">${record.korisnik || ''}</td>
-                <td style="padding: 3px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${window.formatIzvorLinks ? window.formatIzvorLinks(record.izvor) : (record.izvor || '')}</td>
-                <td style="padding: 3px;">
-                    ${record.zapis ? `<a href="/api/zapisi/${record.zapis}" target="_blank" class="zapis-link-table">${record.zapis_naziv || record.zapis}</a>` : ''}
+        const metaRow = $(`
+            <tr style="background-color: #fafafa; border-top: 1px solid #ccc; cursor: pointer;" data-id="${recordId}">
+                <td style="padding: 4px 3px;">${escapeUrednikHtml(razredText)}</td>
+                <td style="padding: 4px 3px;">${escapeUrednikHtml(vrstaText)}</td>
+                <td style="padding: 4px 3px;">${escapeUrednikHtml(podvrstaText)}</td>
+                <td style="padding: 4px 3px;">${escapeUrednikHtml(record.vrijeme0_fmt)}</td>
+                <td style="padding: 4px 3px;">${escapeUrednikHtml(record.vrijeme1_fmt)}</td>
+                <td style="padding: 4px 3px;">${escapeUrednikHtml(record.korisnik || '')}</td>
+                <td style="padding: 4px 3px; max-width: 100px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${window.formatIzvorLinks ? window.formatIzvorLinks(record.izvor) : escapeUrednikHtml(record.izvor || '')}</td>
+                <td style="padding: 4px 3px;">
+                    ${record.zapis ? `<a href="/api/zapisi/${record.zapis}" target="_blank" class="zapis-link-table">${escapeUrednikHtml(record.zapis_naziv || record.zapis)}</a>` : ''}
                 </td>
-                <td style="padding: 3px; text-align: center;">
+                <td style="padding: 4px 3px; text-align: center;">
                     <input type="checkbox" class="stavke-approve-checkbox" data-id="${recordId}">
                 </td>
-                <td style="padding: 3px; text-align: center;">
+                <td style="padding: 4px 3px; text-align: center;">
                     <input type="checkbox" class="stavke-delete-checkbox" data-id="${recordId}">
                 </td>
             </tr>
         `);
 
-        row.on('click', function (e) {
+        const opisRow = $(`
+            <tr style="border-bottom: 1px solid #ccc; cursor: pointer;" data-id="${recordId}">
+                <td colspan="10" style="padding: 3px 5px 6px 5px; font-size: 0.85rem; color: #333; word-break: break-word;">
+                    <span class="text-muted" style="font-size: 0.8rem;">Опис:</span> ${escapeUrednikHtml(record.opis || '')}
+                </td>
+            </tr>
+        `);
+
+        const onRowClick = function (e) {
             if ($(e.target).is('input[type="checkbox"], a, a *')) return;
             showPendingStavkaOnMap(recordId);
-        });
+        };
+        metaRow.on('click', onRowClick);
+        opisRow.on('click', onRowClick);
 
-        tbody.append(row);
+        tbody.append(metaRow);
+        tbody.append(opisRow);
     });
 
     // Individual checkbox logic
