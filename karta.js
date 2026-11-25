@@ -179,8 +179,14 @@ $(document).ready(function () {
             return Promise.resolve();
         }
         return fetch('/api/v2/theme-options/' + themeId)
-            .then(function (r) { return r.json(); })
-            .then(function (options) {
+            .then(function (r) {
+                if (!r.ok) {
+                    throw new Error('Failed to fetch theme options');
+                }
+                return r.json();
+            })
+            .then(function (data) {
+                var options = (data && data.options) ? data.options : (data || {});
                 window.themeOptionsCache[themeId] = [
                     options.razred || [],
                     options.vrsta || [],
