@@ -201,8 +201,8 @@ function showAlert(container, message, type) {
 
 // Reported Comments (Primjedbe) functionality
 function initReportedComments() {
-    // Load reported comments when section is expanded
-    $('#urednik_primedbe_podaci').on('shown.bs.collapse', function () {
+    // Load reported comments when section begins expanding (prevent duplicate bindings)
+    $('#urednik_primedbe_podaci').off('show.bs.collapse shown.bs.collapse').on('show.bs.collapse', function () {
         loadReportedComments();
     });
 }
@@ -211,16 +211,20 @@ function loadReportedComments() {
     const alertsDiv = $('#primedbe_alerts');
     const loadingDiv = $('#primedbe_loading');
     const resultsDiv = $('#primedbe_results');
+    const hasExisting = $('#primedbe_body').children().length > 0;
 
-    alertsDiv.hide().text('');
-    loadingDiv.show();
-    resultsDiv.hide();
+    if (!hasExisting) {
+        alertsDiv.hide().text('');
+        loadingDiv.show();
+        resultsDiv.hide();
+    }
 
     fetch('/api/urednik/comments/reported', { cache: 'no-store' })
         .then(response => response.json())
         .then(data => {
             loadingDiv.hide();
             if (data.success) {
+                alertsDiv.hide().text('');
                 displayReportedComments(data.results);
             } else {
                 alertsDiv.text(data.error || 'Грешка при учитавању').show();
@@ -333,8 +337,8 @@ function deleteReportedComment(id) {
 
 // Theme Locking functionality
 function initThemeLocking() {
-    // Load themes when section is expanded
-    $('#urednik_zakljucavanje_tema_podaci').on('shown.bs.collapse', function () {
+    // Load themes when section begins expanding (prevent duplicate bindings)
+    $('#urednik_zakljucavanje_tema_podaci').off('show.bs.collapse shown.bs.collapse').on('show.bs.collapse', function () {
         loadThemesForLocking();
     });
 }
@@ -343,12 +347,14 @@ function loadThemesForLocking() {
     const alertsDiv = $('#theme_lock_alerts');
     const loadingDiv = $('#theme_lock_loading');
     const listDiv = $('#theme_lock_list');
+    const hasExisting = listDiv.children().length > 0;
 
     alertsDiv.hide().text('');
-    loadingDiv.show();
-    listDiv.empty();
+    if (!hasExisting) {
+        loadingDiv.show();
+    }
 
-    fetch('/api/v2/themes')
+    fetch('/api/v2/themes', { cache: 'no-store' })
         .then(response => response.json())
         .then(data => {
             loadingDiv.hide();
@@ -367,6 +373,7 @@ function loadThemesForLocking() {
 
 function displayThemesForLocking(themes) {
     const listDiv = $('#theme_lock_list');
+    listDiv.empty();
 
     themes.forEach(theme => {
         const isLocked = theme.zakljucano === 1 || theme.zakljucano === true;
@@ -374,9 +381,9 @@ function displayThemesForLocking(themes) {
         const titleText = isLocked ? 'откључај' : 'закључај';
 
         const item = $(`
-            <div class="list-group-item d-flex justify-content-between align-items-center theme-lock-row" style="padding: 3px 15px; border: none; background: transparent;">
-                <span style="font-size: 0.9rem;">${theme.naziv}</span>
-                <i class="bi ${iconClass} btn-toggle-lock" data-id="${theme.id}" style="font-size: 1.2rem; cursor: pointer;" title="${titleText}"></i>
+            <div class="list-group-item d-flex justify-content-between align-items-center theme-lock-row" style="padding: 2px 8px; line-height: 1.2; border: none; background: transparent;">
+                <span style="font-size: 0.85rem;">${theme.naziv}</span>
+                <i class="bi ${iconClass} btn-toggle-lock" data-id="${theme.id}" style="font-size: 0.95rem; line-height: 1; cursor: pointer;" title="${titleText}"></i>
             </div>
         `);
 
@@ -437,7 +444,7 @@ async function toggleThemeLock(temaId, icon) {
 // Zapisi Approval functionality
 function initZapisiApproval() {
     // Load pending zapisi when section is expanded
-    $('#urednik_odobravanje_zapisa_podaci').on('shown.bs.collapse', function () {
+    $('#urednik_odobravanje_zapisa_podaci').off('shown.bs.collapse').on('shown.bs.collapse', function () {
         loadPendingZapisi();
     });
 
@@ -635,12 +642,12 @@ function viewZapis(id) {
 
 function initDogadjajiApproval() {
     // Load pending dogadjaji when section is expanded
-    $('#urednik_odobravanje_dogadjaja_podaci').on('shown.bs.collapse', function () {
+    $('#urednik_odobravanje_dogadjaja_podaci').off('shown.bs.collapse').on('shown.bs.collapse', function () {
         loadPendingDogadjaji();
     });
 
     // Clear map when section is collapsed
-    $('#urednik_odobravanje_dogadjaja_podaci').on('hidden.bs.collapse', function () {
+    $('#urednik_odobravanje_dogadjaja_podaci').off('hidden.bs.collapse').on('hidden.bs.collapse', function () {
         clearMapForDogadjajiApproval();
     });
 
@@ -1155,7 +1162,7 @@ function syncCounters() {
 
 function initStavkeApproval() {
     // Load pending summary when section is expanded or when returning from detail
-    $('#urednik_odobravanje_stavki_podaci').on('shown.bs.collapse', function () {
+    $('#urednik_odobravanje_stavki_podaci').off('shown.bs.collapse').on('shown.bs.collapse', function () {
         loadPendingStavkeSummary();
     });
 
