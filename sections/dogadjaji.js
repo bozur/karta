@@ -679,21 +679,22 @@ function viewDogadjaj(id) {
 // Expose globally for playback integration
 window.viewDogadjaj = viewDogadjaj;
 
-// Parse Serbian date format "DD. MM. YYYY. HH:MM:SS" to Date object
+// Parse Serbian date format "DD. MM. YYYY. HH:MM:SS" (supports 1-4 digit and BC years) to Date object
 function parseSerbianDate(dateStr) {
     if (!dateStr) return null;
 
-    // Match format: "14. 12. 1991. 18:23:00"
-    const match = dateStr.match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\.\s*(\d{1,2}):(\d{2}):(\d{2})/);
+    // Match format: "14. 12. 1991. 18:23:00" or "22. 6. 431. 13:22:00"
+    const match = String(dateStr).match(/(\d{1,2})\.\s*(\d{1,2})\.\s*(-?\d{1,4})\.\s*(\d{1,2}):(\d{2})(?::(\d{2}))?/);
     if (!match) {
         console.warn('Could not parse Serbian date:', dateStr);
         return null;
     }
 
     const [, day, month, year, hours, minutes, seconds] = match;
-    // Month is 0-indexed in JavaScript Date
-    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day),
-        parseInt(hours), parseInt(minutes), parseInt(seconds));
+    const d = new Date(2000, parseInt(month, 10) - 1, parseInt(day, 10),
+        parseInt(hours, 10), parseInt(minutes, 10), seconds ? parseInt(seconds, 10) : 0);
+    d.setFullYear(parseInt(year, 10));
+    return d;
 }
 
 // Expose globally for playback integration
@@ -703,15 +704,15 @@ window.parseSerbianDate = parseSerbianDate;
 function formatDateTime(dateTimeStr) {
     if (!dateTimeStr) return 'Није наведено';
 
-    // If it's already in Serbian format, return as-is
-    if (typeof dateTimeStr === 'string' && dateTimeStr.match(/\d{1,2}\.\s*\d{1,2}\.\s*\d{4}\.\s*\d{1,2}:\d{2}/)) {
-        return dateTimeStr;
+    // If it's already in Serbian format (supports 1-4 digit and BC years), return as-is
+    if (typeof dateTimeStr === 'string' && dateTimeStr.trim().match(/^\d{1,2}\.\s*\d{1,2}\.\s*-?\d{1,4}\.(\s*\d{1,2}:\d{2}(:\d{2})?)?$/)) {
+        return dateTimeStr.trim();
     }
 
     const date = new Date(dateTimeStr);
 
-    // Check if date is valid
-    if (isNaN(date.getTime())) return 'Није наведено';
+    // If unparseable by Date, still display the raw entered string instead of hiding it
+    if (isNaN(date.getTime())) return String(dateTimeStr);
 
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');

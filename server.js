@@ -1919,14 +1919,15 @@ app.get('/api/check-auth', async (req, res) => {
     if (req.session.user) {
         console.log(`User found in session: ${req.session.user.id}`);
         try {
-            // Fetch latest profile picture URL needed for global UI
+            // Fetch latest profile picture URL and intro video status needed for global UI
             const pool = await poolPromise;
             const result = await pool.request()
                 .input('id', sql.Int, req.session.user.id)
-                .query('SELECT slika_url FROM korisnik WHERE id = @id');
+                .query('SELECT slika_url, COALESCE(vidio_uvod, FALSE) AS vidio_uvod FROM korisnik WHERE id = @id');
 
             if (result.recordset.length > 0) {
                 req.session.user.slika_url = result.recordset[0].slika_url;
+                req.session.user.vidio_uvod = Boolean(result.recordset[0].vidio_uvod);
             }
         } catch (err) {
             console.error('Error fetching latest user details in check-auth:', err);
@@ -1940,6 +1941,24 @@ app.get('/api/check-auth', async (req, res) => {
     } else {
         console.log('⚠ Auth check: No user session found');
         res.status(401).json({ error: 'Not authenticated' });
+    }
+});
+
+// POST /api/user/intro-seen - Mark welcome intro video as seen for current user
+app.post('/api/user/intro-seen', async (req, res) => {
+    if (!req.session.user) {
+        return res.status(401).json({ error: 'Not authenticated' });
+    }
+    try {
+        const pool = await poolPromise;
+        await pool.request()
+            .input('id', sql.Int, req.session.user.id)
+            .query('UPDATE korisnik SET vidio_uvod = TRUE WHERE id = @id');
+        req.session.user.vidio_uvod = true;
+        res.json({ success: true });
+    } catch (err) {
+        console.error('Error marking intro video as seen:', err);
+        res.status(500).json({ error: 'Database error' });
     }
 });
 

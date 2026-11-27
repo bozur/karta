@@ -6,6 +6,95 @@ var tilelayer2_clean;
 
 window.layersVisible = true;
 
+// Конфигурација уводног видеа (9:16 за телефон, 16:9 за десктоп/таблет)
+// Када фајлови буду постављени у video/ и slike/, пребацити ready на true
+window.INTRO_VIDEO_CONFIG = {
+    ready: false,
+    desktopSrc: 'video/uvod-desktop.mp4',
+    mobileSrc: 'video/uvod-mobile.mp4',
+    desktopPoster: 'slike/uvod-poster-desktop.jpg',
+    mobilePoster: 'slike/uvod-poster-mobile.jpg'
+};
+
+window.getIntroVideoMedia = function () {
+    var isMobile = window.innerWidth <= 768;
+    return {
+        isMobile: isMobile,
+        src: isMobile ? window.INTRO_VIDEO_CONFIG.mobileSrc : window.INTRO_VIDEO_CONFIG.desktopSrc,
+        poster: isMobile ? window.INTRO_VIDEO_CONFIG.mobilePoster : window.INTRO_VIDEO_CONFIG.desktopPoster
+    };
+};
+
+window.markIntroVideoSeen = function () {
+    if (!window.INTRO_VIDEO_CONFIG.ready || window.currentUserIntroSeen) return;
+    window.currentUserIntroSeen = true;
+    $.post('api/user/intro-seen').fail(function (err) {
+        console.error('Failed to mark intro as seen:', err);
+    });
+};
+
+window.openIntroVideoLightbox = function () {
+    var cfg = window.INTRO_VIDEO_CONFIG;
+    var media = window.getIntroVideoMedia();
+    var $lightbox = $('#intro_video_lightbox');
+    var $video = $('#intro_video_player');
+    var $placeholder = $('#intro_video_placeholder');
+
+    if (cfg.ready && media.src) {
+        $placeholder.hide();
+        $video.attr('poster', media.poster || '');
+        if ($video.attr('src') !== media.src) {
+            $video.attr('src', media.src);
+        }
+        $video.show();
+        $lightbox.addClass('show');
+        var videoEl = $video[0];
+        if (videoEl) {
+            videoEl.currentTime = 0;
+            var playPromise = videoEl.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch(function () { /* Корисник може покренути преко контрола */ });
+            }
+        }
+    } else {
+        $video.hide();
+        $placeholder.show();
+        $lightbox.addClass('show');
+    }
+};
+
+window.closeIntroVideoLightbox = function () {
+    var $lightbox = $('#intro_video_lightbox');
+    var videoEl = $('#intro_video_player')[0];
+    if (videoEl) {
+        videoEl.pause();
+        try { videoEl.currentTime = 0; } catch (e) { /* ignore */ }
+    }
+    $lightbox.removeClass('show');
+};
+
+window.openWelcomeIntroModal = function () {
+    var cfg = window.INTRO_VIDEO_CONFIG;
+    var media = window.getIntroVideoMedia();
+    var $img = $('#welcome_intro_poster_img');
+
+    if (cfg.ready && media.poster) {
+        $img.attr('src', media.poster).show();
+        $('#welcome_intro_poster_caption').text('Покрени видео водич');
+    } else {
+        $img.hide();
+        $('#welcome_intro_poster_caption').text('Уводни видео — ускоро');
+    }
+    $('#welcome_intro_overlay').addClass('show');
+};
+
+window.closeWelcomeIntroModal = function (shouldMarkSeen) {
+    $('#welcome_intro_overlay').removeClass('show');
+    if (shouldMarkSeen) {
+        window.markIntroVideoSeen();
+    }
+};
+
 // LEGACY: Hardcoded dropdown options for themes
 // This array is kept for backward compatibility and as a fallback if the API fails
 // New implementation fetches options dynamically from /api/v2/theme-options/:tema_id
@@ -23,6 +112,12 @@ $(document).ready(function () {
             if (data.user) {
                 window.currentUserId = data.user.id;
                 window.currentUserProfilePic = data.user.slika_url; // Global storage
+                window.currentUserIntroSeen = Boolean(data.user.vidio_uvod);
+
+                // Прикажи слој добродошлице само при првом уласку када су видеи спремни
+                if (window.INTRO_VIDEO_CONFIG.ready && !window.currentUserIntroSeen) {
+                    window.openWelcomeIntroModal();
+                }
 
                 // Vanish Skadar marker after 10 seconds of user being logged in
                 setTimeout(function () {
@@ -81,6 +176,44 @@ $(document).ready(function () {
     $('#mobile-panel-close').on('click', function () {
         $('#section-content').removeClass('in');
         currentSection = null;
+    });
+
+    // Welcome intro overlay & fullscreen video lightbox handlers
+    $('#welcome_intro_close, #welcome_intro_skip').on('click', function () {
+        window.closeWelcomeIntroModal(true);
+    });
+
+    $('#welcome_intro_overlay').on('click', function (e) {
+        if (e.target === this) {
+            window.closeWelcomeIntroModal(true);
+        }
+    });
+
+    $('#welcome_intro_poster_btn').on('click keydown', function (e) {
+        if (e.type === 'keydown' && e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        window.closeWelcomeIntroModal(true);
+        window.openIntroVideoLightbox();
+    });
+
+    $('#intro_video_lightbox_close').on('click', function () {
+        window.closeIntroVideoLightbox();
+    });
+
+    $('#intro_video_lightbox').on('click', function (e) {
+        if (e.target === this || $(e.target).hasClass('intro-video-lightbox-inner')) {
+            window.closeIntroVideoLightbox();
+        }
+    });
+
+    $(document).on('keydown', function (e) {
+        if (e.key === 'Escape') {
+            if ($('#intro_video_lightbox').hasClass('show')) {
+                window.closeIntroVideoLightbox();
+            } else if ($('#welcome_intro_overlay').hasClass('show')) {
+                window.closeWelcomeIntroModal(true);
+            }
+        }
     });
 
     // Initialize map after height is set - centered on Skadar

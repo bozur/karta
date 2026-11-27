@@ -16,7 +16,7 @@
   <link rel="stylesheet" type="text/css"
     href="https://maxcdn.bootstrapcdn.com/font-awesome/4.5.0/css/font-awesome.min.css">
   <link rel="stylesheet" type="text/css" href="css/jquery-comments.css">
-  <link rel="stylesheet" href="css/custom.css?v=8">
+  <link rel="stylesheet" href="css/custom.css?v=9">
   <link rel="stylesheet" href="leaflet-sidebar-master/src/L.Control.Sidebar.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
@@ -125,12 +125,56 @@
     </button>
   </div>
 
+  <!-- First-login Welcome Intro Overlay -->
+  <div id="welcome_intro_overlay" class="welcome-intro-overlay" role="dialog" aria-modal="true" aria-labelledby="welcome_intro_title">
+    <div class="welcome-intro-card">
+      <button type="button" id="welcome_intro_close" class="welcome-intro-close" aria-label="Затвори">
+        <i class="bi bi-x-lg"></i>
+      </button>
+      <h5 id="welcome_intro_title" class="welcome-intro-title">Добродошли на Карта.СРБ!</h5>
+      <p class="welcome-intro-subtitle">Погледајте кратки видео водич (~1 мин) за брзи преглед основних могућности.</p>
+      <div id="welcome_intro_poster_btn" class="intro-video-poster-card" role="button" tabindex="0" aria-label="Покрени уводни видео">
+        <img id="welcome_intro_poster_img" class="intro-video-poster-img" src="" alt="Уводни видео" style="display: none;">
+        <div class="intro-video-poster-overlay">
+          <div class="intro-video-play-circle">
+            <i class="bi bi-play-fill"></i>
+          </div>
+          <div id="welcome_intro_poster_caption" class="intro-video-poster-caption">Покрени видео водич</div>
+        </div>
+      </div>
+      <p class="welcome-intro-note">
+        <i class="bi bi-question-circle"></i>
+        Видео касније увек можете пронаћи у менију у дијелу <strong>Упутство</strong>.
+      </p>
+      <div class="text-center mt-2">
+        <button type="button" id="welcome_intro_skip" class="btn btn-sm btn-outline-secondary px-4">Прескочи</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fullscreen Intro Video Lightbox (shared by Welcome Overlay and Uputstvo) -->
+  <div id="intro_video_lightbox" class="intro-video-lightbox" role="dialog" aria-modal="true" aria-label="Уводни видео">
+    <button type="button" id="intro_video_lightbox_close" class="intro-video-lightbox-close" aria-label="Затвори видео">
+      <i class="bi bi-x-lg"></i>
+    </button>
+    <div class="intro-video-lightbox-inner">
+      <video id="intro_video_player" class="intro-video-player" controls playsinline preload="metadata" style="display: none;"></video>
+      <div id="intro_video_placeholder" class="intro-video-placeholder">
+        <div class="intro-video-play-circle mb-3">
+          <i class="bi bi-film"></i>
+        </div>
+        <h5>Уводни видео — ускоро</h5>
+        <p class="mb-0">Припремамо кратки видео водич (9:16 за телефон и 16:9 за рачунар).</p>
+      </div>
+    </div>
+  </div>
+
   <script src="js/config/theme_config.js"></script>
   <script src="js/config/draw_config.js"></script>
   <script type="text/javascript"
     src="https://cdnjs.cloudflare.com/ajax/libs/jquery.textcomplete/1.8.0/jquery.textcomplete.js"></script>
   <script src="js/jquery-comments.js"></script>
-  <script src="karta.js?v=2"></script>
+  <script src="karta.js?v=3"></script>
 </body>
 
 </html>

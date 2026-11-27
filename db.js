@@ -171,6 +171,12 @@ const poolPromise = (async () => {
         `);
         console.log('✓ google_id column verified on korisnik');
 
+        // Ensure vidio_uvod column exists on korisnik table
+        await client.query(`
+            ALTER TABLE "korisnik" ADD COLUMN IF NOT EXISTS "vidio_uvod" BOOLEAN NOT NULL DEFAULT FALSE;
+        `);
+        console.log('✓ vidio_uvod column verified on korisnik');
+
         // Ensure "аустроугарски" razred exists for Theme 4 ("логори за Србе")
         await client.query(`
             INSERT INTO teme_opcije (tema_id, tip, redosled, vrednost)
