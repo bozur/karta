@@ -753,7 +753,8 @@ div {
   #dogadjaj_layer #dogadjaj_opis {
     padding-right: 78px;
     min-height: 26px;
-    font-weight: 600;
+    font-weight: normal;
+    text-align: left;
     cursor: pointer;
   }
 

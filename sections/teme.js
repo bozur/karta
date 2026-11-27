@@ -1836,6 +1836,23 @@ function formatDateForDisplay(date) {
 function startPlayback() {
     console.log('--- startPlayback called ---');
 
+    // Ensure dogadjaji.js is loaded so window.viewDogadjaj / parseSerbianDate / closeDogadjajLayer exist
+    // even if the user never opened the "Догађаји" tab before starting playback
+    if (typeof window.viewDogadjaj !== 'function' || typeof window.parseSerbianDate !== 'function') {
+        if (window.playbackState.isLoadingDogadjajiScript) return;
+        window.playbackState.isLoadingDogadjajiScript = true;
+        $.getScript('sections/dogadjaji.js?v=' + new Date().getTime())
+            .always(function () {
+                window.playbackState.isLoadingDogadjajiScript = false;
+                runPlayback();
+            });
+        return;
+    }
+
+    runPlayback();
+}
+
+function runPlayback() {
     // Safety check: if already running, stop it first to reset
     if (window.playbackState.isRunning) {
         console.warn('Playback already running, stopping first...');
