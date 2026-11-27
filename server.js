@@ -3743,6 +3743,109 @@ app.put('/api/novosti/:id/vaznost', async (req, res) => {
     }
 });
 
+// PUT /api/novosti/:id (Edit opis, vrijeme, vaznost of an existing news item)
+app.put('/api/novosti/:id', async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (req.session.user.urednik != 1 && req.session.user.urednik != '1') {
+            return res.status(403).json({ error: 'Забрањен приступ. Потребне су уредничке привилегије.' });
+        }
+
+        const id = parseInt(req.params.id, 10);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ error: 'Неисправан ИД новости.' });
+        }
+
+        const opis = req.body.opis ? String(req.body.opis).trim() : '';
+        if (opis.length < 10) {
+            return res.status(400).json({ error: 'Опис мора имати најмање 10 карактера.' });
+        }
+        if (opis.length > 4000) {
+            return res.status(400).json({ error: 'Опис не смије бити дужи од 4000 карактера.' });
+        }
+
+        const parsedVaznost = req.body.vaznost !== undefined ? parseInt(req.body.vaznost, 10) : 0;
+        if (![0, 1, 2].includes(parsedVaznost)) {
+            return res.status(400).json({ error: 'Неисправна важност (дозвољено: 0, 1 или 2).' });
+        }
+
+        let parsedVrijeme = null;
+        if (req.body.vrijeme && String(req.body.vrijeme).trim()) {
+            let vStr = String(req.body.vrijeme).trim();
+            if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/.test(vStr)) {
+                vStr = vStr.replace(' ', 'T') + ':00';
+            } else if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(vStr)) {
+                vStr += ':00';
+            }
+            const d = new Date(vStr);
+            if (isNaN(d.getTime())) {
+                return res.status(400).json({ error: 'Неисправан датум/вријеме.' });
+            }
+            parsedVrijeme = d;
+        }
+
+        const pool = await poolPromise;
+        const request = pool.request()
+            .input('id', sql.Int, id)
+            .input('opis', sql.NVarChar, opis)
+            .input('vaznost', sql.Int, parsedVaznost);
+
+        let updateSql = 'UPDATE novosti SET opis = @opis, vaznost = @vaznost';
+        if (parsedVrijeme) {
+            request.input('vrijeme', sql.DateTime2, parsedVrijeme);
+            updateSql += ', vrijeme = @vrijeme';
+        }
+        updateSql += ' WHERE id = @id RETURNING id, vrijeme, opis, COALESCE(vaznost, 0) AS vaznost';
+
+        const result = await request.query(updateSql);
+        if (!result.recordset || result.recordset.length === 0) {
+            return res.status(404).json({ error: 'Новост није пронађена.' });
+        }
+
+        res.json({
+            success: true,
+            message: 'Новост је успјешно измијењена.',
+            novost: result.recordset[0]
+        });
+    } catch (err) {
+        console.error('Error updating novost:', err);
+        res.status(500).json({ error: 'Грешка при измјени новости.' });
+    }
+});
+
+// DELETE /api/novosti/:id (Delete an existing news item)
+app.delete('/api/novosti/:id', async (req, res) => {
+    try {
+        if (!req.session.user) {
+            return res.status(401).json({ error: 'Морате бити пријављени' });
+        }
+        if (req.session.user.urednik != 1 && req.session.user.urednik != '1') {
+            return res.status(403).json({ error: 'Забрањен приступ. Потребне су уредничке привилегије.' });
+        }
+
+        const id = parseInt(req.params.id, 10);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(400).json({ error: 'Неисправан ИД новости.' });
+        }
+
+        const pool = await poolPromise;
+        const result = await pool.request()
+            .input('id', sql.Int, id)
+            .query('DELETE FROM novosti WHERE id = @id');
+
+        if (!result.rowsAffected || result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: 'Новост није пронађена.' });
+        }
+
+        res.json({ success: true, message: 'Новост је успјешно обрисана.' });
+    } catch (err) {
+        console.error('Error deleting novost:', err);
+        res.status(500).json({ error: 'Грешка при брисању новости.' });
+    }
+});
+
 // GET /api/novosti (Fetch news)
 app.get('/api/novosti', async (req, res) => {
     try {

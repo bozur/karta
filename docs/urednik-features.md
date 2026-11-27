@@ -47,7 +47,10 @@ Insert news items that appear in the "Opste" tab.
 ### Behavior
 
 **Submit Button:** `#btn_unesi_novosti`  
-**API Endpoint:** `POST /api/novosti`
+**API Endpoints:** `POST /api/novosti`, `PUT /api/novosti/:id` (edit `opis`, `vrijeme`, `vaznost` without re-sending email), `PUT /api/novosti/:id/vaznost`, `DELETE /api/novosti/:id`
+
+**Existing News List (`#urednik_novosti_lista`):**
+- Each row displays date, truncated text, importance selector, pencil icon (`✎`) for inline editing of date/time (`vrijeme`) and text (`opis`), and trash icon (`🗑`) to delete with confirmation.
 
 **Validation:**
 - Minimum 10 characters

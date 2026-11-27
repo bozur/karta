@@ -67,7 +67,7 @@ function initUrednikSection() {
         });
     }
 
-    $('#urednik_novosti_podaci').off('shown.bs.collapse').on('shown.bs.collapse', function () {
+    $('#urednik_novosti_podaci').off('show.bs.collapse shown.bs.collapse').on('show.bs.collapse', function () {
         loadUrednikNovosti();
     });
 }
@@ -87,10 +87,12 @@ async function loadUrednikNovosti() {
     const alertsDiv = document.getElementById('novosti_alerts');
     if (!lista) return;
 
-    lista.innerHTML = '<div class="text-muted py-1">Учитавање...</div>';
+    if (lista.children.length === 0) {
+        lista.innerHTML = '<div class="text-muted py-1">Учитавање...</div>';
+    }
 
     try {
-        const response = await fetch('/api/novosti');
+        const response = await fetch('/api/novosti', { cache: 'no-store' });
         if (!response.ok) throw new Error('Failed to fetch news');
         const items = await response.json();
 
@@ -106,16 +108,20 @@ async function loadUrednikNovosti() {
             const date = new Date(item.vrijeme);
             const dateStr = `${String(date.getDate()).padStart(2, '0')}.${String(date.getMonth() + 1).padStart(2, '0')}.${date.getFullYear()}.`;
 
+            const wrapper = document.createElement('div');
+            wrapper.className = 'border-bottom';
+            wrapper.style.borderLeft = `3px solid ${style.border}`;
+            wrapper.style.backgroundColor = style.bg;
+
             const row = document.createElement('div');
-            row.className = 'd-flex align-items-center justify-content-between py-1 px-2 border-bottom';
-            row.style.gap = '8px';
-            row.style.borderLeft = `3px solid ${style.border}`;
-            row.style.backgroundColor = style.bg;
+            row.className = 'd-flex align-items-center justify-content-between py-1 px-2';
+            row.style.gap = '6px';
 
             const textWrap = document.createElement('div');
             textWrap.style.minWidth = '0';
             textWrap.style.flex = '1';
-            textWrap.title = item.opis || '';
+            textWrap.style.cursor = 'pointer';
+            textWrap.title = (item.opis || '') + ' (клик за измјену)';
 
             const dateSpan = document.createElement('span');
             dateSpan.className = 'text-muted mr-1';
@@ -123,7 +129,7 @@ async function loadUrednikNovosti() {
 
             const opisSpan = document.createElement('span');
             const fullText = item.opis || '';
-            opisSpan.textContent = fullText.length > 70 ? fullText.slice(0, 70) + '…' : fullText;
+            opisSpan.textContent = fullText.length > 60 ? fullText.slice(0, 60) + '…' : fullText;
 
             textWrap.appendChild(dateSpan);
             textWrap.appendChild(opisSpan);
@@ -141,6 +147,148 @@ async function loadUrednikNovosti() {
             `;
             select.value = String(currentVaznost);
 
+            const editIcon = document.createElement('i');
+            editIcon.className = 'bi bi-pencil text-secondary';
+            editIcon.style.cursor = 'pointer';
+            editIcon.style.fontSize = '0.9rem';
+            editIcon.style.padding = '0 2px';
+            editIcon.title = 'измијени';
+
+            const deleteIcon = document.createElement('i');
+            deleteIcon.className = 'bi bi-trash text-danger';
+            deleteIcon.style.cursor = 'pointer';
+            deleteIcon.style.fontSize = '0.9rem';
+            deleteIcon.style.padding = '0 2px';
+            deleteIcon.title = 'обриши';
+
+            // Inline edit panel (hidden until pencil or text is clicked)
+            const editPanel = document.createElement('div');
+            editPanel.className = 'px-2 pb-2 pt-1';
+            editPanel.style.display = 'none';
+            editPanel.style.backgroundColor = '#fcfcfc';
+            editPanel.style.borderTop = '1px dashed #ddd';
+
+            const dateInput = document.createElement('input');
+            dateInput.type = 'text';
+            dateInput.className = 'form-control form-control-sm mb-1';
+            dateInput.style.fontSize = '0.8rem';
+            dateInput.placeholder = 'датум и вријеме (YYYY-MM-DD HH:mm)';
+            dateInput.value = formatDateTimeForInput(item.vrijeme);
+
+            const opisTextarea = document.createElement('textarea');
+            opisTextarea.className = 'form-control form-control-sm mb-1';
+            opisTextarea.rows = 3;
+            opisTextarea.maxLength = 4000;
+            opisTextarea.style.fontSize = '0.82rem';
+            opisTextarea.value = item.opis || '';
+
+            const editActions = document.createElement('div');
+            editActions.className = 'd-flex align-items-center justify-content-end';
+            editActions.style.gap = '6px';
+
+            const btnCancel = document.createElement('button');
+            btnCancel.type = 'button';
+            btnCancel.className = 'btn btn-light border btn-sm py-0 px-2';
+            btnCancel.style.fontSize = '0.78rem';
+            btnCancel.textContent = 'откажи';
+
+            const btnSave = document.createElement('button');
+            btnSave.type = 'button';
+            btnSave.className = 'btn btn-warning btn-sm py-0 px-2';
+            btnSave.style.fontSize = '0.78rem';
+            btnSave.textContent = 'сачувај';
+
+            editActions.appendChild(btnCancel);
+            editActions.appendChild(btnSave);
+            editPanel.appendChild(dateInput);
+            editPanel.appendChild(opisTextarea);
+            editPanel.appendChild(editActions);
+
+            let fpInstance = null;
+            const toggleEdit = () => {
+                const isOpen = editPanel.style.display !== 'none';
+                // Close any other open edit panel in the list
+                lista.querySelectorAll('.novost-edit-panel-open').forEach(p => {
+                    p.style.display = 'none';
+                    p.classList.remove('novost-edit-panel-open');
+                });
+                if (!isOpen) {
+                    dateInput.value = formatDateTimeForInput(item.vrijeme);
+                    opisTextarea.value = item.opis || '';
+                    editPanel.style.display = 'block';
+                    editPanel.classList.add('novost-edit-panel-open');
+                    if (typeof flatpickr !== 'undefined' && !fpInstance) {
+                        fpInstance = flatpickr(dateInput, {
+                            enableTime: true,
+                            dateFormat: 'Y-m-d H:i',
+                            locale: 'sr',
+                            time_24hr: true,
+                            allowInput: true
+                        });
+                    }
+                }
+            };
+
+            textWrap.addEventListener('click', toggleEdit);
+            editIcon.addEventListener('click', toggleEdit);
+            btnCancel.addEventListener('click', () => {
+                editPanel.style.display = 'none';
+                editPanel.classList.remove('novost-edit-panel-open');
+            });
+
+            btnSave.addEventListener('click', async () => {
+                const newOpis = opisTextarea.value.trim();
+                const newVrijeme = dateInput.value.trim();
+                const newVaznost = parseInt(select.value, 10);
+
+                if (newOpis.length < 10) {
+                    if (alertsDiv) showAlert(alertsDiv, 'Опис мора имати најмање 10 карактера.', 'danger');
+                    return;
+                }
+                if (newOpis.length > 4000) {
+                    if (alertsDiv) showAlert(alertsDiv, 'Опис не смије бити дужи од 4000 карактера.', 'danger');
+                    return;
+                }
+
+                btnSave.disabled = true;
+                try {
+                    const res = await fetch(`/api/novosti/${item.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ opis: newOpis, vrijeme: newVrijeme, vaznost: newVaznost })
+                    });
+                    const resData = await res.json();
+                    if (res.ok && resData.success) {
+                        if (alertsDiv) showAlert(alertsDiv, resData.message || 'Новост је успјешно измијењена.', 'success');
+                        loadUrednikNovosti();
+                    } else {
+                        if (alertsDiv) showAlert(alertsDiv, resData.error || 'Грешка при измјени новости.', 'danger');
+                    }
+                } catch (err) {
+                    console.error('Error saving novost edit:', err);
+                    if (alertsDiv) showAlert(alertsDiv, 'Грешка на серверу.', 'danger');
+                } finally {
+                    btnSave.disabled = false;
+                }
+            });
+
+            deleteIcon.addEventListener('click', async () => {
+                if (!confirm(`Да ли сте сигурни да желите да обришете новост од ${dateStr}?`)) return;
+                try {
+                    const res = await fetch(`/api/novosti/${item.id}`, { method: 'DELETE' });
+                    const resData = await res.json();
+                    if (res.ok && resData.success) {
+                        if (alertsDiv) showAlert(alertsDiv, resData.message || 'Новост је успјешно обрисана.', 'success');
+                        loadUrednikNovosti();
+                    } else {
+                        if (alertsDiv) showAlert(alertsDiv, resData.error || 'Грешка при брисању новости.', 'danger');
+                    }
+                } catch (err) {
+                    console.error('Error deleting novost:', err);
+                    if (alertsDiv) showAlert(alertsDiv, 'Грешка на серверу.', 'danger');
+                }
+            });
+
             select.addEventListener('change', async () => {
                 const newVaznost = parseInt(select.value, 10);
                 select.disabled = true;
@@ -154,8 +302,8 @@ async function loadUrednikNovosti() {
                     if (res.ok && resData.success) {
                         currentVaznost = newVaznost;
                         const updatedStyle = getNovostVaznostStyle(newVaznost);
-                        row.style.borderLeft = `3px solid ${updatedStyle.border}`;
-                        row.style.backgroundColor = updatedStyle.bg;
+                        wrapper.style.borderLeft = `3px solid ${updatedStyle.border}`;
+                        wrapper.style.backgroundColor = updatedStyle.bg;
                         if (alertsDiv) showAlert(alertsDiv, 'Важност новости је сачувана.', 'success');
                     } else {
                         select.value = String(currentVaznost);
@@ -172,7 +320,11 @@ async function loadUrednikNovosti() {
 
             row.appendChild(textWrap);
             row.appendChild(select);
-            lista.appendChild(row);
+            row.appendChild(editIcon);
+            row.appendChild(deleteIcon);
+            wrapper.appendChild(row);
+            wrapper.appendChild(editPanel);
+            lista.appendChild(wrapper);
         });
     } catch (err) {
         console.error('Error loading urednik novosti:', err);
@@ -1150,8 +1302,8 @@ async function toggleThemeLock(temaId, icon) {
 
 // Zapisi Approval functionality
 function initZapisiApproval() {
-    // Load pending zapisi when section is expanded
-    $('#urednik_odobravanje_zapisa_podaci').off('shown.bs.collapse').on('shown.bs.collapse', function () {
+    // Load pending zapisi when section begins expanding
+    $('#urednik_odobravanje_zapisa_podaci').off('show.bs.collapse shown.bs.collapse').on('show.bs.collapse', function () {
         loadPendingZapisi();
     });
 
@@ -1195,17 +1347,21 @@ function loadPendingZapisi() {
     const alertsDiv = $('#zapisi_approval_alerts');
     const loadingDiv = $('#zapisi_approval_loading');
     const resultsDiv = $('#zapisi_approval_results');
+    const hasExisting = $('#zapisi_approval_body').children().length > 0 || alertsDiv.is(':visible');
 
-    alertsDiv.hide().text('');
-    loadingDiv.show();
-    resultsDiv.hide();
+    if (!hasExisting) {
+        alertsDiv.hide().text('');
+        loadingDiv.show();
+        resultsDiv.hide();
+    }
 
-    fetch('/api/urednik/zapisi/pending')
+    fetch('/api/urednik/zapisi/pending', { cache: 'no-store' })
         .then(response => response.json())
         .then(data => {
             loadingDiv.hide();
 
             if (data.success) {
+                alertsDiv.hide().text('');
                 displayPendingZapisi(data.results);
             } else {
                 alertsDiv.text(data.error || 'Грешка при учитавању').show();
@@ -1364,8 +1520,8 @@ function viewZapis(id) {
 // ============================================
 
 function initDogadjajiApproval() {
-    // Load pending dogadjaji when section is expanded
-    $('#urednik_odobravanje_dogadjaja_podaci').off('shown.bs.collapse').on('shown.bs.collapse', function () {
+    // Load pending dogadjaji when section begins expanding
+    $('#urednik_odobravanje_dogadjaja_podaci').off('show.bs.collapse shown.bs.collapse').on('show.bs.collapse', function () {
         loadPendingDogadjaji();
     });
 
@@ -1414,20 +1570,24 @@ function loadPendingDogadjaji() {
     const alertsDiv = $('#dogadjaji_approval_alerts');
     const loadingDiv = $('#dogadjaji_approval_loading');
     const resultsDiv = $('#dogadjaji_approval_results');
+    const hasExisting = $('#dogadjaji_approval_body').children().length > 0 || alertsDiv.is(':visible');
 
-    alertsDiv.hide().text('');
-    loadingDiv.show();
-    resultsDiv.hide();
+    if (!hasExisting) {
+        alertsDiv.hide().text('');
+        loadingDiv.show();
+        resultsDiv.hide();
+    }
 
     // Clear ALL existing map layers from other tabs
     clearAllMapLayers();
 
-    fetch('/api/urednik/dogadjaji/pending')
+    fetch('/api/urednik/dogadjaji/pending', { cache: 'no-store' })
         .then(response => response.json())
         .then(data => {
             loadingDiv.hide();
 
             if (data.success) {
+                alertsDiv.hide().text('');
                 displayPendingDogadjaji(data.results);
             } else {
                 alertsDiv.text(data.error || 'Грешка при учитавању').show();
@@ -1892,8 +2052,8 @@ function syncCounters() {
 // ============================================
 
 function initStavkeApproval() {
-    // Load pending summary when section is expanded or when returning from detail
-    $('#urednik_odobravanje_stavki_podaci').off('shown.bs.collapse').on('shown.bs.collapse', function () {
+    // Load pending summary when section begins expanding or when returning from detail
+    $('#urednik_odobravanje_stavki_podaci').off('show.bs.collapse shown.bs.collapse').on('show.bs.collapse', function () {
         loadPendingStavkeSummary();
     });
 
@@ -1933,17 +2093,20 @@ function loadPendingStavkeSummary() {
     const loadingDiv = $('#stavke_approval_loading');
     const summaryDiv = $('#stavke_approval_summary');
     const detailDiv = $('#stavke_approval_detail');
+    const hasExisting = $('#stavke_summary_list').children().length > 0 || $('#stavke_summary_empty').is(':visible');
 
     alertsDiv.hide().text('');
-    loadingDiv.show();
-    summaryDiv.hide();
     detailDiv.hide();
+    if (!hasExisting) {
+        loadingDiv.show();
+        summaryDiv.hide();
+    }
 
     // Clear all existing map layers when entering approval section summary
     if (typeof clearAllMapLayers === 'function') clearAllMapLayers();
     if (typeof clearMapForStavkeApproval === 'function') clearMapForStavkeApproval();
 
-    fetch('/api/v2/urednik/stavke/pending-summary')
+    fetch('/api/v2/urednik/stavke/pending-summary', { cache: 'no-store' })
         .then(response => response.json())
         .then(data => {
             loadingDiv.hide();
@@ -3047,7 +3210,7 @@ var UPLATE_MESECI_NAZIVI = [
 ];
 
 function initUplateAdmin() {
-    $('#urednik_uplate_podaci').off('shown.bs.collapse').on('shown.bs.collapse', function () {
+    $('#urednik_uplate_podaci').off('show.bs.collapse shown.bs.collapse').on('show.bs.collapse', function () {
         loadUplateAdmin();
     });
 
@@ -3067,12 +3230,15 @@ async function loadUplateAdmin() {
 
     if (!tbody) return;
 
+    const hasExisting = tbody.children.length > 0;
     if (alertsDiv) {
         alertsDiv.innerText = '';
         alertsDiv.style.display = 'none';
     }
-    if (loadingDiv) loadingDiv.style.display = 'block';
-    if (formaDiv) formaDiv.style.display = 'none';
+    if (!hasExisting) {
+        if (loadingDiv) loadingDiv.style.display = 'block';
+        if (formaDiv) formaDiv.style.display = 'none';
+    }
 
     try {
         const response = await fetch('/api/podrska/uplate');
