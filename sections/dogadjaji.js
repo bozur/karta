@@ -882,14 +882,21 @@ function showDogadjajLayer(dogadjaj) {
         }
     });
 
-    $('#dogadjaj_layer').addClass('show');
+    const isMobile = window.innerWidth <= 768;
+    $('#dogadjaj_layer')
+        .removeClass('expanded')
+        .css('height', isMobile ? '' : '35px')
+        .addClass('show');
+    $('#dogadjaj_expand').removeClass('bi-chevron-up').addClass('bi-chevron-down');
 }
 
 // Close dogadjaj layer
 function closeDogadjajLayer() {
-    $('#dogadjaj_layer').removeClass('show');
-    // Reset height to initial 35px
-    $('#dogadjaj_layer').css('height', '35px');
+    const isMobile = window.innerWidth <= 768;
+    $('#dogadjaj_layer')
+        .removeClass('show expanded')
+        .css('height', isMobile ? '' : '35px');
+    $('#dogadjaj_expand').removeClass('bi-chevron-up').addClass('bi-chevron-down');
 
     // Also remove marker when closing layer
     if (window.currentDogadjajiMarker) {
@@ -907,35 +914,110 @@ window.closeDogadjajLayer = closeDogadjajLayer;
 
 // Initialize dogadjaj layer functionality
 function initDogadjajLayer() {
+    function setDogadjajExpanded(expanded) {
+        const isMobile = window.innerWidth <= 768;
+        const $layer = $('#dogadjaj_layer');
+        const $icon = $('#dogadjaj_expand');
+
+        if (expanded) {
+            const targetHeight = isMobile
+                ? Math.min(Math.round(window.innerHeight * 0.65), window.innerHeight - 120)
+                : Math.round(window.innerHeight * 0.5);
+            $layer.addClass('expanded').css('height', Math.max(targetHeight, 180) + 'px');
+            $icon.removeClass('bi-chevron-down').addClass('bi-chevron-up');
+        } else {
+            $layer.removeClass('expanded').css('height', isMobile ? '' : '35px');
+            $icon.removeClass('bi-chevron-up').addClass('bi-chevron-down');
+        }
+    }
+
     // Close button handler
     $('#dogadjaj_close').off('click').on('click', function () {
         closeDogadjajLayer();
     });
 
-    // Draggable resize functionality
+    // Expand / collapse button handler
+    $('#dogadjaj_expand').off('click').on('click', function () {
+        setDogadjajExpanded(!$('#dogadjaj_layer').hasClass('expanded'));
+    });
+
+    // On mobile, tapping the summary title when collapsed expands the panel
+    $('#dogadjaj_opis').off('click.dogadjajExpand').on('click.dogadjajExpand', function () {
+        if (window.innerWidth <= 768 && !$('#dogadjaj_layer').hasClass('expanded')) {
+            setDogadjajExpanded(true);
+        }
+    });
+
+    // Draggable resize functionality (mouse + touch)
     let isResizing = false;
     let startY = 0;
     let startHeight = 0;
 
-    $('.dogadjaj_resize_handle').off('mousedown').on('mousedown', function (e) {
+    function startResize(clientY) {
         isResizing = true;
-        startY = e.clientY;
+        startY = clientY;
         startHeight = $('#dogadjaj_layer').outerHeight();
+        $('#dogadjaj_layer').css('transition', 'none');
+    }
+
+    function moveResize(clientY) {
+        if (!isResizing) return;
+        const isMobile = window.innerWidth <= 768;
+        const minHeight = isMobile ? 64 : 35;
+        const maxHeight = isMobile ? window.innerHeight - 115 : window.innerHeight * 0.8;
+        const newHeight = Math.max(minHeight, Math.min(maxHeight, startHeight + (clientY - startY)));
+
+        $('#dogadjaj_layer').css('height', newHeight + 'px');
+        if (newHeight > 110) {
+            $('#dogadjaj_layer').addClass('expanded');
+            $('#dogadjaj_expand').removeClass('bi-chevron-down').addClass('bi-chevron-up');
+        } else {
+            $('#dogadjaj_layer').removeClass('expanded');
+            $('#dogadjaj_expand').removeClass('bi-chevron-up').addClass('bi-chevron-down');
+        }
+    }
+
+    function endResize() {
+        if (isResizing) {
+            isResizing = false;
+            $('#dogadjaj_layer').css('transition', '');
+        }
+    }
+
+    // Mouse events
+    $('.dogadjaj_resize_handle').off('mousedown.dogadjajResize').on('mousedown.dogadjajResize', function (e) {
+        startResize(e.clientY);
         e.preventDefault();
     });
 
-    $(document).on('mousemove', function (e) {
-        if (!isResizing) return;
-        const deltaY = e.clientY - startY;
-        const newHeight = startHeight + deltaY;
-        if (newHeight > 100 && newHeight < window.innerHeight * 0.8) {
-            $('#dogadjaj_layer').css('height', newHeight + 'px');
-        }
+    $(document).off('mousemove.dogadjajResize').on('mousemove.dogadjajResize', function (e) {
+        moveResize(e.clientY);
     });
 
-    $(document).on('mouseup', function () {
-        if (isResizing) {
-            isResizing = false;
-        }
+    $(document).off('mouseup.dogadjajResize').on('mouseup.dogadjajResize', function () {
+        endResize();
     });
+
+    // Touch events (native listeners with passive: false for smooth mobile dragging)
+    const handleEl = document.querySelector('#dogadjaj_layer .dogadjaj_resize_handle');
+    if (handleEl && !handleEl._touchResizeBound) {
+        handleEl._touchResizeBound = true;
+
+        handleEl.addEventListener('touchstart', function (e) {
+            if (e.touches && e.touches.length === 1) {
+                startResize(e.touches[0].clientY);
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchmove', function (e) {
+            if (isResizing && e.touches && e.touches.length === 1) {
+                moveResize(e.touches[0].clientY);
+                e.preventDefault();
+            }
+        }, { passive: false });
+
+        document.addEventListener('touchend', endResize);
+        document.addEventListener('touchcancel', endResize);
+    }
 }
