@@ -132,9 +132,9 @@
         <i class="bi bi-x-lg"></i>
       </button>
       <h5 id="welcome_intro_title" class="welcome-intro-title">Добродошли на Карта.СРБ!</h5>
-      <p class="welcome-intro-subtitle">Погледајте кратки видео водич (~1 мин) за брзи преглед основних могућности.</p>
+      <p class="welcome-intro-subtitle">Погледајте кратки видео водич за брзи преглед основних могућности.</p>
       <div id="welcome_intro_poster_btn" class="intro-video-poster-card" role="button" tabindex="0" aria-label="Покрени уводни видео">
-        <img id="welcome_intro_poster_img" class="intro-video-poster-img" src="" alt="Уводни видео" style="display: none;">
+        <video id="welcome_intro_poster_video" class="intro-video-poster-img" muted playsinline preload="metadata" style="display: none;"></video>
         <div class="intro-video-poster-overlay">
           <div class="intro-video-play-circle">
             <i class="bi bi-play-fill"></i>
@@ -158,7 +158,7 @@
       <i class="bi bi-x-lg"></i>
     </button>
     <div class="intro-video-lightbox-inner">
-      <video id="intro_video_player" class="intro-video-player" controls playsinline preload="metadata" style="display: none;"></video>
+      <video id="intro_video_player" class="intro-video-player" controls muted playsinline preload="metadata" style="display: none;"></video>
       <div id="intro_video_placeholder" class="intro-video-placeholder">
         <div class="intro-video-play-circle mb-3">
           <i class="bi bi-film"></i>
@@ -174,7 +174,7 @@
   <script type="text/javascript"
     src="https://cdnjs.cloudflare.com/ajax/libs/jquery.textcomplete/1.8.0/jquery.textcomplete.js"></script>
   <script src="js/jquery-comments.js"></script>
-  <script src="karta.js?v=3"></script>
+  <script src="karta.js?v=5"></script>
 </body>
 
 </html>

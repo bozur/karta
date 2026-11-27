@@ -7,21 +7,19 @@ var tilelayer2_clean;
 window.layersVisible = true;
 
 // Конфигурација уводног видеа (9:16 за телефон, 16:9 за десктоп/таблет)
-// Када фајлови буду постављени у video/ и slike/, пребацити ready на true
 window.INTRO_VIDEO_CONFIG = {
-    ready: false,
+    ready: true,
     desktopSrc: 'video/uvod-desktop.mp4',
-    mobileSrc: 'video/uvod-mobile.mp4',
-    desktopPoster: 'slike/uvod-poster-desktop.jpg',
-    mobilePoster: 'slike/uvod-poster-mobile.jpg'
+    mobileSrc: 'video/uvod-mobile.mp4'
 };
 
 window.getIntroVideoMedia = function () {
     var isMobile = window.innerWidth <= 768;
+    var src = isMobile ? window.INTRO_VIDEO_CONFIG.mobileSrc : window.INTRO_VIDEO_CONFIG.desktopSrc;
     return {
         isMobile: isMobile,
-        src: isMobile ? window.INTRO_VIDEO_CONFIG.mobileSrc : window.INTRO_VIDEO_CONFIG.desktopSrc,
-        poster: isMobile ? window.INTRO_VIDEO_CONFIG.mobilePoster : window.INTRO_VIDEO_CONFIG.desktopPoster
+        src: src,
+        previewSrc: src ? (src + '#t=0.5') : ''
     };
 };
 
@@ -42,7 +40,6 @@ window.openIntroVideoLightbox = function () {
 
     if (cfg.ready && media.src) {
         $placeholder.hide();
-        $video.attr('poster', media.poster || '');
         if ($video.attr('src') !== media.src) {
             $video.attr('src', media.src);
         }
@@ -50,6 +47,7 @@ window.openIntroVideoLightbox = function () {
         $lightbox.addClass('show');
         var videoEl = $video[0];
         if (videoEl) {
+            videoEl.muted = true;
             videoEl.currentTime = 0;
             var playPromise = videoEl.play();
             if (playPromise && typeof playPromise.catch === 'function') {
@@ -76,13 +74,16 @@ window.closeIntroVideoLightbox = function () {
 window.openWelcomeIntroModal = function () {
     var cfg = window.INTRO_VIDEO_CONFIG;
     var media = window.getIntroVideoMedia();
-    var $img = $('#welcome_intro_poster_img');
+    var $preview = $('#welcome_intro_poster_video');
 
-    if (cfg.ready && media.poster) {
-        $img.attr('src', media.poster).show();
+    if (cfg.ready && media.previewSrc) {
+        if ($preview.attr('src') !== media.previewSrc) {
+            $preview.attr('src', media.previewSrc);
+        }
+        $preview.show();
         $('#welcome_intro_poster_caption').text('Покрени видео водич');
     } else {
-        $img.hide();
+        $preview.hide();
         $('#welcome_intro_poster_caption').text('Уводни видео — ускоро');
     }
     $('#welcome_intro_overlay').addClass('show');
@@ -219,7 +220,8 @@ $(document).ready(function () {
     // Initialize map after height is set - centered on Skadar
     // Disable default zoom control to add custom Serbian one
     karta = L.map('kartaid', {
-        zoomControl: false
+        zoomControl: false,
+        tap: false
     }).setView([42.046475, 19.494058], 6);
 
     // Add custom zoom control with Serbian text
@@ -620,7 +622,9 @@ $(document).ready(function () {
         }
     };
 
-    $(document).on('click', '.detalji', function () {
+    $(document).on('click', '.detalji', function (e) {
+        e.preventDefault();
+        e.stopPropagation();
         var idpoint = String($(this).attr("pointinfo"));
         var activeTabela = String((typeof window.tabela !== 'undefined' && window.tabela !== null) ? window.tabela : tabela);
         if (idpointinfo === idpoint && idpointtable === activeTabela && sidebar.isVisible()) {

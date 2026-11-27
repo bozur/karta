@@ -7,14 +7,18 @@ function initUputstvoSection() {
     var cfg = window.INTRO_VIDEO_CONFIG || { ready: false };
     var media = typeof window.getIntroVideoMedia === 'function'
         ? window.getIntroVideoMedia()
-        : { poster: '' };
+        : { previewSrc: '' };
 
-    if (cfg.ready && media.poster) {
-        $('#uputstvo_video_poster_img').attr('src', media.poster).show();
+    var $preview = $('#uputstvo_video_poster_video');
+    if (cfg.ready && media.previewSrc) {
+        if ($preview.attr('src') !== media.previewSrc) {
+            $preview.attr('src', media.previewSrc);
+        }
+        $preview.show();
         $('#uputstvo_video_title').text('Покрени видео водич');
         $('#uputstvo_video_subtitle').text('Кликните за приказ преко цијелог екрана');
     } else {
-        $('#uputstvo_video_poster_img').hide();
+        $preview.hide();
         $('#uputstvo_video_title').text('Уводни видео — ускоро');
         $('#uputstvo_video_subtitle').text('Брзи преглед основних могућности на Карта.СРБ');
     }
